@@ -3,9 +3,9 @@
 #' Check if multiple vectors have same elements
 #'
 #' This is an internal helper function to check if two or more vectors have same
-#'     elements (with their order considered as an option)
+#'     elements (with their order considered as an option).
 #'
-#' @param ... arguments of two or more vectors
+#' @param ... arguments of two or more vectors.
 #' @param ignore_order logical scalar to disregard the ordering of elements in
 #'     input vectors. Default is TRUE.
 #'
@@ -42,14 +42,25 @@ checkVectorEqual <- function(..., ignore_order = TRUE) {
 
 #' Check membership of first vector compared to other vectors
 #'
-#' @param ... arguments of two or more vectors
+#' This is an internal helper function to check if elements of the first vector are
+#'     subsets of one or more other vectors. Ordering of elements is ignored.
+#'
+#' @param ... arguments of two or more vectors.
+#' @param ignore_dups logical scalar to disregard duplicate elements during comparison.
+#'     Default is FALSE.
 #'
 #' @return a logical scalar
 #' @export
 #'
 #' @examples
-#' NULL
-checkVectorContain <- function(...) {
+#' vec1 <- c("cherry", "apple", "cherry")
+#' vec2 <- c("apple", "cherry", "banana", "cherry")
+#' vec3 <- c("banana", "kiwi", "apple", "cherry")
+#' vec4 <- c("banana", "apple", "apple", "cherry")
+#'
+#' checkVectorContain(vec1, vec2, vec3, ignore_dups = TRUE)   # returns TRUE
+#' checkVectorContain(vec1, vec2, vec4, ignore_dups = FALSE)  # returns FALSE
+checkVectorContain <- function(..., ignore_dups = FALSE) {
 
     vec_list <- list(...)
 
@@ -60,7 +71,11 @@ checkVectorContain <- function(...) {
     first_vec <- vec_list[[1]]
 
     # compare membership of first vector to all others
-    res <- all(base::sapply(vec_list[-1], function(x) base::is.element(first_vec, x)))
+    if(ignore_dups) {
+        res <- all(base::sapply(vec_list[-1], function(x) base::is.element(first_vec, x)))
+    } else {
+        res <- all(base::sapply(vec_list[-1], function(x) length(base::setdiff(first_vec, x)) > 0))
+    }
 
     return(res)
 }
