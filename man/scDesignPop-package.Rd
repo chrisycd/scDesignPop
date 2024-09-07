@@ -13,7 +13,7 @@ Simulate realistic population-scale single-cell RNA-sequencing (scRNA-seq) data 
 
 Authors:
 \itemize{
-  \item Yihui Cen \email{yihuicen@g.ucla.edu} (\href{https://orcid.org/YOUR-ORCID-NUMBER-HERE}{ORCID})
+  \item Yihui Cen \email{yihuicen@g.ucla.edu} (\href{https://orcid.org/0000-0002-5347-0888}{ORCID})
 }
 
 }

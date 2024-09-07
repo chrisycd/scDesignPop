@@ -5,7 +5,7 @@ Authors@R:
     c(person("Chris", "Y. Dong", , "chris.dong@ucla.edu", role = c("aut", "cre"),
            comment = c(ORCID = "0009-0006-2282-0394")),
       person("Yihui", "Cen", , "yihuicen@g.ucla.edu", role = c("aut"),
-           comment = c(ORCID = "YOUR-ORCID-NUMBER-HERE")))
+           comment = c(ORCID = "0000-0002-5347-0888")))
 Description: Simulate realistic population-scale single-cell RNA-sequencing 
     (scRNA-seq) data for single-cell expression quantitative trait loci analysis 
     (sc-eQTL) using input eQTL data and scRNA-seq data. We use scDesign3's 
