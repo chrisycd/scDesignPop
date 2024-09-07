@@ -7,7 +7,7 @@
 checkVectorEqual(..., ignore_order = TRUE)
 }
 \arguments{
-\item{...}{arguments of two or more vectors}
+\item{...}{arguments of two or more vectors.}
 
 \item{ignore_order}{logical scalar to disregard the ordering of elements in
 input vectors. Default is TRUE.}
@@ -17,7 +17,7 @@ a logical scalar
 }
 \description{
 This is an internal helper function to check if two or more vectors have same
-elements (with their order considered as an option)
+elements (with their order considered as an option).
 }
 \examples{
 vec1 <- c("cherry", "apple", "banana", "cherry")
