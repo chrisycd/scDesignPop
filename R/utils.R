@@ -74,7 +74,7 @@ checkVectorContain <- function(..., ignore_dups = FALSE) {
     if(ignore_dups) {
         res <- all(base::sapply(vec_list[-1], function(x) base::is.element(first_vec, x)))
     } else {
-        res <- all(base::sapply(vec_list[-1], function(x) length(base::setdiff(first_vec, x)) > 0))
+        res <- all(base::sapply(vec_list[-1], function(x) length(base::setdiff(first_vec, x)) == 0))
     }
 
     return(res)
