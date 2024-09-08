@@ -38,12 +38,13 @@ have first-order interaction with SNP genotypes.}
 
 \item{indiv_colname}{a string scalar for column name of individuals (samples).}
 
-\item{filter_snps}{a logical scalar for whether to filter out low-variance or
-unique SNP covariates prior to fitting the model.}
+\item{filter_snps}{a logical scalar for whether to filter out SNP covariates
+with either low-variance or with only 1 distinct genotype (ie. all 1's)
+prior to fitting the model.}
 
 \item{snpvar_thres}{a numeric scalar (between 0 to 1) used to filter out SNPs
 whose variance of genotypes across samples are below this threshold.
-Used together with \code{filter_snps} option.}
+Used together when \code{filter_snps = TRUE}.}
 }
 \value{
 a list containing the following:

@@ -46,15 +46,18 @@ number of CPU threads used in parallelization.}
 
 \item{indiv_colname}{a string scalar for column name of individuals (samples).}
 
-\item{filter_snps}{a logical scalar for whether to filter out low-variance or
-unique SNP covariates prior to fitting the model.}
+\item{filter_snps}{a logical scalar for whether to filter out SNP covariates
+with either low-variance or with only 1 distinct genotype (ie. all 1's)
+prior to fitting the model.}
 
 \item{snpvar_thres}{a numeric scalar (between 0 to 1) used to filter out SNPs
 whose variance of genotypes across samples are below this threshold.
-Used together with \code{filter_snps} option.}
+Used together when \code{filter_snps = TRUE}.}
 
-\item{force_formula}{a logical scalar for whether to allow interaction terms
-without the covariate being a main effect in the model.}
+\item{force_formula}{a logical scalar for whether to bypass model parsimony check.
+If \code{force_formula = TRUE}, interaction terms whose covariates are not
+main effects in the model would be permitted. Results in error if
+\code{force_formula = FALSE} and \code{length(geno_interact_names) > 0}.}
 
 \item{data_maxsize}{a positive numeric value used to set max data_list size
 in GiB unit. Used only when \code{parallelization = 'future'}.}

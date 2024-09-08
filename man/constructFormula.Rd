@@ -20,8 +20,10 @@ have first-order interaction with SNP genotypes.}
 
 \item{snp_cov}{a string scalar or vector that specifies the SNP covariates used in the model.}
 
-\item{force_formula}{a logical scalar for whether to allow interaction terms
-without the covariate being a main effect in the model.}
+\item{force_formula}{a logical scalar for whether to bypass model parsimony check.
+If \code{force_formula = TRUE}, interaction terms whose covariates are not
+main effects in the model would be permitted. Results in error if
+\code{force_formula = FALSE} and \code{length(geno_interact_names) > 0}.}
 }
 \value{
 a formula object
