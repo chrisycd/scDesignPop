@@ -17,13 +17,16 @@
 #' @param snp_colname a string scalar for column name of SNP id variable.
 #' @param cellstate_colname a string scalar for column name of cell state (ie. cell type).
 #' @param indiv_colname a string scalar for column name of individuals (samples).
-#' @param filter_snps a logical scalar for whether to filter out low-variance or
-#'     unique SNP covariates prior to fitting the model.
+#' @param filter_snps a logical scalar for whether to filter out SNP covariates
+#'     with either low-variance or with only 1 distinct genotype (ie. all 1's)
+#'     prior to fitting the model.
 #' @param snpvar_thres a numeric scalar (between 0 to 1) used to filter out SNPs
 #'     whose variance of genotypes across samples are below this threshold.
-#'     Used together with \code{filter_snps} option.
-#' @param force_formula a logical scalar for whether to allow interaction terms
-#'     without the covariate being a main effect in the model.
+#'     Used together when \code{filter_snps = TRUE}.
+#' @param force_formula a logical scalar for whether to bypass model parsimony check.
+#'     If \code{force_formula = TRUE}, interaction terms whose covariates are not
+#'     main effects in the model would be permitted. Results in error if
+#'     \code{force_formula = FALSE} and \code{length(geno_interact_names) > 0}.
 #' @param data_maxsize a positive numeric value used to set max data_list size
 #'     in GiB unit. Used only when \code{parallelization = 'future'}.
 #'
@@ -142,6 +145,10 @@ fitMarginalPop <- function(data_list,
     # store gene ids as list names
     names(marginal_list) <- sce_features
 
+    # clean up
+    rm(data_list)
+    gc()
+
     return(marginal_list)
 }
 
@@ -210,7 +217,6 @@ fitModel <- function(feature_name,
                                       snpvar_thres = snpvar_thres)
 
     snp_cov <- res_list[["snp_cov"]]
-    dmat_df <- res_list[["dmat_df"]]
 
     # create model formula
     model_formula <- constructFormula(model_formula = mu_formula,
@@ -229,18 +235,18 @@ fitModel <- function(feature_name,
 
                     if(model_family == "nb") {  # GLMM NB
                         model <- glmmTMB::glmmTMB(formula = model_formula,
-                                                  data = dmat_df,
+                                                  data = res_list[["dmat_df"]],
                                                   family = glmmTMB::nbinom2,
                                                   ziformula = ~0)
                     } else if(model_family == "poisson") {  # GLMM Poisson
                         model <- glmmTMB::glmmTMB(formula = model_formula,
-                                                  data = dmat_df,
+                                                  data = res_list[["dmat_df"]],
                                                   family = stats::poisson,
                                                   ziformula = ~0)
                         # TODO: test this model
                     } else if(model_family == "gaussian") {  # LMM
                         model <- glmmTMB::glmmTMB(formula = model_formula,
-                                                  data = dmat_df,
+                                                  data = res_list[["dmat_df"]],
                                                   family = stats::gaussian,
                                                   ziformula = ~0)
                     } else {
@@ -278,14 +284,15 @@ fitModel <- function(feature_name,
     end_time <- Sys.time()
     elap_time <- as.numeric(end_time - start_time)
 
+    # clean-up
+    rm(res_list, cellcov_df, response_vec)
+    gc()
 
-    output <- list("fit" = glmmTMB.fit,
-                   "time" = elap_time,
-                   "snp_cov" = snp_cov,  # snp covariates used in model fitting
-                   "removed_cell" = removed_cell
-    )
-
-    return(output)
+    return(list("fit" = glmmTMB.fit,
+                "time" = elap_time,
+                "snp_cov" = snp_cov,  # snp covariates used in model fitting
+                "removed_cell" = removed_cell)
+           )
 }
 
 
@@ -363,9 +370,12 @@ constructDesignMatrix <- function(response_vec,
         dplyr::mutate(dplyr::across(tidyselect::where(is.character), as.factor))
         # dplyr::mutate(!!rlang::sym(indiv_colname) := as.factor(!!rlang::sym(indiv_colname)))  # old code
 
-    out_list <- list("dmat_df" = dmat_df, "snp_cov" = snp_cov)
+    # clean up
+    rm(cellcov_df)
+    gc()
 
-    return(out_list)
+    return(list("dmat_df" = dmat_df,
+                "snp_cov" = snp_cov))
 }
 
 
@@ -392,7 +402,7 @@ constructFormula <- function(model_formula,
     # check model parsimony
     if(!force_formula && (length(interact_colnames) > 0L)) {
         if(!all(base::sapply(interact_colnames, base::grepl, model_formula))) {
-            stop(sprintf("Some of the interact_colnames variables are not in the model_formula Please check!"))
+            stop(sprintf("Not all interact_colnames variables are included in the model_formula. Please check!"))
         }
     }
 
