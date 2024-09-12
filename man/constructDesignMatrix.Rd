@@ -8,13 +8,12 @@ constructDesignMatrix(
   response_vec,
   cellcov_df,
   eqtlgeno_df,
-  interact_colnames = NULL,
   loc_colname = "POS",
   snp_colname = "snp_id",
-  cellstate_colname = "cell_type",
   indiv_colname = "indiv",
   filter_snps = TRUE,
-  snpvar_thres = 0
+  snpvar_thres = 0,
+  cleanup = TRUE
 )
 }
 \arguments{
@@ -27,14 +26,9 @@ constructDesignMatrix(
 eQTL annotations and SNP genotypes (explanatory variables) for all samples
 (ie. individuals).}
 
-\item{interact_colnames}{a string scalar or vector for the variable names that
-have first-order interaction with SNP genotypes.}
-
 \item{loc_colname}{a string scalar for column name of SNP position variable.}
 
 \item{snp_colname}{a string scalar for column name of SNP id variable.}
-
-\item{cellstate_colname}{a string scalar for column name of cell state (ie. cell type).}
 
 \item{indiv_colname}{a string scalar for column name of individuals (samples).}
 
@@ -45,6 +39,9 @@ prior to fitting the model.}
 \item{snpvar_thres}{a numeric scalar (between 0 to 1) used to filter out SNPs
 whose variance of genotypes across samples are below this threshold.
 Used together when \code{filter_snps = TRUE}.}
+
+\item{cleanup}{a logical scalar for whether to clean up variables after
+constructing \code{dmat_df}.}
 }
 \value{
 a list containing the following:
@@ -58,6 +55,11 @@ a list containing the following:
 A helper function that constructs a design matrix using a given feature's
 expression vector for every cell, eQTL genotype dataframe, and cell
 covariate dataframe.
+}
+\details{
+When \code{response_vec} is provided, the function constructs a full design
+matrix dataframe (ie. with response variable), whereas only a covariate
+dataframe is constructed when \code{response_vec = NULL}.
 }
 \examples{
 NULL
