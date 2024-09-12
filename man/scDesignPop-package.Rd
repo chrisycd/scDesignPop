@@ -8,6 +8,14 @@
 \description{
 Simulate realistic population-scale single-cell RNA-sequencing (scRNA-seq) data for single-cell expression quantitative trait loci analysis (sc-eQTL) using input eQTL data and scRNA-seq data. We use scDesign3's modeling framework in this package.
 }
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://github.com/chrisycd/scDesignPop}
+  \item Report bugs at \url{https://github.com/chrisycd/scDesignPop/issues}
+}
+
+}
 \author{
 \strong{Maintainer}: Chris Y. Dong \email{chris.dong@ucla.edu} (\href{https://orcid.org/0009-0006-2282-0394}{ORCID})
 
