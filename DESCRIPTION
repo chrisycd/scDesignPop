@@ -16,18 +16,26 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.1
 Imports: 
     assertthat,
+    BiocParallel,
     dplyr,
     future,
     future.apply,
+    gamlss.dist,
     glmmTMB,
     magrittr,
+    Matrix,
+    matrixStats,
     methods,
+    mvtnorm,
     pbapply,
     pbmcapply,
     rlang,
+    rvinecopulib,
     SeuratObject,
     SingleCellExperiment,
     stats,
     SummarizedExperiment,
     tidyr,
     tidyselect
+URL: https://github.com/chrisycd/scDesignPop
+BugReports: https://github.com/chrisycd/scDesignPop/issues
