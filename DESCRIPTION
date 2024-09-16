@@ -34,6 +34,7 @@ Imports:
     SeuratObject,
     SingleCellExperiment,
     stats,
+    stringr,
     SummarizedExperiment,
     tidyr,
     tidyselect
