@@ -1,0 +1,548 @@
+#' Construct a model formula for power analysis
+#'
+#' @param fm a stats::formula object from the full marginal model.
+#' @param method a character object specifying the method that will be analyzed for power.
+#' (Options: nb,poisson,gaussian,pseudoBulkLinear).
+#' @param snpid a character object containes snpid.
+#' @param type_specific a character object contains the name of the covariate that the analysis is specific on.
+#'
+#' @return a stats::formula object for power analysis in each specified type.
+#' @export
+#'
+#' @examples
+#' NULL
+constructPAFormula <- function(fm,method,snpid=NULL,type_specific=NULL){
+  # model formula
+  fm <- as.character(fm)
+  # separate all terms from the rightside of the formula
+  fm_rs <- fm[3]
+  fm_rspart <- unlist(stringr::str_split(fm_rs,pattern = " \\+ "))
+  # remove all effects related to the type_specific parameter
+  fm_rspart1 <- fm_rspart[!stringr::str_detect(fm_rspart,type_specific)]
+  # remove all genotype effects
+  fm_rspart2 <- fm_rspart1[!stringr::str_detect(fm_rspart1,"`")]
+  # add specified snp's genotype effect
+  fm_rspart3 <- c(fm_rspart2,paste0("`",snpid,"`"))
+
+  if(method=="nb"||method=="poisson"||method=="gaussian"){
+    fm_rs_re <- paste(fm_rspart3,collapse = " + ")
+    fm[3] <- fm_rs_re
+    fm <- paste(fm[2],fm[1],fm[3]," ")
+  }
+  else if(method=="pseudoBulkLinear"){
+    # remove individual random effect
+    fm_rspart4 <- fm_rspart3[!stringr::str_detect(fm_rspart3,"\\|")]
+    fm_rs_re <- paste(fm_rspart4,collapse = " + ")
+    fm[3] <- fm_rs_re
+    fm <- paste(fm[2],fm[1],fm[3]," ")
+  }
+
+  # construct the formula
+  model_formula <- stats::as.formula(fm)
+  return(model_formula)
+}
+
+#' Fit a marginal model for power analysis
+#'
+#' @param df a data frame object contains the design matrix.
+#' @param model_formula a stats::formula object contains the model formula for power analysis.
+#' @param idx a numeric value recording the serial number of the simulation
+#' @param method a character object specifying the method that will be analyzed for power.
+#' (Options: nb,poisson,gaussian,pseudoBulkLinear).
+#' @param snpid a character object containes snpid.
+#'
+#' @return a fitted stats::model object.
+#' @export
+#'
+#' @examples
+#' NULL
+fitPAModel <- function(df,model_formula,idx=NULL,method,snpid) {
+
+  if (method=="nb"){
+    result <- tryCatch({
+
+      expr = {
+        withCallingHandlers(
+          expr = {
+            model <- glmmTMB::glmmTMB(formula = model_formula,
+                                      data = df,
+                                      family = glmmTMB::nbinom2,
+                                      ziformula = ~0)
+            # Note: use ziformula = ~1 for zero-inflation
+            result <- glmmTMB::fixef(model)$cond[paste0("`",snpid,"`")]
+          },
+          # If expression throws a warning, record diagnostics without halting,
+          # so as to store the result of the expression.
+          warning = function(w){
+
+            message(sprintf("glmmTMB fit issues on i=%s: %s \n", idx, base::conditionMessage(w)))
+
+            # parent <- parent.env(environment())
+            # parent$diag <- w
+
+          }
+        )
+      }
+
+    }, error = function(e) {
+
+      message(sprintf("glmmTMB fit fails on i=%s: %s \n", idx, base::conditionMessage(e)))
+
+      NULL
+
+    }, silent = FALSE)
+
+  }else if (method=="poisson"){
+      result <- tryCatch({
+
+          expr = {
+              withCallingHandlers(
+                  expr = {
+                      model <- glmmTMB::glmmTMB(formula = model_formula,
+                                                data = df,
+                                                family = stats::poisson())
+                      # Note: use ziformula = ~1 for zero-inflation
+                      result <- glmmTMB::fixef(model)$cond[paste0("`",snpid,"`")]
+                  },
+                  # If expression throws a warning, record diagnostics without halting,
+                  # so as to store the result of the expression.
+                  warning = function(w){
+
+                      message(sprintf("glmmTMB fit issues on i=%s: %s \n", idx, base::conditionMessage(w)))
+
+                      # parent <- parent.env(environment())
+                      # parent$diag <- w
+
+                  }
+              )
+          }
+
+      }, error = function(e) {
+
+          message(sprintf("glmmTMB fit fails on i=%s: %s \n", idx, base::conditionMessage(e)))
+
+          NULL
+
+      }, silent = FALSE)
+
+  }else if (method=="gaussian"){
+    # # generate pseudo-bulk
+    # df <- df %>% dplyr::group_by(indiv) %>%
+    #   dplyr::mutate(response=sum(response)) %>%
+    #   dplyr::distinct()
+    #colnames(df)[length(colnames(df))] <- "genotype"
+
+    result <- tryCatch({
+
+      expr = {
+        withCallingHandlers(
+          expr = {
+            # model <- nlme::lme(fixed = response ~ genotype,random = ~1|indiv,data = df,
+            #                    control = nlme::lmeControl(opt = "optim"))
+            # result <- summary(model)$coefficients$fixed[2]
+
+            model <- glmmTMB::glmmTMB(formula = model_formula,
+                                      data = df,
+                                      family = "gaussian")
+            result <- glmmTMB::fixef(model)$cond[paste0("`",snpid,"`")]
+          },
+          # If expression throws a warning, record diagnostics without halting,
+          # so as to store the result of the expression.
+          warning = function(w){
+
+            message(sprintf("glmmTMB fit issues on i=%s: %s \n", idx, base::conditionMessage(w)))
+
+            # parent <- parent.env(environment())
+            # parent$diag <- w
+
+          }
+        )
+      }
+
+    }, error = function(e) {
+
+      message(sprintf("glmmTMB fit fails on i=%s: %s \n", idx, base::conditionMessage(e)))
+
+      NULL
+
+    }, silent = FALSE)
+
+  }else if (method=="pseudoBulkLinear"){
+      # generate pseudo-bulk
+      df <- df %>% dplyr::group_by(indiv) %>%
+          dplyr::mutate(response=sum(response)) %>%
+          dplyr::distinct()
+
+      result <- tryCatch({
+
+          expr = {
+              withCallingHandlers(
+                  expr = {
+                      model <- stats::lm(formula = model_formula,data = df)
+                      result <- summary(model)$coefficients[paste0("`",snpid,"`"),1]
+                  },
+                  # If expression throws a warning, record diagnostics without halting,
+                  # so as to store the result of the expression.
+                  warning = function(w){
+
+                      message(sprintf("lm fit issues on i=%s: %s \n", idx, base::conditionMessage(w)))
+
+                      # parent <- parent.env(environment())
+                      # parent$diag <- w
+
+                  }
+              )
+          }
+
+      }, error = function(e) {
+
+          message(sprintf("lm fit fails on i=%s: %s \n", idx, base::conditionMessage(e)))
+
+          NULL
+
+      }, silent = FALSE)
+
+  }
+
+
+
+  return(result)
+}
+
+
+#' Simulate new design matrix for power analysis
+#'
+#' @param fit a fitted stats::model object.
+#' @param df_sel a data frame contains the new design matrix.
+#' @param nindiv_total a vector contains the number of individuals for each genotype.
+#' @param model a character showing the model types of the full marginal model.
+#' @param snpid a character object containes snpid.
+#' @param nindiv a numeric value showing the number of individuals that user wants to simulate.
+#' @param ncell a numeric value showing the number of cells per each individual that user wants to simulate.
+#'
+#' @return a new data frame contains the design matrix with simulated response.
+#' @export
+#'
+#' @examples
+#' NULL
+SimulatePADesignMatrix <- function(fit,df_sel,nindiv_total,model,snpid,nindiv,ncell){
+    # extract genotypes
+    geno <- df_sel[,snpid]
+    names(geno) <- df_sel$indiv
+    geno <- geno[unique(df_sel$indiv)]
+    geno0 <- geno[which(geno==0)]
+    geno1 <- geno[which(geno==1)]
+    geno2 <- geno[which(geno==2)]
+
+    # sampling until all combination presented
+    # avoid no points in a subgroup
+    flag=F
+    while(flag==F){
+        rand_indiv <- c(sample(names(geno0),nindiv_total[1],replace = T),
+                        sample(names(geno1),nindiv_total[2],replace = T),
+                        sample(names(geno2),nindiv_total[3],replace = T))
+        df_tmp <- df_sel[which(df_sel$indiv%in%rand_indiv),]
+        df_tmp <- df_tmp[,setdiff(colnames(df_tmp),"response")]
+        if(length(unique(df_tmp))>=4){
+            flag=T
+        }
+    }
+
+    rand_cellindex <- lapply(rand_indiv,function(indiv){
+        return(sample(x = rep(which(df_sel$indiv==indiv),2),size = ncell,replace = T))
+    }) # in case only one cells, causing program truffles
+
+    # construct new covariates data with new individuals
+    df_news <- do.call(rbind,lapply(1:length(rand_cellindex),function(n){
+        cellindex <- rand_cellindex[[n]]
+        df_new <- df_sel[cellindex,]
+        df_new$indiv <- paste0("NewIndiv",n)
+        return(df_new)
+    }))
+    df_news$indiv=factor(df_news$indiv,
+                         levels=paste0("NewIndiv",1:length(rand_cellindex)))
+
+    # use the following line to generate mean estimates without random effect
+    colnames(df_news)[colnames(df_news)=="type"] <- type_specific
+    response_new <- stats::predict(fit,type = "response",newdata=df_news,
+                                   allow.new.levels = TRUE)
+    # manually add random effect
+    # simulate
+    rand_sd <- sqrt(as.numeric(summary(fit)$varcor$cond$indiv))
+    newindiv_effect <- rnorm(nindiv,mean = 0,sd = rand_sd)
+
+    if(model=="gaussian"){
+        response_new <- response_new+rep(newindiv_effect,each=ncell)
+        df_news$response <- stats::rnorm(n=length(response_new),mean=response_new,
+                                  sd = glmmTMB::sigma(fit))
+    }else if(model=="nb"){
+        response_new <- exp(log(response_new)+rep(newindiv_effect,each=ncell))
+        df_news$response <- stats::rnbinom(n=length(response_new),mu=response_new,
+                                  size = glmmTMB::sigma(fit))
+    }else if(model=="poisson"){
+        response_new <- exp(log(response_new)+rep(newindiv_effect,each=ncell))
+        df_news$response <- stats::rpois(n=length(response_new),lambda=response_new)
+    }
+
+    return(df_news)
+}
+
+
+#' Perform a power analysis
+#'
+#' @param marginal_list the output of function fitMarginalPop().
+#' @param marginal_model a character showing the model types of the full marginal model.
+#' @param geneid a character object containes geneid.
+#' @param snpid a character object containes snpid.
+#' @param type_specific a character object contains the name of the covariate that the analysis is specific on.
+#' @param type_vector a vector object contains the specified type/level names of the covariate.
+#' @param method a character object specifying the method that will be analyzed for power.
+#' (Options: nb,poisson,gaussian,pseudoBulkLinear).
+#' @param nindivs a vector of numeric values showing the numbers of individuals that user wants to simulate.
+#' @param ncells a vector of numeric values showing the numbers of cells per each individual that user wants to simulate.
+#' @param alpha the p value threshold for rejecting the H0 hypothesis.
+#' @param nsims number of simulations for calculating the power. This parameter will affect the resolution of the power value.
+#' @param ncores number of CPU cores user wants to use.
+#'
+#' @return a list of named features, each containing a list with the following items:
+#' \describe{
+#'      \item{\code{intercept}}{the intercept for the genotype effect in the specified type/level.}
+#'      \item{\code{slope}}{the slope for the genotype effect in the specified type/level.}
+#'      \item{\code{power}}{a data frame contains power values in different parameter settings.}
+#'      \item{\code{data}}{a data frame contains both the H1 and H0 genotype effect estimates in different parameter settings and simulation times.}
+#' }
+#' @export
+#'
+#' @examples
+#' NULL
+powerAnalysis <- function(marginal_list,
+                          marginal_model,
+                          geneid,
+                          snpid,
+                          type_specific,
+                          type_vector,
+                          method,
+                          nindivs,
+                          ncells,
+                          alpha=0.05,
+                          nsims=100,
+                          ncores=NULL){
+  # # set seed
+  # set.seed(111)
+
+  # select gene
+  #df <- df_construct(data_list,geneid)
+  df <- marginal_list[[geneid]]$fit$frame
+  fm <- marginal_list[[geneid]][["fit"]][["call"]][["formula"]]
+
+  # build the formula using snpid
+  model_formula <- constructPAFormula(fm=fm,method,snpid = snpid,type_specific)
+
+  # count combinations
+  nindiv_cell_dat <- merge(nindivs,ncells)
+
+  # message("Fitting the whole marginal data with input geneid...")
+  fit <- marginal_list[[geneid]]$fit
+
+  # null model
+  fit0 <- fit
+  snp_index <- which(stringr::str_detect(names(glmmTMB::fixef(fit)$cond),snpid))
+
+  fit0$fit$par[snp_index] <- 0 # change the corresponding sizes to zeros
+  fit0$fit$parfull[snp_index] <- 0
+  fit0$sdr$par.fixed[snp_index] <- 0
+
+  # main
+  res <- list()
+  for(type in type_vector){
+
+    #TODO: construct the PAModel based on user specified input
+
+    message(paste0(type_specific,": ",type))
+
+    # collect intercept and slope of genotype effects for celltypes
+    # TODO: for other type_specific order
+    ct_index <- 1:length(type_vector)
+    # d_index <- ct_index[length(ct_index)]+1
+    # a_index <- d_index[length(d_index)]+1
+    snp_cov <-glmmTMB::fixef(fit)$cond[snp_index]
+
+    colnames(df)[colnames(df)==type_specific] <- "type"
+    if(which(levels(df$type)==type)==1){
+      intercept <- as.numeric(glmmTMB::fixef(fit)$cond[1])
+    }else{
+      intercept <- sum(glmmTMB::fixef(fit)$cond[c(1,which(levels(df$type)==type))])
+    }
+    if(which(levels(df$type)==type)==1){
+      slope <- as.numeric(snp_cov[1])
+    }else if(mean(stringr::str_detect(names(snp_cov),paste0(type_specific,type))) > 0){
+      slope <- sum(snp_cov[1],snp_cov[which(stringr::str_detect(names(snp_cov),paste0(type_specific,type)))])
+    }else{
+      slope <- as.numeric(snp_cov[1])
+    }
+    print(intercept)
+    print(slope)
+
+    # select type
+    df_sel <- df[which(df$type==type),]
+
+    output <- list()
+    powers <- list()
+    for(i in 1:length(nindiv_cell_dat[,1])){
+      # fetch nindiv and ncell
+      nindiv <- nindiv_cell_dat[i,1]
+      ncell <- nindiv_cell_dat[i,2]
+      message(paste("Loop:",i," nindiv:",nindiv," ncell:",ncell))
+
+      # power analysis
+      # control MAFs
+      geno <- df_sel[,snpid]
+      names(geno) <- df_sel$indiv
+      geno <- geno[unique(df_sel$indiv)]
+      geno0 <- geno[which(geno==0)]
+      geno1 <- geno[which(geno==1)]
+      geno2 <- geno[which(geno==2)]
+      l_tot <- length(geno)
+      p0 <- length(geno0)/l_tot
+      p1 <- length(geno1)/l_tot
+      p2 <- length(geno2)/l_tot
+      nindiv0 <- round(nindiv * p0)
+      nindiv1 <- round(nindiv * p1)
+      nindiv2 <- round(nindiv * p2)
+      nindiv_total <- c(nindiv0,nindiv1,nindiv2)
+      if(sum(nindiv_total)>nindiv){
+        index <- which.max(c(nindiv0,nindiv1,nindiv2))
+        nindiv_total[index] <- nindiv_total[index] - 1
+      }else if(sum(nindiv_total)<nindiv){
+        index <- which.max(c(nindiv0,nindiv1,nindiv2))
+        nindiv_total[index] <- nindiv_total[index] + 1
+      }
+
+      # Calculation
+      message("Computing the statistical power...")
+      result <- unlist(pbmcapply::pbmclapply(1:nsims,function(x){
+
+        # allow more than 100 individuals
+        # H1 data
+        df_news <- SimulatePADesignMatrix(fit = fit,
+                                          df_sel = df_sel,
+                                          nindiv_total = nindiv_total,
+                                          model = marginal_model,
+                                          snpid = snpid,
+                                          nindiv = nindiv,
+                                          ncell = ncell)
+        ######
+        # H0 data
+        df0_news <- SimulatePADesignMatrix(fit = fit0,
+                                           df_sel = df_sel,
+                                           nindiv_total = nindiv_total,
+                                           model = marginal_model,
+                                           snpid = snpid,
+                                           nindiv = nindiv,
+                                           ncell = ncell)
+
+        # refit on H0 and H1 data
+        # record the effect coefficients
+        stat1 <- fitPAModel(df = df_news,model_formula = model_formula,idx=x,
+                            method = method,snpid = snpid)
+        stat0 <- fitPAModel(df = df0_news,model_formula = model_formula,idx=x,
+                            method = method,snpid = snpid)
+
+        return(c(as.numeric(stat1),as.numeric(stat0)))
+      },mc.cores = ncores))
+
+      stat1s <- result[seq(1,length(result),2)]
+      stat0s <- result[seq(2,length(result),2)]
+
+      if(slope < 0){
+
+        power <- mean(stats::quantile(stat0s,alpha) > stat1s)
+
+      }else if(slope > 0){
+
+        power <- mean(stats::quantile(stat0s,1-alpha) < stat1s)
+
+      }else{
+        message("True eQTL effect size is zero.")
+      }
+      powers <- c(powers, list(data.frame(power=power,
+                                          nindiv=nindiv,
+                                          ncell=ncell)))
+      output <- c(output,list(data.frame(stats=c(stat1s,stat0s),
+                                         group=c(rep("stat1",nsims),rep("stat0",nsims)),
+                                         nindiv=c(rep(nindiv,2*nsims)),
+                                         ncell=c(rep(ncell,2*nsims)))))
+    }
+    powers <- do.call(rbind,powers)
+    output <- do.call(rbind,output)
+    res_tmp <- list(intercept = intercept,slope = slope,powers=powers,data=output)
+    res <- c(res,list(res_tmp))
+  }
+  names(res) <- type_vector
+  return(res)
+}
+
+#' Calculate a bootstrap confidence interval for each power
+#'
+#' @param res the output of function powerAnalysis()
+#' @param types a vector object contains the specified type/level names of the covariate.
+#' @param nindivs a vector of numeric values showing the numbers of individuals that user wants to simulate.
+#' @param ncells a vector of numeric values showing the numbers of cells per each individual that user wants to simulate.
+#' @param snp_number the number of SNPs for multiple testing correction.
+#' @param gene_number the number of genes for multiple testing correction.
+#' @param alpha the p value threshold for rejecting the H0 hypothesis.
+#' @param nsim number of simulations for calculating the Bootstrap CI.
+#' @param conf Bootstrap CI interval.
+#'
+#' @return a data frame contains average power with standard deviations in each parameter settings.
+#' @export
+#'
+#' @examples
+#' NULL
+powerCICalculation <- function(res,types,nindivs,ncells,snp_number,gene_number,alpha=0.05,nsim=1000,conf=0.05){
+  # set.seed(111)
+
+  for(type in types){
+    print(type)
+    data <- res[[type]]$data
+    slope <- res[[type]]$slope
+    powers <- res[[type]]$powers
+
+    powerCIs <- list()
+    for(nindiv in nindivs){
+      for(ncell in ncells){
+        stats1 <- data[which(data$nindiv==nindiv & data$ncell==ncell & data$group=="stat1"),"stats"]
+        stats0 <- data[which(data$nindiv==nindiv & data$ncell==ncell & data$group=="stat0"),"stats"]
+        power <- powers[which(powers$nindiv==nindiv & powers$ncell==ncell),"power"]
+
+        ps <- c()
+        for(i in 1:nsim){
+          stats1_tmp <- sample(stats1,length(stats1),replace = T)
+          stats0_tmp <- sample(stats0,length(stats0),replace = T)
+
+          if(slope < 0){
+
+            p <- mean(stats::quantile(stats0_tmp,alpha/(snp_number*gene_number)) > stats1_tmp)
+
+          }else if(slope > 0){
+
+            p <- mean(stats::quantile(stats0_tmp,1-(alpha/(snp_number*gene_number))) < stats1_tmp)
+
+          }
+          ps <- c(ps,p)
+        }
+        powerCI <- data.frame(power=power,
+                              nindiv=nindiv,
+                              ncell=ncell,
+                              mean=mean(ps),
+                              sd=stats::sd(ps),
+                              ci1=stats::quantile(ps,conf/2),
+                              ci2=stats::quantile(ps,(1-(conf/2))))
+        powerCIs <- c(powerCIs,list(powerCI))
+      }
+    }
+    powerCIs <- do.call(rbind,powerCIs)
+    res[[type]]$powers <- powerCIs
+  }
+  return(res)
+}
