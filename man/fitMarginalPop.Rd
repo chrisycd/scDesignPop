@@ -18,7 +18,8 @@ fitMarginalPop(
   filter_snps = TRUE,
   snpvar_thres = 0,
   force_formula = FALSE,
-  data_maxsize = 1
+  data_maxsize = 1,
+  keep_cellnames = FALSE
 )
 }
 \arguments{
@@ -61,6 +62,9 @@ main effects in the model would be permitted. Results in error if
 
 \item{data_maxsize}{a positive numeric value used to set max data_list size
 in GiB unit. Used only when \code{parallelization = 'future'}.}
+
+\item{keep_cellnames}{a logical scalar for whether to keep cell barcode names.
+If \code{keep_cellnames = TRUE}, the memory will be larger. The default is FALSE.}
 }
 \value{
 a list of named features, each containing a list with the following items:

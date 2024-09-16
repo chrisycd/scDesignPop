@@ -9,7 +9,7 @@
 #' @param model_family a string scalar to specify model fitting used.
 #' @param interact_colnames a string scalar or vector for the variable names that
 #'     have first-order interaction with SNP genotypes.
-#' @param parallelization a string scalar specifying the type of parallization
+#' @param parallelization a string scalar specifying the type of parallelization
 #'     used during marginal fitting.
 #' @param n_threads positive integer value (greater or equal to 1) to specify the
 #'     number of CPU threads used in parallelization.
@@ -29,6 +29,8 @@
 #'     \code{force_formula = FALSE} and \code{length(geno_interact_names) > 0}.
 #' @param data_maxsize a positive numeric value used to set max data_list size
 #'     in GiB unit. Used only when \code{parallelization = 'future'}.
+#' @param keep_cellnames a logical scalar for whether to keep cell barcode names.
+#'     If \code{keep_cellnames = TRUE}, the memory will be larger. The default is FALSE.
 #'
 #' @return a list of named features, each containing a list with the following items:
 #' \describe{
@@ -36,6 +38,8 @@
 #'      \item{\code{time}}{a numeric scalar for the elapsed time to fit the given feature.}
 #'      \item{\code{snp_cov}}{a string scalar or vector of SNP ids used in the
 #'          fit for given feature.}
+#'      \item{\code{model_attr}}{a list of attributes extracted from each model. NOT
+#'          currently implemented.}
 #'      \item{\code{removed_cell}}{a string scalar or vector of the cell names
 #'          removed due to low-variance (NOT currently implemented).}
 #' }
@@ -56,8 +60,8 @@ fitMarginalPop <- function(data_list,
                            filter_snps = TRUE,
                            snpvar_thres = 0,
                            force_formula = FALSE,
-                           data_maxsize = 1
-                           ) {
+                           data_maxsize = 1,
+                           keep_cellnames = FALSE) {
 
     # check cell covariates
     assertthat::assert_that(assertthat::has_name(data_list[["covariate"]],
@@ -74,6 +78,7 @@ fitMarginalPop <- function(data_list,
     important_features <- data_list[["important_features"]]
     eqtl_features <- names(data_list[["eqtl_geno_list"]])
     sce_features <- colnames(data_list[["count_mat"]])
+    cell_names <- rownames(data_list[["count_mat"]])
 
     stopifnot("Features in count_mat and eqtl_geno_list do not match. Please check input!" =
                   checkVectorEqual(sce_features, eqtl_features, ignore_order = TRUE))
@@ -90,6 +95,13 @@ fitMarginalPop <- function(data_list,
 
     stopifnot("loc_colname, snp_colname, or cellstate_colname is missing in eqtl_geno_list. Please check input!" =
                   checkVectorContain(c(loc_colname, snp_colname, cellstate_colname), eqtl_colnames))
+
+
+    # remove cell barcodes
+    if(!keep_cellnames) {
+        rownames(data_list[["count_mat"]]) <- NULL
+        rownames(data_list[["covariate"]]) <- NULL
+    }
 
 
     ## run marginal fitting
@@ -144,6 +156,9 @@ fitMarginalPop <- function(data_list,
 
     # store gene ids as list names
     names(marginal_list) <- sce_features
+
+    #
+    # marginal_list[["cell_names"]] <- cell_names
 
     # clean up
     rm(data_list)
@@ -208,13 +223,12 @@ fitModel <- function(feature_name,
     res_list <- constructDesignMatrix(response_vec = response_vec,
                                       cellcov_df = cellcov_df,
                                       eqtlgeno_df = eqtlgeno_df,
-                                      interact_colnames = interact_colnames,
                                       loc_colname = loc_colname,
                                       snp_colname = snp_colname,
-                                      cellstate_colname = cellstate_colname,
                                       indiv_colname = indiv_colname,
                                       filter_snps = filter_snps,
-                                      snpvar_thres = snpvar_thres)
+                                      snpvar_thres = snpvar_thres,
+                                      cleanup = TRUE)
 
     snp_cov <- res_list[["snp_cov"]]
 
@@ -256,6 +270,9 @@ fitModel <- function(feature_name,
                     # Note: use ziformula = ~1 for zero-inflation
 
                     # model[["frame"]] <- c()  # remove training dataframe
+                    model_attr <- list("class" = attr(model[["frame"]], "class"),
+                                       "terms" = attr(model[["frame"]], "terms"),
+                                       "names" = attr(model[["frame"]], "names"))
                     # model[["frame"]] <- model[["frame"]] %>%    # retain response vec and snp covariate df
                     #     dplyr::select(c("response", dplyr::all_of(snp_cov)))
 
@@ -291,6 +308,7 @@ fitModel <- function(feature_name,
     return(list("fit" = glmmTMB.fit,
                 "time" = elap_time,
                 "snp_cov" = snp_cov,  # snp covariates used in model fitting
+                "model_attr" = model_attr,
                 "removed_cell" = removed_cell)
            )
 }
@@ -303,8 +321,14 @@ fitModel <- function(feature_name,
 #'     expression vector for every cell, eQTL genotype dataframe, and cell
 #'     covariate dataframe.
 #'
+#' When \code{response_vec} is provided, the function constructs a full design
+#'     matrix dataframe (ie. with response variable), whereas only a covariate
+#'     dataframe is constructed when \code{response_vec = NULL}.
+#'
 #' @inheritParams fitMarginalPop
 #' @inheritParams fitModel
+#' @param cleanup a logical scalar for whether to clean up variables after
+#'     constructing \code{dmat_df}.
 #'
 #' @return a list containing the following:
 #' \describe{
@@ -319,14 +343,12 @@ fitModel <- function(feature_name,
 constructDesignMatrix <- function(response_vec,
                                   cellcov_df,
                                   eqtlgeno_df,
-                                  interact_colnames = NULL,
                                   loc_colname = "POS",
                                   snp_colname = "snp_id",
-                                  cellstate_colname = "cell_type",
                                   indiv_colname = "indiv",
                                   filter_snps = TRUE,
-                                  snpvar_thres = 0) {
-
+                                  snpvar_thres = 0,
+                                  cleanup = TRUE) {
 
     # construct a sample by snp df using indiv label
     firstsnp_indx <- which(colnames(eqtlgeno_df) == loc_colname) + 1L  # last column preceding genotypes
@@ -334,7 +356,10 @@ constructDesignMatrix <- function(response_vec,
 
     geno_df <- eqtlgeno_df[, firstsnp_indx:lastsnp_indx] %>%
         dplyr::bind_cols(!!as.name(snp_colname) := eqtlgeno_df[[snp_colname]], .) %>%
-        # dplyr::select(c(!!rlang::sym(snp_colname), data_list[["covariate"]][[indiv_colname]])) %>%
+        # eqtlgeno_df %>%   # alternate code w/o using loc_colname variable
+        # dplyr::select(tidyselect::all_of(
+        #     c(snp_colname, as.character(unique(new_covariate[[indiv_colname]]))
+        #     ))) %>%
         tidyr::pivot_longer(., cols = -snp_colname,
                             values_to = "genotype",
                             names_to = indiv_colname) %>%
@@ -364,15 +389,25 @@ constructDesignMatrix <- function(response_vec,
     }
 
     # construct design matrix df for marginal fitting
-    dmat_df <- data.frame("response" = response_vec) %>%
-        dplyr::bind_cols(., cellcov_df) %>%
+    # dmat_df <- data.frame("response" = response_vec) %>%
+    #     dplyr::bind_cols(., cellcov_df) %>%
+    dmat_df <- cellcov_df %>%  # keeps row names
         dplyr::left_join(., geno_df, by = indiv_colname) %>%
         dplyr::mutate(dplyr::across(tidyselect::where(is.character), as.factor))
         # dplyr::mutate(!!rlang::sym(indiv_colname) := as.factor(!!rlang::sym(indiv_colname)))  # old code
 
+    # add response variable to design matrix
+    if(!is.null(response_vec)) {
+        dmat_df <- dmat_df %>%
+            dplyr::bind_cols(data.frame("response" = response_vec), .)
+    }
+
+
     # clean up
-    rm(cellcov_df)
-    gc()
+    if(cleanup) {
+        rm(cellcov_df)
+        gc()
+    }
 
     return(list("dmat_df" = dmat_df,
                 "snp_cov" = snp_cov))
