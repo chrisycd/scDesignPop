@@ -145,8 +145,8 @@ constructDataPop <- function(sce,
                 base::apply(., MARGIN = 1, FUN = stats::var)
 
             eqtl_tmp <- eqtl_tmp %>%
-                dplyr::mutate(var = var_tmp) %>%
-                dplyr::relocate(var, .before = !!rlang::sym(loc_colname))
+                dplyr::mutate("var" = var_tmp) %>%
+                dplyr::relocate("var", .before = !!rlang::sym(loc_colname))
 
             max_var_indx <- base::which.max(var_tmp)
 

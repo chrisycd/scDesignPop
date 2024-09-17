@@ -33,7 +33,7 @@ random effects (if any) but without SNP genotypes or SNP genotype interaction ef
 \item{interact_colnames}{a string scalar or vector for the variable names that
 have first-order interaction with SNP genotypes.}
 
-\item{parallelization}{a string scalar specifying the type of parallization
+\item{parallelization}{a string scalar specifying the type of parallelization
 used during marginal fitting.}
 
 \item{n_threads}{positive integer value (greater or equal to 1) to specify the
@@ -73,6 +73,8 @@ a list of named features, each containing a list with the following items:
 \item{\code{time}}{a numeric scalar for the elapsed time to fit the given feature.}
 \item{\code{snp_cov}}{a string scalar or vector of SNP ids used in the
 fit for given feature.}
+\item{\code{model_attr}}{a list of attributes extracted from each model. NOT
+currently implemented.}
 \item{\code{removed_cell}}{a string scalar or vector of the cell names
 removed due to low-variance (NOT currently implemented).}
 }

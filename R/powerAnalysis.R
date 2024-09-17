@@ -169,8 +169,8 @@ fitPAModel <- function(df,model_formula,idx=NULL,method,snpid) {
 
   }else if (method=="pseudoBulkLinear"){
       # generate pseudo-bulk
-      df <- df %>% dplyr::group_by(indiv) %>%
-          dplyr::mutate(response=sum(response)) %>%
+      df <- df %>% dplyr::group_by(!!rlang::sym("indiv")) %>%
+          dplyr::mutate("response"=sum(!!rlang::sym("response"))) %>%
           dplyr::distinct()
 
       result <- tryCatch({
@@ -219,13 +219,21 @@ fitPAModel <- function(df,model_formula,idx=NULL,method,snpid) {
 #' @param snpid a character object containes snpid.
 #' @param nindiv a numeric value showing the number of individuals that user wants to simulate.
 #' @param ncell a numeric value showing the number of cells per each individual that user wants to simulate.
+#' @param type_specific a character object contains the name of the covariate that the analysis is specific on.
 #'
 #' @return a new data frame contains the design matrix with simulated response.
 #' @export
 #'
 #' @examples
 #' NULL
-SimulatePADesignMatrix <- function(fit,df_sel,nindiv_total,model,snpid,nindiv,ncell){
+simulatePADesignMatrix <- function(fit,
+                                   df_sel,
+                                   nindiv_total,
+                                   model,
+                                   snpid,
+                                   nindiv,
+                                   ncell,
+                                   type_specific){
     # extract genotypes
     geno <- df_sel[,snpid]
     names(geno) <- df_sel$indiv
@@ -269,7 +277,7 @@ SimulatePADesignMatrix <- function(fit,df_sel,nindiv_total,model,snpid,nindiv,nc
     # manually add random effect
     # simulate
     rand_sd <- sqrt(as.numeric(summary(fit)$varcor$cond$indiv))
-    newindiv_effect <- rnorm(nindiv,mean = 0,sd = rand_sd)
+    newindiv_effect <- stats::rnorm(nindiv,mean = 0,sd = rand_sd)
 
     if(model=="gaussian"){
         response_new <- response_new+rep(newindiv_effect,each=ncell)
@@ -424,22 +432,24 @@ powerAnalysis <- function(marginal_list,
 
         # allow more than 100 individuals
         # H1 data
-        df_news <- SimulatePADesignMatrix(fit = fit,
+        df_news <- simulatePADesignMatrix(fit = fit,
                                           df_sel = df_sel,
                                           nindiv_total = nindiv_total,
                                           model = marginal_model,
                                           snpid = snpid,
                                           nindiv = nindiv,
-                                          ncell = ncell)
+                                          ncell = ncell,
+                                          type_specific = type_specific)
         ######
         # H0 data
-        df0_news <- SimulatePADesignMatrix(fit = fit0,
+        df0_news <- simulatePADesignMatrix(fit = fit0,
                                            df_sel = df_sel,
                                            nindiv_total = nindiv_total,
                                            model = marginal_model,
                                            snpid = snpid,
                                            nindiv = nindiv,
-                                           ncell = ncell)
+                                           ncell = ncell,
+                                           type_specific = type_specific)
 
         # refit on H0 and H1 data
         # record the effect coefficients
