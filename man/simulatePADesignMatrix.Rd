@@ -8,7 +8,7 @@ simulatePADesignMatrix(
   fit,
   df_sel,
   nindiv_total,
-  model,
+  model = c("nb", "poisson", "gaussian"),
   snpid,
   nindiv,
   ncell,

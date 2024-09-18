@@ -9,8 +9,8 @@ powerCICalculation(
   types,
   nindivs,
   ncells,
-  snp_number,
-  gene_number,
+  snp_number = 10,
+  gene_number = 800,
   alpha = 0.05,
   nsim = 1000,
   conf = 0.05

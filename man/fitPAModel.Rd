@@ -4,7 +4,13 @@
 \alias{fitPAModel}
 \title{Fit a marginal model for power analysis}
 \usage{
-fitPAModel(df, model_formula, idx = NULL, method, snpid)
+fitPAModel(
+  df,
+  model_formula,
+  idx,
+  method = c("nb", "poisson", "gaussian", "pseudoBulkLinear"),
+  snpid
+)
 }
 \arguments{
 \item{df}{a data frame object contains the design matrix.}

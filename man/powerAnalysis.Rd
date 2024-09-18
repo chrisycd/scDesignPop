@@ -11,12 +11,12 @@ powerAnalysis(
   snpid,
   type_specific,
   type_vector,
-  method,
+  method = c("nb", "poisson", "gaussian", "pseudoBulkLinear"),
   nindivs,
   ncells,
   alpha = 0.05,
   nsims = 100,
-  ncores = NULL
+  ncores = 1
 )
 }
 \arguments{

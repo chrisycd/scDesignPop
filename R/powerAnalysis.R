@@ -11,12 +11,12 @@
 #'
 #' @examples
 #' NULL
-constructPAFormula <- function(fm,method,snpid=NULL,type_specific=NULL){
+constructPAFormula <- function(fm,
+                               method=c("nb","poisson","gaussian","pseudoBulkLinear"),
+                               snpid=NULL,
+                               type_specific=NULL){
   # checks
-  stopifnot("fm is not a stats::formula object. Please check input!" =
-                  (class(fm) == "formula"))
-  stopifnot("method input is not available. Please check input!" =
-                  (method %in% c("nb","poisson","gaussian","pseudoBulkLinear")))
+  method = match.arg(method)
   stopifnot("snpid is not included in the formula. Please check input!" =
                 (stringr::str_detect(as.character(fm)[3],snpid)))
   stopifnot("type_specific is not included in the formula. Please check input!" =
@@ -66,16 +66,13 @@ constructPAFormula <- function(fm,method,snpid=NULL,type_specific=NULL){
 #'
 #' @examples
 #' NULL
-fitPAModel <- function(df,model_formula,idx,method,snpid) {
+fitPAModel <- function(df,
+                       model_formula,
+                       idx,
+                       method=c("nb","poisson","gaussian","pseudoBulkLinear"),
+                       snpid) {
   # checks
-  stopifnot("df is not a data.frame object. Please check input!" =
-                  (class(df) == "data.frame"))
-  stopifnot("model_formula is not a stats::formula object. Please check input!" =
-                  (class(model_formula) == "formula"))
-  stopifnot("idx is not a integer Please check input!" =
-                  (class(idx) == "integer"))
-  stopifnot("method input is not available. Please check input!" =
-                  (method %in% c("nb","poisson","gaussian","pseudoBulkLinear")))
+  method = match.arg(method)
   stopifnot("snpid is not included in the formula. Please check input!" =
                   (stringr::str_detect(as.character(model_formula)[3],snpid)))
 
@@ -250,28 +247,21 @@ fitPAModel <- function(df,model_formula,idx,method,snpid) {
 simulatePADesignMatrix <- function(fit,
                                    df_sel,
                                    nindiv_total,
-                                   model,
+                                   model=c("nb","poisson","gaussian"),
                                    snpid,
                                    nindiv,
                                    ncell,
                                    type_specific){
     # checks
-    stopifnot("fit is not a glmmTMB object. Please check input!" =
-                  (class(fit) == "glmmTMB"))
-    stopifnot("df_sel is not a data.frame object. Please check input!" =
-                  (class(df_sel) == "data.frame"))
     stopifnot("nindiv_total doesn't contain three numbers of individuals for the three genotypes. Please check input!" =
                   (length(nindiv_total) == 3))
-    stopifnot("parameter model is not available. Please check input!" =
-                  (model %in% c("nb","poisson","gaussian")))
+    model = match.arg(model)
     stopifnot("snpid is not included in the df_sel data.frame. Please check input!" =
                   (snpid%in%colnames(df_sel)))
     stopifnot("nindiv is not a integer. Please check input!" =
                   (abs(nindiv - round(nindiv)) < .Machine$double.eps^0.5))
     stopifnot("ncell is not a integer. Please check input!" =
                   (abs(ncell - round(ncell)) < .Machine$double.eps^0.5))
-    stopifnot("type_specific is not a character. Please check input!" =
-                  (class(type_specific)=="character"))
 
     # extract genotypes
     geno <- df_sel[,snpid]
@@ -368,15 +358,13 @@ powerAnalysis <- function(marginal_list,
                           snpid,
                           type_specific,
                           type_vector,
-                          method,
+                          method = c("nb","poisson","gaussian","pseudoBulkLinear"),
                           nindivs,
                           ncells,
                           alpha=0.05,
                           nsims=100,
                           ncores=1){
   # checks
-  stopifnot("marginal_list is not a list object. Please check input!" =
-                 (class(marginal_list) == "list"))
   stopifnot("marginal_model is not available. Please check input!" =
                  (marginal_model %in% c("nb","poisson","gaussian")))
   stopifnot("geneid is not included in the marginal_list. Please check input!" =
@@ -387,26 +375,15 @@ powerAnalysis <- function(marginal_list,
                 (type_specific%in%colnames(marginal_list[[geneid]]$fit$frame)))
   stopifnot("type_vector is not included in the selected gene's marginal model. Please check input!" =
                 (type_vector%in%unique(marginal_list[[geneid]]$fit$frame[,type_specific])))
-  stopifnot("method input is not available. Please check input!" =
-                (method %in% c("nb","poisson","gaussian","pseudoBulkLinear")))
-  stopifnot("nindivs input is not a vector of numeric values. Please check input!" =
-                (class(nindivs)=="numeric"))
+  method = match.arg(method)
   stopifnot("nindivs input is not a vector of integer values. Please check input!" =
                 (mean(abs(nindivs - round(nindivs)) < .Machine$double.eps^0.5)==1))
-  stopifnot("ncells input is not a vector of numeric values. Please check input!" =
-                (class(ncells)=="numeric"))
   stopifnot("ncells input is not a vector of integer values. Please check input!" =
                 (mean(abs(ncells - round(ncells)) < .Machine$double.eps^0.5)==1))
-  stopifnot("alpha input is not a numeric value. Please check input!" =
-                (class(alpha)=="numeric"))
   stopifnot("alpha input is not between 0 and 1. Please check input!" =
                 (alpha >=0 && alpha <=1))
-  stopifnot("nsims input is not a numeric value. Please check input!" =
-                (class(nsims)=="numeric"))
   stopifnot("nsims input is not a integer. Please check input!" =
                 (abs(nsims - round(nsims)) < .Machine$double.eps^0.5))
-  stopifnot("ncores input is not a numeric value. Please check input!" =
-                (class(ncores)=="numeric"))
   stopifnot("ncores input is not a integer. Please check input!" =
                 (abs(ncores - round(ncores)) < .Machine$double.eps^0.5))
 
@@ -594,36 +571,22 @@ powerCICalculation <- function(res,
                                nsim=1000,
                                conf=0.05){
   # check
-  stopifnot("res is not a list object. Please check input!" =
-                 (class(res) == "list"))
   stopifnot("types is included in the res object. Please check input!" =
                  (types %in% names(res)))
   stopifnot("nindivs input is not a vector of numeric values. Please check input!" =
                 (class(nindivs)=="numeric"))
   stopifnot("nindivs input is not a vector of integer values. Please check input!" =
                 (mean(abs(nindivs - round(nindivs)) < .Machine$double.eps^0.5)==1))
-  stopifnot("ncells input is not a vector of numeric values. Please check input!" =
-                (class(ncells)=="numeric"))
   stopifnot("ncells input is not a vector of integer values. Please check input!" =
                 (mean(abs(ncells - round(ncells)) < .Machine$double.eps^0.5)==1))
-  stopifnot("snp_number input is not a vector of numeric values. Please check input!" =
-                (class(snp_number)=="numeric"))
   stopifnot("snp_number input is not a vector of integer values. Please check input!" =
                 (abs(snp_number - round(snp_number)) < .Machine$double.eps^0.5))
-  stopifnot("gene_number input is not a vector of numeric values. Please check input!" =
-                (class(gene_number)=="numeric"))
   stopifnot("gene_number input is not a vector of integer values. Please check input!" =
                 (abs(gene_number - round(gene_number)) < .Machine$double.eps^0.5))
-  stopifnot("alpha input is not a numeric value. Please check input!" =
-                (class(alpha)=="numeric"))
   stopifnot("alpha input is not between 0 and 1. Please check input!" =
                 (alpha >=0 && alpha <=1))
-  stopifnot("nsim input is not a numeric value. Please check input!" =
-                (class(nsim)=="numeric"))
   stopifnot("nsim input is not a integer. Please check input!" =
                 (abs(nsim - round(nsim)) < .Machine$double.eps^0.5))
-  stopifnot("conf input is not a numeric value. Please check input!" =
-                (class(conf)=="numeric"))
   stopifnot("conf input is not between 0 and 1. Please check input!" =
                 (conf >=0 && conf <=1))
 

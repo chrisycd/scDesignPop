@@ -4,7 +4,12 @@
 \alias{constructPAFormula}
 \title{Construct a model formula for power analysis}
 \usage{
-constructPAFormula(fm, method, snpid = NULL, type_specific = NULL)
+constructPAFormula(
+  fm,
+  method = c("nb", "poisson", "gaussian", "pseudoBulkLinear"),
+  snpid = NULL,
+  type_specific = NULL
+)
 }
 \arguments{
 \item{fm}{a stats::formula object from the full marginal model.}
