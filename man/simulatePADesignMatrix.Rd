@@ -24,7 +24,7 @@ simulatePADesignMatrix(
 
 \item{model}{a character showing the model types of the full marginal model.}
 
-\item{snpid}{a character object containes snpid.}
+\item{snpid}{a character object contains snpid.}
 
 \item{nindiv}{a numeric value showing the number of individuals that user wants to simulate.}
 

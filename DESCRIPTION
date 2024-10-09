@@ -21,6 +21,7 @@ Imports:
     future,
     future.apply,
     gamlss.dist,
+    ggplot2,
     glmmTMB,
     magrittr,
     Matrix,

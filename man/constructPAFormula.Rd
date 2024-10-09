@@ -17,7 +17,7 @@ constructPAFormula(
 \item{method}{a character object specifying the method that will be analyzed for power.
 (Options: nb,poisson,gaussian,pseudoBulkLinear).}
 
-\item{snpid}{a character object containes snpid.}
+\item{snpid}{a character object contains snpid.}
 
 \item{type_specific}{a character object contains the name of the covariate that the analysis is specific on.}
 }
