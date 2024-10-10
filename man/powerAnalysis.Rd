@@ -16,9 +16,9 @@ powerAnalysis(
   method = c("nb", "poisson", "gaussian", "pseudoBulkLinear"),
   nindivs = NULL,
   ncells = NULL,
-  nLane = NULL,
-  nIndivPerLane = NULL,
-  nCellPerLane = NULL,
+  nPool = NULL,
+  nIndivPerPool = NULL,
+  nCellPerPool = NULL,
   alpha = 0.05,
   nsims = 100,
   ncores = 1
@@ -48,11 +48,11 @@ powerAnalysis(
 
 \item{ncells}{a vector of numeric values showing the numbers of cells per each individual that user wants to simulate.}
 
-\item{nLane}{a vector of numeric values showing how many lanes of sequencing has been performed.}
+\item{nPool}{a vector of numeric values showing how many pools of sequencing has been performed.}
 
-\item{nIndivPerLane}{a numerical value showing how many individuals are sequenced in one lane.}
+\item{nIndivPerPool}{a numerical value showing how many individuals are sequenced in one pool.}
 
-\item{nCellPerLane}{a vector of numeric values showing how many cells are sequenced in one lane.}
+\item{nCellPerPool}{a vector of numeric values showing how many cells are sequenced in one pool.}
 
 \item{alpha}{the p value threshold for rejecting the H0 hypothesis.}
 
