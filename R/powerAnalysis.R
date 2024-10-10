@@ -329,8 +329,7 @@ simulatePADesignMatrix <- function(fit,
 #'
 #' @param marginal_list the output of function fitMarginalPop().
 #' @param marginal_model a character showing the model types of the full marginal model.
-#' @param refit a boolean parameter controlling whether user want to refit the marginal full model.
-#' @param refit_formula the formula used to refit the marginal full model.
+#' @param refit_formula the formula used to refit the marginal full model if user wants to. Default is null.
 #' @param geneid a character object contains geneid.
 #' @param snpid a character object contains snpid.
 #' @param type_specific a character object contains the name of the covariate that the analysis is specific on.
@@ -359,7 +358,6 @@ simulatePADesignMatrix <- function(fit,
 #' NULL
 powerAnalysis <- function(marginal_list,
                           marginal_model,
-                          refit = FALSE,
                           refit_formula = NULL,
                           geneid,
                           snpid,
@@ -430,9 +428,9 @@ powerAnalysis <- function(marginal_list,
   df <- marginal_list[[geneid]]$fit$frame
 
   # user-specified full model refitting
-  refit_formula <- stats::as.formula(refit_formula)
-  if(refit){
+  if(!is.null(refit_formula)){
     message("Refitting the whole marginal data with input geneid...")
+    refit_formula <- stats::as.formula(refit_formula)
     if(marginal_model=="nb"){
         fit <- glmmTMB::glmmTMB(formula = refit_formula,
                                 data = df,
@@ -704,8 +702,7 @@ powerCICalculation <- function(res,
 #'
 #' @param marginal_list the output of function fitMarginalPop().
 #' @param marginal_model a character showing the model types of the full marginal model.
-#' @param refit a boolean parameter controlling whether user want to refit the marginal full model.
-#' @param refit_formula the formula used to refit the marginal full model.
+#' @param refit_formula the formula used to refit the marginal full model if user wants to. Default is null.
 #' @param geneid a character object contains geneid.
 #' @param snpid a character object contains snpid.
 #' @param type_specific a character object contains the name of the covariate that the analysis is specific on.
@@ -732,7 +729,6 @@ powerCICalculation <- function(res,
 #' NULL
 runPowerAnalysis <- function(marginal_list,
                              marginal_model,
-                             refit = FALSE,
                              refit_formula = NULL,
                              geneid,
                              snpid,
@@ -755,7 +751,6 @@ runPowerAnalysis <- function(marginal_list,
     for(method in methods){
         res <- powerAnalysis(marginal_list = marginal_list,
                              marginal_model = marginal_model,
-                             refit = refit,
                              refit_formula = refit_formula,
                              geneid = geneid,
                              snpid = snpid,

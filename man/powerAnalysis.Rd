@@ -7,7 +7,6 @@
 powerAnalysis(
   marginal_list,
   marginal_model,
-  refit = FALSE,
   refit_formula = NULL,
   geneid,
   snpid,
@@ -29,9 +28,7 @@ powerAnalysis(
 
 \item{marginal_model}{a character showing the model types of the full marginal model.}
 
-\item{refit}{a boolean parameter controlling whether user want to refit the marginal full model.}
-
-\item{refit_formula}{the formula used to refit the marginal full model.}
+\item{refit_formula}{the formula used to refit the marginal full model if user wants to. Default is null.}
 
 \item{geneid}{a character object contains geneid.}
 
