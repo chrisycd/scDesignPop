@@ -339,9 +339,9 @@ simulatePADesignMatrix <- function(fit,
 #' (Options: nb,poisson,gaussian,pseudoBulkLinear).
 #' @param nindivs a vector of numeric values showing the numbers of individuals that user wants to simulate.
 #' @param ncells a vector of numeric values showing the numbers of cells per each individual that user wants to simulate.
-#' @param nLane a vector of numeric values showing how many lanes of sequencing has been performed.
-#' @param nIndivPerLane a numerical value showing how many individuals are sequenced in one lane.
-#' @param nCellPerLane a vector of numeric values showing how many cells are sequenced in one lane.
+#' @param nPool a vector of numeric values showing how many pools of sequencing has been performed.
+#' @param nIndivPerPool a numerical value showing how many individuals are sequenced in one pool.
+#' @param nCellPerPool a vector of numeric values showing how many cells are sequenced in one pool.
 #' @param alpha the p value threshold for rejecting the H0 hypothesis.
 #' @param nsims number of simulations for calculating the power. This parameter will affect the resolution of the power value.
 #' @param ncores number of CPU cores user wants to use.
@@ -368,9 +368,9 @@ powerAnalysis <- function(marginal_list,
                           method = c("nb","poisson","gaussian","pseudoBulkLinear"),
                           nindivs = NULL,
                           ncells = NULL,
-                          nLane = NULL,
-                          nIndivPerLane = NULL,
-                          nCellPerLane = NULL,
+                          nPool = NULL,
+                          nIndivPerPool = NULL,
+                          nCellPerPool = NULL,
                           alpha=0.05,
                           nsims=100,
                           ncores=1){
@@ -399,18 +399,18 @@ powerAnalysis <- function(marginal_list,
   # count combinations
   if(is.null(nindivs) && is.null(ncells)){
       # checks when nindivs and ncells are not used
-      stopifnot("nLane input is not a vector of integer values. Please check input!" =
-                    (mean(abs(nLane - round(nLane)) < .Machine$double.eps^0.5)==1))
-      stopifnot("nIndivPerLane input is not a vector of integer values. Please check input!" =
-                    (mean(abs(nIndivPerLane - round(nIndivPerLane)) < .Machine$double.eps^0.5)==1))
-      stopifnot("nCellPerLane input is not a vector of integer values. Please check input!" =
-                    (mean(abs(nCellPerLane - round(nCellPerLane)) < .Machine$double.eps^0.5)==1))
+      stopifnot("nPool input is not a vector of integer values. Please check input!" =
+                    (mean(abs(nPool - round(nPool)) < .Machine$double.eps^0.5)==1))
+      stopifnot("nIndivPerPool input is not a vector of integer values. Please check input!" =
+                    (mean(abs(nIndivPerPool - round(nIndivPerPool)) < .Machine$double.eps^0.5)==1))
+      stopifnot("nCellPerPool input is not a vector of integer values. Please check input!" =
+                    (mean(abs(nCellPerPool - round(nCellPerPool)) < .Machine$double.eps^0.5)==1))
 
-      nindivs <- merge(nLane,nIndivPerLane)
+      nindivs <- merge(nPool,nIndivPerPool)
       nindivs$z <- nindivs$x * nindivs$y
       nindivs <- sort(unique(nindivs$z))
 
-      ncells <- merge(nCellPerLane,nIndivPerLane)
+      ncells <- merge(nCellPerPool,nIndivPerPool)
       ncells$z <- ncells$x / ncells$y
       ncells <- sort(unique(ncells$z))
 
@@ -714,9 +714,9 @@ powerCICalculation <- function(res,
 #' (Options: nb,poisson,gaussian,pseudoBulkLinear).
 #' @param nindivs a vector of numeric values showing the numbers of individuals that user wants to simulate.
 #' @param ncells a vector of numeric values showing the numbers of cells per each individual that user wants to simulate.
-#' @param nLane a vector of numeric values showing how many lanes of sequencing has been performed.
-#' @param nIndivPerLane a numerical value showing how many individuals are sequenced in one lane.
-#' @param nCellPerLane a vector of numeric values showing how many cells are sequenced in one lane.
+#' @param nPool a vector of numeric values showing how many pools of sequencing has been performed.
+#' @param nIndivPerPool a numerical value showing how many individuals are sequenced in one pool.
+#' @param nCellPerPool a vector of numeric values showing how many cells are sequenced in one pool.
 #' @param alpha the p value threshold for rejecting the H0 hypothesis.
 #' @param power_nsim a number of simulations for calculating the power. This parameter will affect the resolution of the power value.
 #' @param snp_number the number of SNPs for multiple testing correction.
@@ -741,9 +741,9 @@ runPowerAnalysis <- function(marginal_list,
                              methods,
                              nindivs = NULL,
                              ncells = NULL,
-                             nLane = NULL,
-                             nIndivPerLane = NULL,
-                             nCellPerLane = NULL,
+                             nPool = NULL,
+                             nIndivPerPool = NULL,
+                             nCellPerPool = NULL,
                              alpha=0.05,
                              power_nsim=100,
                              snp_number = 10,
@@ -764,9 +764,9 @@ runPowerAnalysis <- function(marginal_list,
                              method = method,
                              nindivs = nindivs,
                              ncells = ncells,
-                             nLane = nLane,
-                             nIndivPerLane = nIndivPerLane,
-                             nCellPerLane = nCellPerLane,
+                             nPool = nPool,
+                             nIndivPerPool = nIndivPerPool,
+                             nCellPerPool = nCellPerPool,
                              alpha=alpha,
                              nsims=power_nsim,
                              ncores=ncores)
