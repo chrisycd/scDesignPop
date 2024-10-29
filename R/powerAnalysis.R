@@ -106,7 +106,7 @@ fitPAModel <- function(df,
 
       message(sprintf("glmmTMB fit fails on i=%s: %s \n", idx, base::conditionMessage(e)))
 
-      NULL
+      NA
 
     }, silent = FALSE)
 
@@ -139,7 +139,7 @@ fitPAModel <- function(df,
 
           message(sprintf("glmmTMB fit fails on i=%s: %s \n", idx, base::conditionMessage(e)))
 
-          NULL
+          NA
 
       }, silent = FALSE)
 
@@ -181,7 +181,7 @@ fitPAModel <- function(df,
 
       message(sprintf("glmmTMB fit fails on i=%s: %s \n", idx, base::conditionMessage(e)))
 
-      NULL
+      NA
 
     }, silent = FALSE)
 
@@ -216,7 +216,7 @@ fitPAModel <- function(df,
 
           message(sprintf("lm fit fails on i=%s: %s \n", idx, base::conditionMessage(e)))
 
-          NULL
+          NA
 
       }, silent = FALSE)
 
@@ -273,29 +273,41 @@ simulatePADesignMatrix <- function(fit,
 
     # sampling until all combination presented
     # avoid no points in a subgroup
-    flag=F
-    while(flag==F){
+    flag1=F
+    while(flag1==F){
         rand_indiv <- c(sample(names(geno0),nindiv_total[1],replace = T),
                         sample(names(geno1),nindiv_total[2],replace = T),
                         sample(names(geno2),nindiv_total[3],replace = T))
         df_tmp <- df_sel[which(df_sel$indiv%in%rand_indiv),]
         df_tmp <- df_tmp[,setdiff(colnames(df_tmp),"response")]
         if(length(unique(df_tmp))>=4){
-            flag=T
+            flag1=T
         }
     }
 
-    rand_cellindex <- lapply(rand_indiv,function(indiv){
-        return(sample(x = rep(which(df_sel$indiv==indiv),2),size = ncell,replace = T))
-    }) # in case only one cells, causing program truffles
+    # avoid no enough different response values
+    flag2=F
+    while(flag2==F){
+        rand_cellindex <- lapply(rand_indiv,function(indiv){
+            return(sample(x = rep(which(df_sel$indiv==indiv),2),size = ncell,replace = T))
+        }) # in case only one cells, causing program truffles
 
-    # construct new covariates data with new individuals
-    df_news <- do.call(rbind,lapply(1:length(rand_cellindex),function(n){
-        cellindex <- rand_cellindex[[n]]
-        df_new <- df_sel[cellindex,]
-        df_new$indiv <- paste0("NewIndiv",n)
-        return(df_new)
-    }))
+        # construct new covariates data with new individuals
+        df_news <- do.call(rbind,lapply(1:length(rand_cellindex),function(n){
+            cellindex <- rand_cellindex[[n]]
+            df_new <- df_sel[cellindex,]
+            df_new$indiv <- paste0("NewIndiv",n)
+            return(df_new)
+        }))
+        if(model=="nb" || model=="poisson"){
+            flag2=T
+        }else if(model=="gaussian"){
+            if(length(unique(df_news$response))>=4){
+                flag2=T
+            }
+        }
+    }
+
     df_news$indiv=factor(df_news$indiv,
                          levels=paste0("NewIndiv",1:length(rand_cellindex)))
 
@@ -419,8 +431,8 @@ powerAnalysis <- function(marginal_list,
                     (mean(abs(ncells - round(ncells)) < .Machine$double.eps^0.5)==1))
   }
 
-  message(paste("Number of individuals:",nindivs))
-  message(paste("Number of cells per individual:",ncells))
+  message(paste("Number of individuals:",paste(nindivs,collapse = ",")))
+  message(paste("Number of cells per individual:",paste(ncells,collapse = ",")))
   nindiv_cell_dat <- merge(nindivs,ncells)
 
   # select gene
@@ -571,11 +583,11 @@ powerAnalysis <- function(marginal_list,
 
       if(slope < 0){
 
-        power <- mean(stats::quantile(stat0s,alpha) > stat1s)
+        power <- mean(stats::quantile(na.omit(stat0s),alpha) > na.omit(stat1s))
 
       }else if(slope > 0){
 
-        power <- mean(stats::quantile(stat0s,1-alpha) < stat1s)
+        power <- mean(stats::quantile(na.omit(stat0s),1-alpha) < na.omit(stat1s))
 
       }else{
         message("True eQTL effect size is zero.")
@@ -664,11 +676,11 @@ powerCICalculation <- function(res,
 
                   if(slope < 0){
 
-                      p <- mean(stats::quantile(stats0_tmp,alpha/(snp_number*gene_number)) > stats1_tmp)
+                      p <- mean(stats::quantile(na.omit(stats0_tmp),alpha/(snp_number*gene_number)) > na.omit(stats1_tmp))
 
                   }else if(slope > 0){
 
-                      p <- mean(stats::quantile(stats0_tmp,1-(alpha/(snp_number*gene_number))) < stats1_tmp)
+                      p <- mean(stats::quantile(na.omit(stats0_tmp),1-(alpha/(snp_number*gene_number))) < na.omit(stats1_tmp))
 
                   }
                   ps <- c(ps,p)
