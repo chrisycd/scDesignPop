@@ -1,0 +1,12 @@
+#' A SingleCellExperiment object containing both cell type and individual id
+#'
+#' A subset of the scRNA-seq data from the OneK1K cohort which has been anonymized.
+#'
+#' @format ## `example_sce`
+#' A data frame with 100 genes (rows) and 17,918 cells (cols) for 20 individuals :
+#' \describe{
+#'   \item{cell_type}{Cell type}
+#'   \item{indiv}{Individual id}
+#' }
+#' @usage data("example_sce")
+"example_sce"

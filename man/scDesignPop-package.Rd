@@ -6,7 +6,7 @@
 \alias{scDesignPop-package}
 \title{scDesignPop: Simulator for population-scale single-cell expression RNA-sequencing data}
 \description{
-Simulate realistic population-scale single-cell RNA-sequencing (scRNA-seq) data for single-cell expression quantitative trait loci analysis (sc-eQTL) using input eQTL data and scRNA-seq data. We use scDesign3's modeling framework in this package.
+Simulate realistic population-scale single-cell RNA-sequencing (scRNA-seq) data for single-cell expression quantitative trait loci analysis (sc-eQTL) using input eQTL data and scRNA-seq data. We use a flexible, statistical modeling framework that learns interpretable parameters from real data.
 }
 \seealso{
 Useful links:

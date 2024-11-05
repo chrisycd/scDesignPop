@@ -1,5 +1,3 @@
-# TODO: missing sampleMVN function
-# TODO: missing rmvnorm function
 # TODO: missing convert_u function
 # TODO: fix NA/Inf issue with AIC/BIC for copula and marginal DONE?
 
@@ -47,7 +45,7 @@ fitCopulaPop <- function(sce,
         important_feature <- rep(TRUE, dim(sce)[1])
     }
 
-    marginals <- lapply(marginal_list,function(x) { x$fit })
+    marginals <- lapply(marginal_list, function(x) { x$fit })
 
     # find gene whose marginal is fitted
     qc_gene_idx <- which(!is.na(marginals))

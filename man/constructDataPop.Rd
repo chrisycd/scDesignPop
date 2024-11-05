@@ -10,6 +10,7 @@ constructDataPop(
   new_covariate = NULL,
   overlap_features = NULL,
   sampid_vec = NULL,
+  ct_copula = TRUE,
   slot_name = "counts",
   snp_model = "multi",
   cellstate_colname = "cell_type",
@@ -31,6 +32,8 @@ constructDataPop(
 \item{overlap_features}{an optional string vector to filter for features}
 
 \item{sampid_vec}{an optional string vector to filter for sample ids}
+
+\item{ct_copula}{a logical scalar for whether to fit the copula by cell type}
 
 \item{slot_name}{a string scalar to specify the input SCE slot used}
 
