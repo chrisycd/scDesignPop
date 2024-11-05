@@ -761,6 +761,7 @@ runPowerAnalysis <- function(marginal_list,
                              ncores=1){
     output <- list()
     for(method in methods){
+        message(paste("Performing simulations for method",method))
         res <- powerAnalysis(marginal_list = marginal_list,
                              marginal_model = marginal_model,
                              refit_formula = refit_formula,
@@ -791,8 +792,11 @@ runPowerAnalysis <- function(marginal_list,
                                      conf = CI_conf)
 
         power_data_CI <- res_CI[[1]]$powers
-        for(i in 1:(length(type_vector)-1)){
-            power_data_CI <- rbind(power_data_CI,res_CI[[i+1]]$powers)
+
+        if(length(res_CI)>1){
+            for(i in 1:(length(type_vector)-1)){
+                power_data_CI <- rbind(power_data_CI,res_CI[[i+1]]$powers)
+            }
         }
 
         power_data_CI$celltype <- c(rep(type_vector,each=length(res_CI[[1]]$powers[,1])))
