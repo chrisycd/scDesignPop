@@ -198,19 +198,20 @@ plotReducedDim(simu_sce, "UMAP", color_by = "cell_type")
 ## Step 8: running power analysis
 
 Lastly, scDesignPop can perform simulation-based power analysis for a specific 
-gene-SNP pair across cell types using the `runPowerAnalysis` function.
+gene-SNP pair across cell types using the `runPowerAnalysis` function.  Here, we 
+choose the negative binomial mixed model using `"nb"` option.
 
-```{r poweranalysis, message=FALSE}
+```{r poweranalysis, message=FALSE, include=FALSE}
 set.seed(123)
 power_data <- runPowerAnalysis(marginal_list = marginal_list,
                                marginal_model = "nb",
                                geneid = "ENSG00000163221",
                                snpid = "1:153337943",
                                type_specific = "cell_type",
-                               type_vector = c("bin","monoc"),
-                               methods = c("poisson"),
-                               nindivs = c(50,200),
-                               ncells = c(10,50),
+                               type_vector = c("bmem", "monoc"),
+                               methods = c("nb"),
+                               nindivs = c(50, 200),
+                               ncells = c(10, 50),
                                alpha = 0.05,
                                power_nsim = 100,
                                snp_number = 10,
@@ -218,7 +219,8 @@ power_data <- runPowerAnalysis(marginal_list = marginal_list,
                                CI_nsim = 1000,
                                CI_conf = 0.05,
                                ncores = 50L)
-
+```
+```{r power_head}
 head(power_data)
 ```
 
@@ -228,7 +230,7 @@ The power analysis results can be visualized using the `visualizePowerResult` fu
 
 ```{r visualize_power, warning=FALSE}
 visualizePowerResult(power_result = power_data,
-                     celltypes = c("bin", "monoc"),
+                     celltypes = c("bmem", "monoc"),
                      x_axis = "nindiv",
                      y_axis = "ncell",
                      col_group = "method",

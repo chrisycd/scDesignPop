@@ -221,49 +221,25 @@ plotReducedDim(simu_sce, "UMAP", color_by = "cell_type")
 
 Lastly, scDesignPop can perform simulation-based power analysis for a
 specific gene-SNP pair across cell types using the `runPowerAnalysis`
-function.
+function. Here, we choose the negative binomial mixed model using `"nb"`
+option.
 
 ``` r
-set.seed(123)
-power_data <- runPowerAnalysis(marginal_list = marginal_list,
-                               marginal_model = "nb",
-                               geneid = "ENSG00000163221",
-                               snpid = "1:153337943",
-                               type_specific = "cell_type",
-                               type_vector = c("bin","monoc"),
-                               methods = c("poisson"),
-                               nindivs = c(50,200),
-                               ncells = c(10,50),
-                               alpha = 0.05,
-                               power_nsim = 100,
-                               snp_number = 10,
-                               gene_number = 800,
-                               CI_nsim = 1000,
-                               CI_conf = 0.05,
-                               ncores = 50L)
-#> [1] -5.617274
-#> [1] 0.7067439
-#> [1] 1.848063
-#> [1] -0.1496348
-```
-
-``` r
-
 head(power_data)
-#>        power nindiv ncell    mean         sd     ci1  ci2 intercept      slope
-#> 2.5%    0.06     50    10 0.01489 0.01613841 0.00000 0.05 -5.617274  0.7067439
-#> 2.5%1   0.24     50    50 0.07736 0.07898905 0.00000 0.24 -5.617274  0.7067439
-#> 2.5%2   0.22    200    10 0.10363 0.07555019 0.01000 0.26 -5.617274  0.7067439
-#> 2.5%3   0.68    200    50 0.16471 0.16183110 0.05000 0.62 -5.617274  0.7067439
-#> 2.5%4   0.46     50    10 0.24644 0.11004925 0.11000 0.50  1.848063 -0.1496348
-#> 2.5%11  0.53     50    50 0.42511 0.05393605 0.32975 0.54  1.848063 -0.1496348
-#>        celltype        method
-#> 2.5%        bin Poisson mixed
-#> 2.5%1       bin Poisson mixed
-#> 2.5%2       bin Poisson mixed
-#> 2.5%3       bin Poisson mixed
-#> 2.5%4     monoc Poisson mixed
-#> 2.5%11    monoc Poisson mixed
+#>        power nindiv ncell    mean          sd  ci1     ci2 intercept
+#> 2.5%    0.04     50    10 0.00203 0.008175937 0.00 0.02025 -4.760502
+#> 2.5%1   0.07     50    50 0.01630 0.027350650 0.00 0.09000 -4.760502
+#> 2.5%2   0.07    200    10 0.02087 0.020745445 0.00 0.07000 -4.760502
+#> 2.5%3   0.06    200    50 0.01814 0.028480722 0.00 0.09000 -4.760502
+#> 2.5%4   0.49     50    10 0.23558 0.084928655 0.12 0.43000  1.848063
+#> 2.5%11  0.50     50    50 0.26005 0.076962463 0.15 0.48000  1.848063
+#>              slope celltype   method
+#> 2.5%    0.07402542     bmem NB mixed
+#> 2.5%1   0.07402542     bmem NB mixed
+#> 2.5%2   0.07402542     bmem NB mixed
+#> 2.5%3   0.07402542     bmem NB mixed
+#> 2.5%4  -0.14963478    monoc NB mixed
+#> 2.5%11 -0.14963478    monoc NB mixed
 ```
 
 ## Step 9: visualizing power results
@@ -273,7 +249,7 @@ The power analysis results can be visualized using the
 
 ``` r
 visualizePowerResult(power_result = power_data,
-                     celltypes = c("bin", "monoc"),
+                     celltypes = c("bmem", "monoc"),
                      x_axis = "nindiv",
                      y_axis = "ncell",
                      col_group = "method",
