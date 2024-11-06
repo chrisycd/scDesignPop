@@ -279,8 +279,8 @@ simulatePADesignMatrix <- function(fit,
                         sample(names(geno1),nindiv_total[2],replace = T),
                         sample(names(geno2),nindiv_total[3],replace = T))
         df_tmp <- df_sel[which(df_sel$indiv%in%rand_indiv),]
-        df_tmp <- df_tmp[,setdiff(colnames(df_tmp),"response")]
-        if(length(unique(df_tmp))>=4){
+        df_tmp <- df_tmp[,setdiff(colnames(df_tmp),c("response","indiv"))]
+        if(length(unique(df_tmp))>=length(colnames(df_tmp))){
             flag1=T
         }
     }
