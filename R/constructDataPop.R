@@ -19,6 +19,7 @@
 #' @param chrom_colname a string scalar for the chromosome variable in eqtlgeno_df
 #' @param indiv_colname a string scalar for the sample ID variable in cell covariate of SCE
 #' @param prune_thres numerical value between 0 and 1 to threshold the SNPs
+#' @param ct_copula a logical scalar for whether to fit the copula by cell type
 #'
 #' @return outputs a list with following elements:
 #' \describe{
@@ -39,6 +40,7 @@ constructDataPop <- function(sce,
                              new_covariate = NULL,
                              overlap_features = NULL,
                              sampid_vec = NULL,
+                             ct_copula = TRUE,
                              slot_name = "counts",
                              snp_model = "multi",
                              cellstate_colname = "cell_type",
@@ -197,6 +199,18 @@ constructDataPop <- function(sce,
         filtered_gene <- NULL
     } else {
         filtered_gene <- names(which(qc_features))
+    }
+
+
+    # add corr group for cell type copula
+    covariate_df <- covariate_df %>%
+        { if(ct_copula) dplyr::mutate(., corr_group = as.integer(!!rlang::sym(cellstate_colname)))
+            else dplyr::mutate(., corr_group = 1L) }
+
+    if(!is.null(new_covariate)) {
+        new_covariate <- new_covariate %>%
+            { if(ct_copula) dplyr::mutate(., corr_group = as.integer(!!rlang::sym(cellstate_colname)))
+                else dplyr::mutate(., corr_group = 1L) }
     }
 
     data_list <- list("count_mat" = count_mat,

@@ -1,6 +1,6 @@
 Package: scDesignPop
 Title: Simulator for population-scale single-cell expression RNA-sequencing data
-Version: 0.0.0.9000
+Version: 0.0.0.9001
 Authors@R: 
     c(person("Chris", "Y. Dong", , "chris.dong@ucla.edu", role = c("aut", "cre"),
            comment = c(ORCID = "0009-0006-2282-0394")),
@@ -8,8 +8,8 @@ Authors@R:
            comment = c(ORCID = "0000-0002-5347-0888")))
 Description: Simulate realistic population-scale single-cell RNA-sequencing 
     (scRNA-seq) data for single-cell expression quantitative trait loci analysis 
-    (sc-eQTL) using input eQTL data and scRNA-seq data. We use scDesign3's 
-    modeling framework in this package.
+    (sc-eQTL) using input eQTL data and scRNA-seq data. We use a flexible, statistical
+    modeling framework that learns interpretable parameters from real data.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
@@ -27,6 +27,7 @@ Imports:
     Matrix,
     matrixStats,
     methods,
+    mvnfast,
     mvtnorm,
     pbapply,
     pbmcapply,
@@ -41,3 +42,6 @@ Imports:
     tidyselect
 URL: https://github.com/chrisycd/scDesignPop
 BugReports: https://github.com/chrisycd/scDesignPop/issues
+Depends: 
+    R (>= 4.2.0)
+LazyData: false
