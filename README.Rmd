@@ -201,7 +201,7 @@ Lastly, scDesignPop can perform simulation-based power analysis for a specific
 gene-SNP pair across cell types using the `runPowerAnalysis` function.  Here, we 
 choose the negative binomial mixed model using `"nb"` option.
 
-```{r poweranalysis, message=FALSE, include=FALSE}
+```{r poweranalysis, message=FALSE, echo=TRUE, include=FALSE}
 set.seed(123)
 power_data <- runPowerAnalysis(marginal_list = marginal_list,
                                marginal_model = "nb",
