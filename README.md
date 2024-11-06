@@ -21,15 +21,18 @@ remotes::install_github("chrisycd/scDesignPop")
 
 ## Running scDesignPop
 
-This is an example showing how to run scDesignPop in several sequential
-steps:
+Below is an example showing how to run scDesignPop in several sequential
+steps.
 
 ## Step 1: construct a data list
 
-The `eqtlgeno` dataframe consists of eQTL annotations and genotypes for
-SNPs across individuals (samples). First a list of components needed to
-run scDesignPop is required. This can be done by using the
-`constructDataPop` function.
+To run scDesignPop, a list of data is required as input. This is done
+using the `constructDataPop` function. A `SingleCellExperiment` object
+and an `eqtlgeno` dataframe are the two main inputs needed. The
+`eqtlgeno` dataframe consists of eQTL annotations (it must have cell
+state, gene, SNP, chromosome, and position columns at a minimum), and
+genotypes across individuals (columns) for every SNP (rows). The
+structure of an example `eqtlgeno` dataframe is given below.
 
 ``` r
 library(scDesignPop)
@@ -69,7 +72,7 @@ head(example_eqtlgeno)
 data_list <- constructDataPop(
     sce = example_sce,
     eqtlgeno_df = example_eqtlgeno,
-    new_covariate = as.data.frame(SingleCellExperiment::colData(example_sce)),
+    new_covariate = as.data.frame(colData(example_sce)),
     overlap_features = NULL,
     sampid_vec = NULL,
     ct_copula = TRUE,
@@ -87,15 +90,16 @@ data_list <- constructDataPop(
 
 ## Step 2: fit marginal model
 
-Next, a marginal model is specified and fit using the `fitMarginalPop`
-function.
+Next, a marginal model is specified to fit each gene using the
+`fitMarginalPop` function.  
+Here we use a Negative Binominal as the parametric model using `"nb"`.
 
 ``` r
 marginal_list <- fitMarginalPop(
     data_list = data_list,
     mean_formula = "(1|indiv) + cell_type",
     model_family = "nb",
-    interact_colnames = NULL,
+    interact_colnames = "cell_type",
     parallelization = "pbmcapply",
     n_threads = 50L,
     loc_colname = "POS",
@@ -127,25 +131,6 @@ copula_fit <- fitCopulaPop(
     n_cores = 6L,
     parallelization = "mcmapply"
     )
-#> Convert Residuals to Multivariate Gaussian
-#> Converting End
-#> Copula group 1 starts
-#> Copula group 2 starts
-#> Copula group 3 starts
-#> Copula group 4 starts
-#> Copula group 5 starts
-#> Copula group 6 starts
-#> Copula group 7 starts
-#> Copula group 8 starts
-#> Copula group 9 starts
-#> Copula group 10 starts
-#> Copula group 11 starts
-#> Copula group 12 starts
-#> Copula group 13 starts
-#> Copula group 14 starts
-```
-
-``` r
 
 RNGkind("Mersenne-Twister")  # reset to default
 ```
@@ -192,21 +177,6 @@ newcount_mat <- simuNewPop(
     filtered_gene = data_list[["filtered_gene"]],
     parallelization = "pbmcmapply"
     )
-#> Use Copula to sample a multivariate quantile matrix
-#> Sample Copula group 1 starts
-#> Sample Copula group 2 starts
-#> Sample Copula group 3 starts
-#> Sample Copula group 4 starts
-#> Sample Copula group 5 starts
-#> Sample Copula group 6 starts
-#> Sample Copula group 7 starts
-#> Sample Copula group 8 starts
-#> Sample Copula group 9 starts
-#> Sample Copula group 10 starts
-#> Sample Copula group 11 starts
-#> Sample Copula group 12 starts
-#> Sample Copula group 13 starts
-#> Sample Copula group 14 starts
 ```
 
 ## Step 6: create SingleCellExperiment object using simulated data
@@ -234,16 +204,26 @@ simu_sce <- runPCA(simu_sce,
                    ncomponents = 30)  # default is 50
 
 set.seed(123)
-simu_sce <- runUMAP(simu_sce, dimred = "PCA", 
-                            n_neighbors = 15,   # default
-                            min_dist = 0.3,     # default
-                            n_threads = 10L)
+simu_sce <- runUMAP(
+  simu_sce,
+  dimred = "PCA",
+  n_neighbors = 15,   # default
+  min_dist = 0.3,     # default
+  n_threads = 10L
+  )
 
 plotReducedDim(simu_sce, "UMAP", color_by = "cell_type")
 ```
 
-<img src="man/figures/README-unnamed-chunk-7-1.png" width="100%" />
+<img src="man/figures/README-visualize_umap-1.png" width="100%" />
 
-## Step 8: power analysis
+## Step 8: running power analysis
 
-Lastly, scDesignPop can perform power analysis for a specific gene.
+Lastly, scDesignPop can perform simulation-based power analysis for a
+specific gene-SNP pair across cell types using the `runPowerAnalysis`
+function.
+
+## Step 9: visualizing power results
+
+The power analysis results can be visualized using the
+`visualizePowerResult` function.

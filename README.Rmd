@@ -31,15 +31,17 @@ remotes::install_github("chrisycd/scDesignPop")
 
 ## Running scDesignPop
 
-This is an example showing how to run scDesignPop in several sequential steps:
-
+Below is an example showing how to run scDesignPop in several sequential steps.
 
 ## Step 1: construct a data list
-The `eqtlgeno` dataframe consists of eQTL annotations and genotypes for SNPs across
-individuals (samples). First a list of components needed to run scDesignPop is required.
-This can be done by using the `constructDataPop` function.
+To run scDesignPop, a list of data is required as input. This is done using the
+`constructDataPop` function.  A `SingleCellExperiment` object and an `eqtlgeno` 
+dataframe are the two main inputs needed.  The `eqtlgeno` dataframe consists of 
+eQTL annotations (it must have cell state, gene, SNP, chromosome, and position 
+columns at a minimum), and genotypes across individuals (columns) for every SNP 
+(rows).  The structure of an example `eqtlgeno` dataframe is given below.
 
-```{r example, message=FALSE}
+```{r construct_datalist, message=FALSE}
 library(scDesignPop)
 library(SingleCellExperiment)
 library(SummarizedExperiment)
@@ -53,7 +55,7 @@ head(example_eqtlgeno)
 data_list <- constructDataPop(
     sce = example_sce,
     eqtlgeno_df = example_eqtlgeno,
-    new_covariate = as.data.frame(SingleCellExperiment::colData(example_sce)),
+    new_covariate = as.data.frame(colData(example_sce)),
     overlap_features = NULL,
     sampid_vec = NULL,
     ct_copula = TRUE,
@@ -72,13 +74,15 @@ data_list <- constructDataPop(
 
 ## Step 2: fit marginal model
 
-Next, a marginal model is specified and fit using the `fitMarginalPop` function.
-```{r}
+Next, a marginal model is specified to fit each gene using the `fitMarginalPop` function.  
+Here we use a Negative Binominal as the parametric model using `"nb"`.
+
+```{r fit_marginal}
 marginal_list <- fitMarginalPop(
     data_list = data_list,
     mean_formula = "(1|indiv) + cell_type",
     model_family = "nb",
-    interact_colnames = NULL,
+    interact_colnames = "cell_type",
     parallelization = "pbmcapply",
     n_threads = 50L,
     loc_colname = "POS",
@@ -96,7 +100,7 @@ marginal_list <- fitMarginalPop(
 ## Step 3: fit a Gaussian copula
 
 The third step is to fit a Gaussian copula using the `fitCopulaPop` function.
-```{r}
+```{r fit_copula, message=FALSE}
 set.seed(123, kind = "L'Ecuyer-CMRG")
 
 copula_fit <- fitCopulaPop(
@@ -114,11 +118,10 @@ RNGkind("Mersenne-Twister")  # reset to default
 ```
 
 
-
 ## Step 4: extract parameters
 
 The fourth step is to compute the mean, sigma, and zero probability parameters using the `extractParaPop` function.
-```{r}
+```{r extract_para}
 para_new <- extractParaPop(
     sce = example_sce,
     assay_use = "counts",
@@ -135,7 +138,7 @@ para_new <- extractParaPop(
 ## Step 5: simulate counts
 
 The fifth step is to simulate counts using the `simuNewPop` function.
-```{r}
+```{r simu_counts, message=FALSE}
 set.seed(123)
 
 newcount_mat <- simuNewPop(
@@ -160,7 +163,7 @@ newcount_mat <- simuNewPop(
 ## Step 6: create SingleCellExperiment object using simulated data
 
 After simulating the data, we can create a `SingleCellExperiment` object as follows.
-```{r}
+```{r create_sce}
 simu_sce <- SingleCellExperiment(list(counts = newcount_mat), 
                                  colData = data_list[["new_covariate"]])
 names(assays(simu_sce)) <- "counts"
@@ -173,22 +176,33 @@ rowData(simu_sce) <- rowData(example_sce)
 ## Step 7: visualize using UMAP
 
 The simulated data can be visualized using a UMAP plot as follows.
-```{r}
+```{r visualize_umap}
 logcounts(simu_sce) <- log1p(counts(simu_sce))
 
 simu_sce <- runPCA(simu_sce,
                    ncomponents = 30)  # default is 50
 
 set.seed(123)
-simu_sce <- runUMAP(simu_sce, dimred = "PCA", 
-                            n_neighbors = 15,   # default
-                            min_dist = 0.3,     # default
-                            n_threads = 10L)
+simu_sce <- runUMAP(
+  simu_sce,
+  dimred = "PCA",
+  n_neighbors = 15,   # default
+  min_dist = 0.3,     # default
+  n_threads = 10L
+  )
 
 plotReducedDim(simu_sce, "UMAP", color_by = "cell_type")
 ```
 
 
-## Step 8: power analysis
+## Step 8: running power analysis
 
-Lastly, scDesignPop can perform power analysis for a specific gene.
+Lastly, scDesignPop can perform simulation-based power analysis for a specific 
+gene-SNP pair across cell types using the `runPowerAnalysis` function.
+
+
+
+## Step 9: visualizing power results
+
+The power analysis results can be visualized using the `visualizePowerResult` function.
+
