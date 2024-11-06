@@ -22,7 +22,7 @@ fitPAModel(
 \item{method}{a character object specifying the method that will be analyzed for power.
 (Options: nb,poisson,gaussian,pseudoBulkLinear).}
 
-\item{snpid}{a character object containes snpid.}
+\item{snpid}{a character object contains snpid.}
 }
 \value{
 a fitted stats::model object.
