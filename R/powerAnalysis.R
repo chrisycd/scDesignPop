@@ -583,11 +583,11 @@ powerAnalysis <- function(marginal_list,
 
       if(slope < 0){
 
-        power <- mean(stats::quantile(na.omit(stat0s),alpha) > na.omit(stat1s))
+        power <- mean(stats::quantile(stats::na.omit(stat0s),alpha) > stats::na.omit(stat1s))
 
       }else if(slope > 0){
 
-        power <- mean(stats::quantile(na.omit(stat0s),1-alpha) < na.omit(stat1s))
+        power <- mean(stats::quantile(stats::na.omit(stat0s),1-alpha) < stats::na.omit(stat1s))
 
       }else{
         message("True eQTL effect size is zero.")
@@ -676,11 +676,11 @@ powerCICalculation <- function(res,
 
                   if(slope < 0){
 
-                      p <- mean(stats::quantile(na.omit(stats0_tmp),alpha/(snp_number*gene_number)) > na.omit(stats1_tmp))
+                      p <- mean(stats::quantile(stats::na.omit(stats0_tmp),alpha/(snp_number*gene_number)) > stats::na.omit(stats1_tmp))
 
                   }else if(slope > 0){
 
-                      p <- mean(stats::quantile(na.omit(stats0_tmp),1-(alpha/(snp_number*gene_number))) < na.omit(stats1_tmp))
+                      p <- mean(stats::quantile(stats::na.omit(stats0_tmp),1-(alpha/(snp_number*gene_number))) < stats::na.omit(stats1_tmp))
 
                   }
                   ps <- c(ps,p)

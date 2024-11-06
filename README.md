@@ -132,7 +132,7 @@ copula_fit <- fitCopulaPop(
     parallelization = "mcmapply"
     )
 
-RNGkind("Mersenne-Twister")  # reset to default
+RNGkind("Mersenne-Twister")  # reset
 ```
 
 ## Step 4: extract parameters
@@ -223,7 +223,62 @@ Lastly, scDesignPop can perform simulation-based power analysis for a
 specific gene-SNP pair across cell types using the `runPowerAnalysis`
 function.
 
+``` r
+set.seed(123)
+power_data <- runPowerAnalysis(marginal_list = marginal_list,
+                               marginal_model = "nb",
+                               geneid = "ENSG00000163221",
+                               snpid = "1:153337943",
+                               type_specific = "cell_type",
+                               type_vector = c("bin","monoc"),
+                               methods = c("poisson"),
+                               nindivs = c(50,200),
+                               ncells = c(10,50),
+                               alpha = 0.05,
+                               power_nsim = 100,
+                               snp_number = 10,
+                               gene_number = 800,
+                               CI_nsim = 1000,
+                               CI_conf = 0.05,
+                               ncores = 50L)
+#> [1] -5.617274
+#> [1] 0.7067439
+#> [1] 1.848063
+#> [1] -0.1496348
+```
+
+``` r
+
+head(power_data)
+#>        power nindiv ncell    mean         sd     ci1  ci2 intercept      slope
+#> 2.5%    0.06     50    10 0.01489 0.01613841 0.00000 0.05 -5.617274  0.7067439
+#> 2.5%1   0.24     50    50 0.07736 0.07898905 0.00000 0.24 -5.617274  0.7067439
+#> 2.5%2   0.22    200    10 0.10363 0.07555019 0.01000 0.26 -5.617274  0.7067439
+#> 2.5%3   0.68    200    50 0.16471 0.16183110 0.05000 0.62 -5.617274  0.7067439
+#> 2.5%4   0.46     50    10 0.24644 0.11004925 0.11000 0.50  1.848063 -0.1496348
+#> 2.5%11  0.53     50    50 0.42511 0.05393605 0.32975 0.54  1.848063 -0.1496348
+#>        celltype        method
+#> 2.5%        bin Poisson mixed
+#> 2.5%1       bin Poisson mixed
+#> 2.5%2       bin Poisson mixed
+#> 2.5%3       bin Poisson mixed
+#> 2.5%4     monoc Poisson mixed
+#> 2.5%11    monoc Poisson mixed
+```
+
 ## Step 9: visualizing power results
 
 The power analysis results can be visualized using the
 `visualizePowerResult` function.
+
+``` r
+visualizePowerResult(power_result = power_data,
+                     celltypes = c("bin", "monoc"),
+                     x_axis = "nindiv",
+                     y_axis = "ncell",
+                     col_group = "method",
+                     geneid = "ENSG00000163221",
+                     snpid = "1:153337943")
+```
+
+<img src="man/figures/README-visualize_power-1.png" width="100%" />

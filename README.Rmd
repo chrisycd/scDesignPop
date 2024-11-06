@@ -114,7 +114,7 @@ copula_fit <- fitCopulaPop(
     parallelization = "mcmapply"
     )
 
-RNGkind("Mersenne-Twister")  # reset to default
+RNGkind("Mersenne-Twister")  # reset
 ```
 
 
@@ -200,9 +200,38 @@ plotReducedDim(simu_sce, "UMAP", color_by = "cell_type")
 Lastly, scDesignPop can perform simulation-based power analysis for a specific 
 gene-SNP pair across cell types using the `runPowerAnalysis` function.
 
+```{r poweranalysis, message=FALSE}
+set.seed(123)
+power_data <- runPowerAnalysis(marginal_list = marginal_list,
+                               marginal_model = "nb",
+                               geneid = "ENSG00000163221",
+                               snpid = "1:153337943",
+                               type_specific = "cell_type",
+                               type_vector = c("bin","monoc"),
+                               methods = c("poisson"),
+                               nindivs = c(50,200),
+                               ncells = c(10,50),
+                               alpha = 0.05,
+                               power_nsim = 100,
+                               snp_number = 10,
+                               gene_number = 800,
+                               CI_nsim = 1000,
+                               CI_conf = 0.05,
+                               ncores = 50L)
 
+head(power_data)
+```
 
 ## Step 9: visualizing power results
 
 The power analysis results can be visualized using the `visualizePowerResult` function.
 
+```{r visualize_power, warning=FALSE}
+visualizePowerResult(power_result = power_data,
+                     celltypes = c("bin", "monoc"),
+                     x_axis = "nindiv",
+                     y_axis = "ncell",
+                     col_group = "method",
+                     geneid = "ENSG00000163221",
+                     snpid = "1:153337943")
+```
