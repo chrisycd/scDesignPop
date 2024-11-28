@@ -203,6 +203,7 @@ simuNewPop <- function(sce,
         newmvn <-
             do.call(rbind, lapply(newmvn.list, function(x)
                 x$new_mvu))
+
         newmvn[as.numeric(rownames(newmvn)),] <- newmvn
         rownames(newmvn) <- as.character(1:dim(newmvn)[1])
         colnames(newmvn) <- rownames(sce)[qc_gene_idx]

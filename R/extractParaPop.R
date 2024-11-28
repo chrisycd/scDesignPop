@@ -41,6 +41,11 @@ extractParaPop <- function(sce,
     removed_cell_list <- lapply(marginal_list, function(x) { x$removed_cell })
     marginal_list <- lapply(marginal_list, function(x) { x$fit })
 
+    # check for new indiv
+    has_newindiv <- !checkVectorEqual(levels(data[[indiv_colname]]),
+                                      levels(new_covariate[[indiv_colname]]),
+                                      ignore_order = TRUE)
+
     # find gene whose marginal is fitted
     qc_gene_idx <- which(!is.na(marginal_list))
 
@@ -149,8 +154,10 @@ extractParaPop <- function(sce,
         param_list <- calcParaVectors(fit = fit,
                                       family_use = y,
                                       new_covariate = new_covariate,
-                                      data = data,   # only used in gamlss S3 method
-                                      total_cells = total_cells)
+                                      data = data,   # used in gamlss S3 method
+                                      total_cells = total_cells,
+                                      indiv_colname = indiv_colname,
+                                      has_newindiv = has_newindiv)
 
         mean_vec <- param_list$mean_vec
         theta_vec <- param_list$theta_vec
@@ -231,7 +238,7 @@ extractParaPop <- function(sce,
 
     # create cell-by-feature mean, sigma and zero parameter matrices
     mean_mat <- sapply(mat, function(x) x[, 1])
-    sigma_mat <- sapply(mat, function(x) x[, 2])
+    sigma_mat <- sapply(mat, function(x) x[, 2])  # theta renamed as sigma for scDesign3 convention
     zero_mat <- sapply(mat, function(x) x[, 3])
 
     #
@@ -282,7 +289,7 @@ extractParaPop <- function(sce,
 #' @param new_covariate add later
 #' @param total_cells add later
 #' @param data add later
-#' @param ... add later
+#' @param ... Additional arguments passed to calcParaVectors S3 method functions.
 #'
 #' @export
 calcParaVectors <- function(fit,
@@ -374,6 +381,10 @@ calcParaVectors.glmmTMB <- function(fit,
                                     total_cells,
                                     ...) {
 
+    more_args <- list(...)
+    has_newindiv <- if(!is.null(more_args$has_newindiv)) { more_args$has_newindiv }
+    indiv_colname <- if(!is.null(more_args$indiv_colname)) { more_args$indiv_colname }
+
     family_use <- stats::family(fit)$family[1]
     if (grepl("nbinom2", family_use)) {
         family_use <- "nb"  # variance parameterization: var = mu + mu^2 / phi
@@ -400,10 +411,45 @@ calcParaVectors.glmmTMB <- function(fit,
 
     } else {  # has new covariate
 
-        mean_vec <- stats::predict(fit,
-                                   type = "response",
-                                   newdata = new_covariate)
-        # TODO: modify to allow new levels in new_eqtl_geno
+        if (has_newindiv) {
+
+            rand_sd <- sqrt(glmmTMB::VarCorr(fit)[["cond"]][[indiv_colname]][1, 1])  # sigma param
+            indivs <- unique(new_covariate[[indiv_colname]])
+
+            # manually simulate new indiv random effects
+            indiv_rand <- data.frame(indivs,
+                                     stats::rnorm(length(indivs),
+                                                  mean = 0,
+                                                  sd = rand_sd))
+            colnames(indiv_rand) <- c(indiv_colname, "sim_randeff")
+
+            # Note: random effects currently not simulated despite re.form = NULL
+            newindiv_df <- data.frame(new_covariate[[indiv_colname]],
+                                      stats::predict(fit,
+                                                     type = "link",   # on log scale
+                                                     newdata = new_covariate,
+                                                     allow.new.levels = TRUE,
+                                                     re.form = NULL))
+            colnames(newindiv_df) <- c(indiv_colname, "pop_condmean")
+
+            newindiv_df <- dplyr::left_join(newindiv_df, indiv_rand,
+                                            by = indiv_colname) %>%
+                dplyr::mutate(mean_vec = exp(!!rlang::sym("pop_condmean") +
+                                                 !!rlang::sym("sim_randeff")))
+
+            mean_vec <- dplyr::pull(newindiv_df, mean_vec)
+
+            # return(list("indiv_rand" = indiv_rand,
+            #             "newindiv_df" = newindiv_df,
+            #             "mean_vec" = mean_vec))
+
+        } else {  # no new indiv
+            mean_vec <- stats::predict(fit,
+                                       type = "response",
+                                       newdata = new_covariate,
+                                       allow.new.levels = FALSE)
+        }
+
 
         if (family_use == "poisson" | family_use == "binomial") {
             theta_vec <- rep(NA, total_cells)

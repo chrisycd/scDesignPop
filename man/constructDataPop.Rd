@@ -7,12 +7,13 @@
 constructDataPop(
   sce,
   eqtlgeno_df,
+  new_eqtlgeno_df = NULL,
   new_covariate = NULL,
   overlap_features = NULL,
   sampid_vec = NULL,
   ct_copula = TRUE,
   slot_name = "counts",
-  snp_model = "multi",
+  snp_model = c("single", "multi"),
   cellstate_colname = "cell_type",
   feature_colname = "gene_id",
   snp_colname = "snp_id",
@@ -26,6 +27,9 @@ constructDataPop(
 \item{sce}{a SingleCellExperiment object}
 
 \item{eqtlgeno_df}{a dataframe with eQTL annotations and SNP genotypes for each gene}
+
+\item{new_eqtlgeno_df}{a dataframe with eQTL annotations and SNP genotypes for each
+gene in new individuals}
 
 \item{new_covariate}{a cell covariate dataframe for which to simulate}
 
@@ -61,7 +65,10 @@ outputs a list with following elements:
 \item{\code{covariate}}{a cell-by-covariate data frame used for fit marginal.}
 \item{\code{new_covariate}}{an optional cell-by-covariate data frame used for prediction.}
 \item{\code{important_features}}{a string vector of gene ids.}
-\item{\code{eqtl_geno_list}}{list of eQTL genotype dataframes for each gene (for fit marginal).}
+\item{\code{eqtl_geno_list}}{a list of eQTL genotype dataframes for each gene
+(for fit marginal).}
+\item{\code{new_eqtl_geno_list}}{a optional list of eQTL genotype dataframes
+for each gene (for prediction on new individuals).}
 \item{\code{filtered_gene}}{string vector of features QC filtered.}
 }
 }

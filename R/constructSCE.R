@@ -1,18 +1,33 @@
 #' Construct a SingleCellExperiment object with specified covariates.
 #'
-#' @param data_obj Seurat, sce, or expression matrix (gene-by-cell) used to construct the new sce object
-#' @param cellcov_df dataframe containing covariates for all cells. Row names must have cell names that match data_obj. Only used when data_obj is a matrix object.
-#' @param featcov_df dataframe containing covariates for all features (ie genes). Row names must have feature names that match data_obj. Only used when data_obj is a matrix object.
-#' @param cellcov_names string vector of all columns to extract from cell covariates
-#' @param sampid_vec string vector of sample ids (individuals)
-#' @param overlap_features string vector for features to filter data_obj. All features must be present in the data_obj
-#' @param assay_name name of the Seurat object slot of interest. Only used if data_obj is Seurat object
-#' @param slot_name type of assay data (either logcounts or counts). Default is 'counts'. Only used if data_obj is Seurat or sce object
-#' @param sce_name type of assay data for output sce
-#' @param indiv_colname string scalar for the sample id colname. Must be present in cellcov_df or data_obj. Default is 'indiv'
-#' @param cellstate_colname string scalar for the cell state colname. Must be present in cellcov_df or data_obj. Default is 'cell_type'
-#' @param factor_colnames string vector or scalar for the columns to coerce into factor variables. Must be present in cellcov_df or data_obj. Default is NULL
-#' @param cellcov_renames optional string vector to rename the cell covariates. Must be same length as cellcov_names. Default is same as cellcov_names
+#' @param data_obj a Seurat, SingleCellExperiment, or expression matrix (gene-by-cell)
+#'     used to construct the new SingleCellExperiment object.
+#' @param cellcov_df a dataframe containing covariates for all cells. Row names must
+#'     have cell names that match \code{data_obj}. Only used when \code{data_obj}
+#'     is a matrix object.
+#' @param featcov_df a dataframe containing covariates for all features (ie genes).
+#'     Row names must have feature names that match \code{data_obj}. Only used when
+#'     \code{data_obj} is a matrix object.
+#' @param cellcov_names a string vector of all columns to extract from cell covariates.
+#' @param sampid_vec an optional string vector of sample ids (individuals). Default
+#'     is NULL. If provided, it must match sample ids found in \code{data_obj}.
+#' @param overlap_features an optional string vector for features to filter \code{data_obj}.
+#'     Default is NULL. If provided, all features must be present in the \code{data_obj}.
+#' @param assay_name a string scalar of name of the Seurat object slot of interest.
+#'     Only used if \code{data_obj} is a Seurat object.
+#' @param slot_name a string scalar for the type of assay data (either 'logcounts'
+#'     or 'counts'). Default is 'counts'. Only used if \code{data_obj} is a Seurat or
+#'     SingleCellExperiment object.
+#' @param sce_name a string scalar for the type of assay data for output SingleCellExperiment.
+#' @param indiv_colname a string scalar for the sample id colname. Must be present
+#'     in \code{cellcov_df} or \code{data_obj}. Default is 'indiv'.
+#' @param cellstate_colname a string scalar for the cell state colname. Must be present
+#'     in \code{cellcov_df} or \code{data_obj}. Default is 'cell_type'.
+#' @param factor_colnames an optional string vector or scalar for the columns to
+#'     coerce into factor variables. Default is NULL. If provided, it must be present
+#'     in \code{cellcov_df} or \code{data_obj}.
+#' @param cellcov_renames an optional string vector to rename the cell covariates.
+#'     Must be same length as \code{cellcov_names}. Default is same as \code{cellcov_names}.
 #'
 #' @return a SingleCellExperiment object
 #' @export
