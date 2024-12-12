@@ -62,6 +62,8 @@ constructDataPop <- function(sce,
 
     if(!is.null(new_eqtlgeno_df)) {
         has_newindiv <- TRUE
+    } else {
+        has_newindiv <- FALSE
     }
 
     # checks
