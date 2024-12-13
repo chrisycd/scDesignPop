@@ -17,7 +17,7 @@
 
 \item{data}{add later}
 
-\item{...}{add later}
+\item{...}{Additional arguments passed to calcParaVectors S3 method functions.}
 }
 \description{
 A calcParaVectors Method for gamlss Objects

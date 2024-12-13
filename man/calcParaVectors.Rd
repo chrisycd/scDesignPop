@@ -17,7 +17,7 @@ calcParaVectors(fit, family_use, new_covariate, total_cells, data, ...)
 
 \item{data}{add later}
 
-\item{...}{add later}
+\item{...}{Additional arguments passed to calcParaVectors S3 method functions.}
 }
 \description{
 A S3 generic function for computing model parameters for with or without new
