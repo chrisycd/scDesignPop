@@ -9,7 +9,7 @@ constructSCE(
   cellcov_df = NULL,
   featcov_df = NULL,
   cellcov_names,
-  sampid_vec,
+  sampid_vec = NULL,
   overlap_features = NULL,
   assay_name = "RNA",
   slot_name = "counts",

@@ -4,24 +4,37 @@
 #' Function extracts an expression matrix, cell covariates, and filters the SNPs
 #'     in the eQTL genotype dataframe.
 #'
-#' @param sce a SingleCellExperiment object
-#' @param eqtlgeno_df a dataframe with eQTL annotations and SNP genotypes for each gene
+#' @param sce a SingleCellExperiment object.
+#' @param eqtlgeno_df a dataframe with eQTL annotations and SNP genotypes for each gene.
 #' @param new_eqtlgeno_df a dataframe with eQTL annotations and SNP genotypes for each
-#'     gene in new individuals
-#' @param new_covariate a cell covariate dataframe for which to simulate
-#' @param overlap_features an optional string vector to filter for features
-#' @param sampid_vec an optional string vector to filter for sample ids
-#' @param slot_name a string scalar to specify the input SCE slot used
-#' @param snp_model a string scalar to specify the type of SNP model used
-#' @param cellstate_colname a string scalar for the cell state variable in eqtlgeno_df
-#'     and cell covariate of SCE
-#' @param feature_colname a string scalar for the feature variable in eqtlgeno_df
-#' @param snp_colname a string scalar for the SNP variable in eqtlgeno_df
-#' @param loc_colname a string scalar for the last column of eQTL annotation in eqtlgeno_df
-#' @param chrom_colname a string scalar for the chromosome variable in eqtlgeno_df
-#' @param indiv_colname a string scalar for the sample ID variable in cell covariate of SCE
-#' @param prune_thres numerical value between 0 and 1 to threshold the SNPs
-#' @param ct_copula a logical scalar for whether to fit the copula by cell type
+#'     gene in new individuals. The default is NULL.
+#' @param new_covariate a cell covariate dataframe for which to simulate.
+#'     The default is NULL.
+#' @param overlap_features an optional string vector to filter for features (ie. genes).
+#'     The default is NULL.
+#' @param sampid_vec an optional string vector to filter for sample ids.
+#'     The default is NULL.
+#' @param ct_copula a logical scalar for whether to fit the copula by cell state
+#'     variable specified by \code{cellstate_colname} option. The default is TRUE.
+#' @param slot_name a string scalar specifying the slot to use in input \code{sce}.
+#'     The default is "counts".
+#' @param snp_model a string scalar specifying the type of SNP model used. Options
+#'     are either "single" for single-SNP, or "multi" for multi-SNP.
+#' @param cellstate_colname a string scalar specifying the cell state variable in
+#'     \code{eqtlgeno_df} and cell covariate of \code{sce} object.
+#'     The default is "cell_type".
+#' @param feature_colname a string scalar specifying the feature variable (ie. genes)
+#'     in \code{eqtlgeno_df}. The default is "gene_id".
+#' @param snp_colname a string scalar for the SNP variable in \code{eqtlgeno_df}.
+#'     The default is "snp_id".
+#' @param loc_colname a string scalar for the last column of eQTL annotation in
+#'     \code{eqtlgeno_df}. The default is "POS".
+#' @param chrom_colname a string scalar of the chromosome variable in \code{eqtlgeno_df}.
+#'     The default is "CHR".
+#' @param indiv_colname a string scalar of the sample ID variable in cell covariate
+#'     of \code{sce}. The default is "indiv".
+#' @param prune_thres a numerical value between 0 and 1 used to threshold the pairwise
+#'     correlations of eQTLs' genotypes for each feature. The default value is 0.9.
 #'
 #' @return outputs a list with following elements:
 #' \describe{
@@ -32,7 +45,7 @@
 #'      \item{\code{eqtl_geno_list}}{a list of eQTL genotype dataframes for each gene
 #'          (for fit marginal).}
 #'      \item{\code{new_eqtl_geno_list}}{a optional list of eQTL genotype dataframes
-#'          for each gene (for prediction on new individuals).}
+#'          for each gene (for new individual simulation).}
 #'      \item{\code{filtered_gene}}{string vector of features QC filtered.}
 #' }
 #'
@@ -56,22 +69,40 @@ constructDataPop <- function(sce,
                              chrom_colname = "CHR",
                              indiv_colname = "indiv",
                              prune_thres = 0.9) {
-    # TODO: add new_eqtlgeno_df : an optional list of eQTL genotype dataframes for each gene (for prediction)
 
     snp_model <- match.arg(snp_model)
 
-    if(!is.null(new_eqtlgeno_df)) {
-        has_newindiv <- TRUE
-    } else {
+    ## check for new indivs and eqtls
+    if(is.null(eqtlgeno_df)) {  # TRUE or TRUE; TRUE or FALSE
+
+        if(!is.null(new_eqtlgeno_df)) {  # FALSE or TRUE
+            stop(sprintf("Input new_eqtlgeno_df but eqtlgeno_df is missing. Please check input!"))
+        }
+
         has_newindiv <- FALSE
+    } else if(is.null(new_eqtlgeno_df)) {  # FALSE or TRUE
+        has_newindiv <- FALSE
+    } else {  # FALSE or FALSE
+        has_newindiv <- TRUE
+    }
+    # TODO: add case for new indiv in DEG analysis
+
+    if(is.null(eqtlgeno_df)) {
+        message(sprintf("No input eqtlgeno_df specified. eQTLs will not be in modeling and simulation!"))
+
+        has_eqtl <- FALSE
+    } else {
+        has_eqtl <- TRUE
     }
 
     # checks
-    assertthat::assert_that(assertthat::has_name(eqtlgeno_df,
-                                                 c(cellstate_colname, feature_colname,
-                                                   snp_colname, chrom_colname, loc_colname)))
+    if(has_eqtl) {
+        assertthat::assert_that(assertthat::has_name(eqtlgeno_df,
+                                                     c(cellstate_colname, feature_colname,
+                                                       snp_colname, chrom_colname, loc_colname)))
+    }
 
-    if(has_newindiv) {
+    if(has_newindiv && !is.null(new_eqtlgeno_df)) {
         assertthat::assert_that(assertthat::has_name(new_eqtlgeno_df,
                                                      c(cellstate_colname, feature_colname,
                                                        snp_colname, chrom_colname, loc_colname)))
@@ -79,9 +110,11 @@ constructDataPop <- function(sce,
 
     sce_features <- rownames(sce)
 
-    firstcol_indx <- which(colnames(eqtlgeno_df) == loc_colname) + 1L  # used as last column b4 genotype
-    lastcol_indx <- dim(eqtlgeno_df)[2]
-    eqtl_indivs <- colnames(eqtlgeno_df)[firstcol_indx:lastcol_indx]
+    if(has_eqtl) {
+        firstcol_indx <- which(colnames(eqtlgeno_df) == loc_colname) + 1L  # used as last column b4 genotype
+        lastcol_indx <- dim(eqtlgeno_df)[2]
+        eqtl_indivs <- colnames(eqtlgeno_df)[firstcol_indx:lastcol_indx]
+    }
 
     ## check unique cell names and feature names
     stopifnot("Please make sure there are no duplicate cell names in SingleCellExperiment object input." =
@@ -90,19 +123,21 @@ constructDataPop <- function(sce,
     stopifnot("Please make sure there are no duplicate feature names in SingleCellExperiment object input." =
                   (length(sce_features) == length(unique(sce_features))))
 
-    stopifnot("Please make sure there are no duplicate sample IDs in eQTL geno input." =
-                  (length(eqtl_indivs) == length(unique(eqtl_indivs))))
+    if(has_eqtl) {
+        stopifnot("Please make sure there are no duplicate sample IDs in eqtlgeno_df input." =
+                      (length(eqtl_indivs) == length(unique(eqtl_indivs))))
+    }
 
-    if(has_newindiv) {
+    if(has_newindiv && !is.null(new_eqtlgeno_df)) {
         new_firstcol_indx <- which(colnames(new_eqtlgeno_df) == loc_colname) + 1L  # used as last column b4 genotype
         new_lastcol_indx <- dim(new_eqtlgeno_df)[2]
         new_eqtl_indivs <- colnames(new_eqtlgeno_df)[new_firstcol_indx:new_lastcol_indx]
 
-        stopifnot("Please make sure there are no duplicate sample IDs in new eQTL geno input." =
+        stopifnot("Please make sure there are no duplicate sample IDs in new_eqtlgeno_df input." =
                       (length(new_eqtl_indivs) == length(unique(new_eqtl_indivs))))
     }
 
-    ## filter and check features
+    ## filter features
     if(!is.null(overlap_features)) {
 
         stopifnot("Please make sure there are no duplicate feature names in overlap_features." =
@@ -111,34 +146,43 @@ constructDataPop <- function(sce,
         stopifnot("Please make sure all feature names in overlap_features exist in SingleCellExperiment object input." =
                       checkVectorContain(overlap_features, sce_features))
 
-        # filter sce inputs
+        # filter sce and eQTL geno
         sce <- sce[overlap_features, ]
 
-        # filter eQTL geno input
-        eqtlgeno_df <- eqtlgeno_df %>%
-            dplyr::filter(!!rlang::sym(feature_colname) %in% overlap_features)
+        if(has_eqtl) {
+            eqtlgeno_df <- eqtlgeno_df %>%
+                dplyr::filter(!!rlang::sym(feature_colname) %in% overlap_features)
+        }
 
-        if(has_newindiv) {
+        if(has_newindiv && has_eqtl) {
             new_eqtlgeno_df <- new_eqtlgeno_df %>%
                 dplyr::filter(!!rlang::sym(feature_colname) %in% overlap_features)
         }
     }
 
-    eqtl_features <- unique(eqtlgeno_df[[feature_colname]])
+    if(!has_eqtl) {
+        eqtl_features <- NULL
+    } else {
+        eqtl_features <- unique(eqtlgeno_df[[feature_colname]])
+    }
+
     sce_features <- rownames(sce)  # update
 
-    if(has_newindiv) {
+    ## check features
+    if(has_newindiv && has_eqtl) {
         new_eqtl_features <- unique(new_eqtlgeno_df[[feature_colname]])
 
         stopifnot("The features in eqtlgeno_df, new_eqtlgeno_df, sce do not match. Please check input!" =
                       checkVectorEqual(eqtl_features, new_eqtl_features, sce_features,
                                        ignore_order = TRUE))
-    } else {
+
+    } else if(!has_newindiv && has_eqtl) {
         new_eqtl_features <- NULL
 
         stopifnot("The features in eqtlgeno_df and sce do not match. Please check input!" =
                       checkVectorEqual(eqtl_features, sce_features, ignore_order = TRUE))
     }
+    # no action for TRUE && FALSE, or FALSE && FALSE
 
 
     ## check and filter indiv ids
@@ -147,11 +191,14 @@ constructDataPop <- function(sce,
         stopifnot("Please make sure there are no duplicate sample IDs in sampid_vec." =
                       (length(sampid_vec) == length(unique(sampid_vec))))
 
-        stopifnot("Please make sure all sample IDs in sampid_vec exist in eqtlgeno_df input." =
-                      checkVectorContain(sampid_vec, eqtl_indivs))
+        if(has_eqtl) {
+            stopifnot("Please make sure all sample IDs in sampid_vec exist in eqtlgeno_df input." =
+                          checkVectorContain(sampid_vec, eqtl_indivs))
 
-        # filter eQTL genotype
-        eqtlgeno_df <- eqtlgeno_df[, c(colnames(eqtlgeno_df)[1:(firstcol_indx - 1)], sampid_vec)]
+            # filter eQTL genotype
+            eqtlgeno_df <- eqtlgeno_df[, c(colnames(eqtlgeno_df)[1:(firstcol_indx - 1)], sampid_vec)]
+
+        }
 
         # filter sce inputs
         sce <- which((SingleCellExperiment::colData(sce)[[indiv_colname]] %>%   # TODO: try as.character(sce[[indiv_colname]]) %in% sampid_vec
@@ -161,69 +208,96 @@ constructDataPop <- function(sce,
     }
 
     # update
-    firstcol_indx <- which(colnames(eqtlgeno_df) == loc_colname) + 1L  # used as last column b4 genotype
-    lastcol_indx <- dim(eqtlgeno_df)[2]
-    eqtl_indivs <- colnames(eqtlgeno_df)[firstcol_indx:lastcol_indx]
+    if(has_eqtl) {
+        firstcol_indx <- which(colnames(eqtlgeno_df) == loc_colname) + 1L  # used as last column b4 genotype
+        lastcol_indx <- dim(eqtlgeno_df)[2]
+        eqtl_indivs <- colnames(eqtlgeno_df)[firstcol_indx:lastcol_indx]
+    }
 
     sce_indivs <- extractFromSCE(sce,
                                  slot_name = slot_name,
                                  indiv_colname = indiv_colname,
                                  sc_indiv = TRUE)[["sc_indiv"]]
 
+    if(!is.null(new_covariate)) {
+        new_cov_indivs <- as.character(unique(new_covariate[[indiv_colname]]))
 
-    stopifnot("The distinct sample IDs in SingleCellExperiment input does not match columns of eQTL geno input!" =
-                  checkVectorEqual(sce_indivs, eqtl_indivs, ignore_order = TRUE))
+        if(!checkVectorEqual(sce_indivs, new_cov_indivs, ignore_order = TRUE)) {
+            has_newindiv <- TRUE
+        }
+    }
+
+    if(has_eqtl) {
+        stopifnot("The distinct sample IDs in SingleCellExperiment input does not match columns of eqtlgeno_df input!" =
+                      checkVectorEqual(sce_indivs, eqtl_indivs, ignore_order = TRUE))
+
+        if(has_newindiv) {
+            stopifnot("The distinct sample IDs in new_covariate input does not match columns of new_eqtlgeno_df input!" =
+                          checkVectorEqual(new_cov_indivs, new_eqtl_indivs, ignore_order = TRUE))
+        }
+    }
 
 
     ## filter SNP genotypes for each gene in eqtlgeno_df
-    important_features <- sce_features
+    if(has_eqtl) {
+        important_features <- base::intersect(sce_features, eqtl_features)  # both in sce and eqtlgeno
+    } else {
+        important_features <- sce_features
+    }
+    noeqtl_features <- base::setdiff(sce_features, eqtl_features)  # only in sce
 
-    message("Constructing eqtlgeno list...")
-    eqtl_geno_list <- pbapply::pblapply(important_features, function(g) {  # pbapply shows progress bar
+    if(!is.null(important_features) && !is.null(eqtlgeno_df)) {
 
-        eqtl_tmp <- which(eqtlgeno_df[[feature_colname]] == g) %>%
-            eqtlgeno_df[., ]
+        message("Constructing eqtlgeno list...")
+        eqtl_geno_list <- pbapply::pblapply(important_features, function(g) {  # pbapply shows progress bar
 
-        geno_tmp <- eqtl_tmp[, firstcol_indx:lastcol_indx]
+            eqtl_tmp <- which(eqtlgeno_df[[feature_colname]] == g) %>%
+                eqtlgeno_df[., ]
 
-        if(snp_model == "single") {  # single SNP model
+            geno_tmp <- eqtl_tmp[, firstcol_indx:lastcol_indx]
 
-            # choose highest variance across indiv
-            var_tmp <- geno_tmp %>%
-                base::apply(., MARGIN = 1, FUN = stats::var)
+            if(snp_model == "single") {  # single SNP model
 
-            eqtl_tmp <- eqtl_tmp %>%
-                dplyr::mutate("var" = var_tmp) %>%
-                dplyr::relocate("var", .before = !!rlang::sym(loc_colname))
+                # choose highest variance across indiv
+                var_tmp <- geno_tmp %>%
+                    base::apply(., MARGIN = 1, FUN = stats::var)
 
-            max_var_indx <- base::which.max(var_tmp)
+                eqtl_tmp <- eqtl_tmp %>%
+                    dplyr::mutate("var" = var_tmp) %>%
+                    dplyr::relocate("var", .before = !!rlang::sym(loc_colname))
 
-            return(eqtl_tmp[max_var_indx, ])
-            # assign(g, eqtl_tmp[max_var_indx, ])
-            # TODO: add feature name to output list
+                max_var_indx <- base::which.max(var_tmp)
 
-        } else if(snp_model == "multi") {  # multi-SNP model
+                return(eqtl_tmp[max_var_indx, ])
+                # assign(g, eqtl_tmp[max_var_indx, ])
+                # TODO: add feature name to output list
 
-            # prune SNPs then extract dataframe per gene
-            snp_indx <- geno_tmp %>%
-                as.matrix(.) %>%
-                pruneSnp(., ld_threshold = prune_thres)
+            } else if(snp_model == "multi") {  # multi-SNP model
 
-            eqtl_tmp <- eqtl_tmp %>%
-                dplyr::slice(snp_indx)
+                # prune SNPs then extract dataframe per gene
+                snp_indx <- geno_tmp %>%
+                    as.matrix(.) %>%
+                    pruneSnp(., ld_threshold = prune_thres)
 
-            return(eqtl_tmp)
+                eqtl_tmp <- eqtl_tmp %>%
+                    dplyr::slice(snp_indx)
 
-        } else {
-            stop("Option for snp_model must be either 'single' or 'multi'!")
-        }
+                return(eqtl_tmp)
 
-    })
-    names(eqtl_geno_list) <- important_features
+            } else {
+                stop("Option for snp_model must be either 'single' or 'multi'!")
+            }
+
+        })
+        names(eqtl_geno_list) <- important_features
+
+    } else {
+        eqtl_geno_list <- NULL
+    }
 
     ## filter SNP genotypes for each gene in new_eqtlgeno_df
-    if(has_newindiv) {
-        message("New indiv eqtlgeno input detected. Constructing new_eqtlgeno_list...")
+    if(has_newindiv && !is.null(new_eqtlgeno_df)) {
+        message("Constructing new_eqtlgeno_list for new indivs found in new_eqtlgeno_df input...")
 
         new_eqtl_geno_list <- pbapply::pblapply(important_features, function(g) {
 
@@ -284,6 +358,7 @@ constructDataPop <- function(sce,
                       "covariate" = covariate_df,
                       "new_covariate" = new_covariate,
                       "important_features" = important_features,
+                      "noeqtl_features" = noeqtl_features,
                       "eqtl_geno_list" = eqtl_geno_list,
                       "new_eqtl_geno_list" = new_eqtl_geno_list,
                       "filtered_gene" = filtered_gene)

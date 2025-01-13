@@ -53,8 +53,8 @@ a list containing the following:
 }
 \description{
 A helper function that constructs a design matrix using a given feature's
-expression vector for every cell, eQTL genotype dataframe, and cell
-covariate dataframe.
+expression vector for every cell, eQTL genotype dataframe (optional),
+and cell covariate dataframe.
 }
 \details{
 When \code{response_vec} is provided, the function constructs a full design
