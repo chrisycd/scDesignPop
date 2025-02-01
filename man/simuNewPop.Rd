@@ -22,7 +22,9 @@ simuNewPop(
   important_feature = "all",
   parallelization = "mcmapply",
   BPPARAM = NULL,
-  filtered_gene
+  filtered_gene,
+  mean_limit = 1e+15,
+  debug = FALSE
 )
 }
 \arguments{
@@ -79,6 +81,13 @@ this parameter must be NULL. When the parameter parallelization = 'bpmapply',  t
 \code{MulticoreParam} object offered by the package 'BiocParallel. The default value is NULL.}
 
 \item{filtered_gene}{A vector or NULL which contains genes that are excluded in the marginal and copula fitting}
+
+\item{mean_limit}{A numeric scalar to filter genes which has cells that exceed
+the limit in the \code{mean_mat}. The default value is 1e15. This is to
+avoid features that have extremely high and unreasonable means.}
+
+\item{debug}{A logical scalar for whether to return a list of variables in
+addition to simulated count matrix. The default is FALSE.}
 }
 \value{
 A feature by cell matrix of the new simulated count (expression) matrix or sparse matrix.
