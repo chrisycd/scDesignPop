@@ -74,27 +74,40 @@ fitMarginalPop <- function(data_list,
                                                    indiv_colname,
                                                    cellstate_colname)))
 
+    if(is.null(data_list[["eqtl_geno_list"]])) {
+        has_eqtl <- FALSE
+    } else {
+        has_eqtl <- TRUE
+    }
+
     # check features
     important_features <- data_list[["important_features"]]
-    eqtl_features <- names(data_list[["eqtl_geno_list"]])
+    noeqtl_features <- data_list[["noeqtl_features"]]  # ADDED
     sce_features <- colnames(data_list[["count_mat"]])
     cell_names <- rownames(data_list[["count_mat"]])
 
-    stopifnot("Features in count_mat and eqtl_geno_list do not match. Please check input!" =
-                  checkVectorEqual(sce_features, eqtl_features, ignore_order = TRUE))
+    if(has_eqtl) {
+        eqtl_features <- names(data_list[["eqtl_geno_list"]])
 
-    stopifnot("Features in important_features and eqtl_geno_list do not match. Please check input!" =
-                  checkVectorEqual(important_features, eqtl_features, ignore_order = TRUE))
+        stopifnot("Features in count_mat and eqtl_geno_list do not match. Please check input!" =
+                      checkVectorEqual(sce_features, eqtl_features, ignore_order = TRUE))
+
+        stopifnot("Features in important_features and eqtl_geno_list do not match. Please check input!" =
+                      checkVectorEqual(important_features, eqtl_features, ignore_order = TRUE))
+    }
+
 
     stopifnot("Features in important_features and count_mat do not match. Please check input!" =
                   checkVectorEqual(important_features, sce_features, ignore_order = TRUE))
 
     # check eQTL geno
-    eqtl_colnames <- lapply(data_list[["eqtl_geno_list"]], function(x) colnames(x)) %>%
-        Reduce(intersect, .)
+    if(has_eqtl) {
+        eqtl_colnames <- lapply(data_list[["eqtl_geno_list"]], function(x) colnames(x)) %>%
+            Reduce(intersect, .)
 
-    stopifnot("loc_colname, snp_colname, or cellstate_colname is missing in eqtl_geno_list. Please check input!" =
-                  checkVectorContain(c(loc_colname, snp_colname, cellstate_colname), eqtl_colnames))
+        stopifnot("loc_colname, snp_colname, or cellstate_colname is missing in eqtl_geno_list. Please check input!" =
+                      checkVectorContain(c(loc_colname, snp_colname, cellstate_colname), eqtl_colnames))
+    }
 
 
     # remove cell barcodes
@@ -102,7 +115,6 @@ fitMarginalPop <- function(data_list,
         rownames(data_list[["count_mat"]]) <- NULL
         rownames(data_list[["covariate"]]) <- NULL
     }
-
 
     ## run marginal fitting
 
@@ -207,9 +219,18 @@ fitModel <- function(feature_name,
     # TODO: fix warning msg for using external vector in selections was deprecated in tidyselect
     #       use `all_of()` or `any_of()` instead
 
+    if(is.null(eqtlgeno_df)) {
+        has_eqtl <- FALSE
+    } else {
+        has_eqtl <- TRUE
+    }
+
     # checks
-    assertthat::assert_that(assertthat::has_name(eqtlgeno_df,
-                                                 c(loc_colname, snp_colname, cellstate_colname)))
+    if(has_eqtl) {
+        assertthat::assert_that(assertthat::has_name(eqtlgeno_df,
+                                                     c(loc_colname, snp_colname, cellstate_colname)))
+    }
+
     assertthat::assert_that(assertthat::has_name(cellcov_df,
                                                  c(interact_colnames, indiv_colname, cellstate_colname)))
 
@@ -318,8 +339,8 @@ fitModel <- function(feature_name,
 #' Construct a Design Matrix Dataframe
 #'
 #' A helper function that constructs a design matrix using a given feature's
-#'     expression vector for every cell, eQTL genotype dataframe, and cell
-#'     covariate dataframe.
+#'     expression vector for every cell, eQTL genotype dataframe (optional),
+#'     and cell covariate dataframe.
 #'
 #' When \code{response_vec} is provided, the function constructs a full design
 #'     matrix dataframe (ie. with response variable), whereas only a covariate
@@ -350,51 +371,56 @@ constructDesignMatrix <- function(response_vec,
                                   snpvar_thres = 0,
                                   cleanup = TRUE) {
 
-    # construct a sample by snp df using indiv label
-    firstsnp_indx <- which(colnames(eqtlgeno_df) == loc_colname) + 1L  # last column preceding genotypes
-    lastsnp_indx <- dim(eqtlgeno_df)[2]
+    if(!is.null(eqtlgeno_df)) {
 
-    geno_df <- eqtlgeno_df[, firstsnp_indx:lastsnp_indx] %>%
-        dplyr::bind_cols(!!as.name(snp_colname) := eqtlgeno_df[[snp_colname]], .) %>%
-        # eqtlgeno_df %>%   # alternate code w/o using loc_colname variable
-        # dplyr::select(tidyselect::all_of(
-        #     c(snp_colname, as.character(unique(new_covariate[[indiv_colname]]))
-        #     ))) %>%
-        tidyr::pivot_longer(., cols = -snp_colname,
-                            values_to = "genotype",
-                            names_to = indiv_colname) %>%
-        tidyr::pivot_wider(., names_from = snp_colname, values_from = "genotype")
+        # construct a sample by snp df using indiv label
+        firstsnp_indx <- which(colnames(eqtlgeno_df) == loc_colname) + 1L  # last column preceding genotypes
+        lastsnp_indx <- dim(eqtlgeno_df)[2]
 
+        geno_df <- eqtlgeno_df[, firstsnp_indx:lastsnp_indx] %>%
+            dplyr::bind_cols(!!as.name(snp_colname) := eqtlgeno_df[[snp_colname]], .) %>%
+            # eqtlgeno_df %>%   # alternate code w/o using loc_colname variable
+            # dplyr::select(tidyselect::all_of(
+            #     c(snp_colname, as.character(unique(new_covariate[[indiv_colname]]))
+            #     ))) %>%
+            tidyr::pivot_longer(., cols = -snp_colname,
+                                values_to = "genotype",
+                                names_to = indiv_colname) %>%
+            tidyr::pivot_wider(., names_from = snp_colname, values_from = "genotype")
 
-    snp_cov <- eqtlgeno_df[[snp_colname]]
+        snp_cov <- eqtlgeno_df[[snp_colname]]
 
-    # filter out low variance SNPs or single unique genotype SNPs (ie. all 1's)
-    if(filter_snps) {
+        # filter out low variance SNPs or single unique genotype SNPs (ie. all 1's)
+        if(filter_snps) {
 
-        if_zerovar <- geno_df[, base::setdiff(colnames(geno_df), indiv_colname)] %>%
-            sapply(., stats::var) <= snpvar_thres
+            if_zerovar <- geno_df[, base::setdiff(colnames(geno_df), indiv_colname)] %>%
+                sapply(., stats::var) <= snpvar_thres
 
-        if_oneunique <- geno_df[, base::setdiff(colnames(geno_df), indiv_colname)] %>%
-            sapply(., function(x) length(unique(x))) == 1
+            if_oneunique <- geno_df[, base::setdiff(colnames(geno_df), indiv_colname)] %>%
+                sapply(., function(x) length(unique(x))) == 1
 
-        exclude_snps <- snp_cov[which(if_zerovar | if_oneunique)]
+            exclude_snps <- snp_cov[which(if_zerovar | if_oneunique)]
 
-        # remove excluded SNP variables and update remaining SNP covariates
-        if(length(exclude_snps) != 0L) {
-            geno_df <- geno_df %>%
-                dplyr::select(-dplyr::all_of(exclude_snps))  # TODO: check this
+            # remove excluded SNP variables and update remaining SNP covariates
+            if(length(exclude_snps) != 0L) {
+                geno_df <- geno_df %>%
+                    dplyr::select(-dplyr::all_of(exclude_snps))  # TODO: check this
 
-            snp_cov <- snp_cov[!(if_zerovar | if_oneunique)]
+                snp_cov <- snp_cov[!(if_zerovar | if_oneunique)]
+            }
         }
+    } else {   # w/o eqtl
+        snp_cov <- NULL
     }
 
     # construct design matrix df for marginal fitting
     # dmat_df <- data.frame("response" = response_vec) %>%
     #     dplyr::bind_cols(., cellcov_df) %>%
     dmat_df <- cellcov_df %>%  # keeps row names
-        dplyr::left_join(., geno_df, by = indiv_colname) %>%
+        { if(!is.null(eqtlgeno_df)) dplyr::left_join(., geno_df, by = indiv_colname) else . } %>%  # check eqtlgeno
         dplyr::mutate(dplyr::across(tidyselect::where(is.character), as.factor))
-        # dplyr::mutate(!!rlang::sym(indiv_colname) := as.factor(!!rlang::sym(indiv_colname)))  # old code
+    # dplyr::mutate(!!rlang::sym(indiv_colname) := as.factor(!!rlang::sym(indiv_colname)))  # old code
+
 
     # add response variable to design matrix
     if(!is.null(response_vec)) {

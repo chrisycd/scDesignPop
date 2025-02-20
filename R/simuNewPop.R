@@ -44,6 +44,11 @@
 #' this parameter must be NULL. When the parameter parallelization = 'bpmapply',  this parameter must be one of the
 #' \code{MulticoreParam} object offered by the package 'BiocParallel. The default value is NULL.
 #' @param filtered_gene A vector or NULL which contains genes that are excluded in the marginal and copula fitting
+#' @param mean_limit A numeric scalar to filter genes which has cells that exceed
+#'     the limit in the \code{mean_mat}. The default value is 1e15. This is to
+#'     avoid features that have extremely high and unreasonable means.
+#' @param debug A logical scalar for whether to return a list of variables in
+#'     addition to simulated count matrix. The default is FALSE.
 #'
 #' @return A feature by cell matrix of the new simulated count (expression) matrix or sparse matrix.
 #' @export simuNewPop
@@ -67,7 +72,12 @@ simuNewPop <- function(sce,
                        important_feature = "all",
                        parallelization = "mcmapply",
                        BPPARAM = NULL,
-                       filtered_gene) {
+                       filtered_gene,
+                       mean_limit = 1e15,
+                       debug = FALSE) {
+
+    stopifnot("Features in sce and mean_mat do not match. Please check input!" !=
+                  checkVectorEqual(rownames(sce), colnames(mean_mat), ignore_order = FALSE))
 
     if(!is.null(quantile_mat) & !is.null(copula_list)) {
         stop("You can only provide either the quantile_mat or the copula_list!")
@@ -80,8 +90,11 @@ simuNewPop <- function(sce,
         new_covariate <- NULL
     }
 
-
     qc_gene_idx <- which(!rownames(sce) %in% filtered_gene)
+
+    # filter genes exceeding mean value
+    mean_lim_idx <- which(apply(mean_mat, 2, function(col_vec) any(col_vec >= mean_limit)))
+    qc_gene_idx <- base::setdiff(qc_gene_idx, mean_lim_idx)
 
     if(length(family_use) != 1){
         family_use <- family_use[qc_gene_idx]
@@ -198,25 +211,34 @@ simuNewPop <- function(sce,
                 }
 
                 return(list(new_mvu = new_mvu))
-            }, sce = sce, ind = ind, n_cores = n_cores, corr_group = corr_group, new_corr_group = new_corr_group, copula_list = copula_list)
+                }, sce = sce,
+                   ind = ind,
+                   n_cores = n_cores,
+                   corr_group = corr_group,
+                   new_corr_group = new_corr_group,
+                   copula_list = copula_list)
 
         newmvn <-
-            do.call(rbind, lapply(newmvn.list, function(x)
-                x$new_mvu))
+            do.call(rbind, lapply(newmvn.list, function(x) {
+                x$new_mvu[, qc_gene_idx]  # use filtered genes
+                }))
 
-        newmvn[as.numeric(rownames(newmvn)),] <- newmvn
+        newmvn[as.numeric(rownames(newmvn)), ] <- newmvn
         rownames(newmvn) <- as.character(1:dim(newmvn)[1])
         colnames(newmvn) <- rownames(sce)[qc_gene_idx]
+
         newmvn_full <- matrix(NA, nrow = dim(newmvn)[1], ncol = dim(sce)[1])
+
         rownames(newmvn_full) <- rownames(newmvn)
         colnames(newmvn_full) <- rownames(sce)
         newmvn_full[rownames(newmvn), colnames(newmvn)] <- newmvn
+
         quantile_mat <- as.matrix(newmvn_full)
     }
 
     mat_function <- function(x, y) {
 
-        idx <- which(mean_mat[,x] !=0)
+        idx <- which(mean_mat[, x] != 0)
         para_mat <- cbind(mean_mat[idx, x], sigma_mat[idx, x], quantile_mat[idx, x], zero_mat[idx, x])
 
         if (y == "binomial") {
@@ -230,10 +252,22 @@ simuNewPop <- function(sce,
                                  mu = para_mat[, 1],
                                  sigma = abs(para_mat[, 2]))
         } else if (y == "nb") {
+
+            ## avoids excess qNBI compute time when NB mean exceeds 1e8
+            mu_scaled <- para_mat[, 1]
+            is_scaled <- mu_scaled > 1e+8  # logic vec for scaling condition
+            k <- ifelse(is_scaled, mu_scaled / 1e+4, 1)  # dynamic k based on ratio
+
+            # apply scaling
+            mu_scaled <- mu_scaled / k
+
             qfvec <-
                 gamlss.dist::qNBI(p = para_mat[, 3],
-                                  mu = para_mat[, 1],
+                                  mu = mu_scaled,  # use modified mu vec
                                   sigma = para_mat[, 2])
+
+            # scale quantiles back to original
+            qfvec[is_scaled] <- round(qfvec[is_scaled] * k[is_scaled])
         } else if (y == "zip") {
             qfvec <-
                 gamlss.dist::qZIP(p = para_mat[, 3],
@@ -305,8 +339,6 @@ simuNewPop <- function(sce,
 
     if(nonnegative) new_count[new_count < 0] <- 0
 
-
-
     if(nonzerovar) {
         row_vars <- matrixStats::rowVars(new_count[qc_gene_idx,])
         if(sum(row_vars == 0) > 0) {
@@ -323,7 +355,13 @@ simuNewPop <- function(sce,
         new_count<- Matrix::Matrix(new_count, sparse = TRUE)
     }
 
-    return(new_count)
+    if(debug) {
+        return(list("new_count" = new_count,
+                    "qc_gene_idx" = qc_gene_idx,
+                    "mean_lim_idx" = mean_lim_idx))
+    } else {
+        return(new_count)
+    }
 }
 
 

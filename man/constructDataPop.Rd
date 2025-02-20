@@ -24,39 +24,52 @@ constructDataPop(
 )
 }
 \arguments{
-\item{sce}{a SingleCellExperiment object}
+\item{sce}{a SingleCellExperiment object.}
 
-\item{eqtlgeno_df}{a dataframe with eQTL annotations and SNP genotypes for each gene}
+\item{eqtlgeno_df}{a dataframe with eQTL annotations and SNP genotypes for each gene.}
 
 \item{new_eqtlgeno_df}{a dataframe with eQTL annotations and SNP genotypes for each
-gene in new individuals}
+gene in new individuals. The default is NULL.}
 
-\item{new_covariate}{a cell covariate dataframe for which to simulate}
+\item{new_covariate}{a cell covariate dataframe for which to simulate.
+The default is NULL.}
 
-\item{overlap_features}{an optional string vector to filter for features}
+\item{overlap_features}{an optional string vector to filter for features (ie. genes).
+The default is NULL.}
 
-\item{sampid_vec}{an optional string vector to filter for sample ids}
+\item{sampid_vec}{an optional string vector to filter for sample ids.
+The default is NULL.}
 
-\item{ct_copula}{a logical scalar for whether to fit the copula by cell type}
+\item{ct_copula}{a logical scalar for whether to fit the copula by cell state
+variable specified by \code{cellstate_colname} option. The default is TRUE.}
 
-\item{slot_name}{a string scalar to specify the input SCE slot used}
+\item{slot_name}{a string scalar specifying the slot to use in input \code{sce}.
+The default is "counts".}
 
-\item{snp_model}{a string scalar to specify the type of SNP model used}
+\item{snp_model}{a string scalar specifying the type of SNP model used. Options
+are either "single" for single-SNP, or "multi" for multi-SNP.}
 
-\item{cellstate_colname}{a string scalar for the cell state variable in eqtlgeno_df
-and cell covariate of SCE}
+\item{cellstate_colname}{a string scalar specifying the cell state variable in
+\code{eqtlgeno_df} and cell covariate of \code{sce} object.
+The default is "cell_type".}
 
-\item{feature_colname}{a string scalar for the feature variable in eqtlgeno_df}
+\item{feature_colname}{a string scalar specifying the feature variable (ie. genes)
+in \code{eqtlgeno_df}. The default is "gene_id".}
 
-\item{snp_colname}{a string scalar for the SNP variable in eqtlgeno_df}
+\item{snp_colname}{a string scalar for the SNP variable in \code{eqtlgeno_df}.
+The default is "snp_id".}
 
-\item{loc_colname}{a string scalar for the last column of eQTL annotation in eqtlgeno_df}
+\item{loc_colname}{a string scalar for the last column of eQTL annotation in
+\code{eqtlgeno_df}. The default is "POS".}
 
-\item{chrom_colname}{a string scalar for the chromosome variable in eqtlgeno_df}
+\item{chrom_colname}{a string scalar of the chromosome variable in \code{eqtlgeno_df}.
+The default is "CHR".}
 
-\item{indiv_colname}{a string scalar for the sample ID variable in cell covariate of SCE}
+\item{indiv_colname}{a string scalar of the sample ID variable in cell covariate
+of \code{sce}. The default is "indiv".}
 
-\item{prune_thres}{numerical value between 0 and 1 to threshold the SNPs}
+\item{prune_thres}{a numerical value between 0 and 1 used to threshold the pairwise
+correlations of eQTLs' genotypes for each feature. The default value is 0.9.}
 }
 \value{
 outputs a list with following elements:
@@ -68,7 +81,7 @@ outputs a list with following elements:
 \item{\code{eqtl_geno_list}}{a list of eQTL genotype dataframes for each gene
 (for fit marginal).}
 \item{\code{new_eqtl_geno_list}}{a optional list of eQTL genotype dataframes
-for each gene (for prediction on new individuals).}
+for each gene (for new individual simulation).}
 \item{\code{filtered_gene}}{string vector of features QC filtered.}
 }
 }
