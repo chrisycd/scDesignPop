@@ -9,53 +9,93 @@ modifyModelPara(
   eqtlgeno,
   celltype,
   neg_ctrl = FALSE,
-  eqtl_loc = NULL,
-  eqtl_scale = eqtl_loc,
-  direction = NULL,
+  mean_log2fc = 0,
+  eqtl_log2fc = mean_log2fc,
+  eqtl_reverse = FALSE,
+  mean_baseline = NULL,
+  eqtl_baseline = NULL,
+  mean_baseline_only = FALSE,
+  eqtl_baseline_only = FALSE,
+  disp_scaling = "linear",
   cellstate_colname = "cell_type",
   snp_colname = "snp_id",
   verbose = TRUE,
   debug = FALSE,
+  log_tol = 1e-04,
   ...
 )
 }
 \arguments{
 \item{model_obj}{A marginal model object for a gene.}
 
-\item{eqtlgeno}{A dataframe of eqtl genotypes for a gene.}
+\item{eqtlgeno}{A dataframe with eQTL annotations and samples' genotype for a gene.}
 
-\item{celltype}{A string to specify the cell type.}
+\item{celltype}{A string to specify the cell type in which to make the modification.}
 
-\item{neg_ctrl}{A logical value for whether to set negative control eQTL.
-If neg_ctrl = TRUE, eqtl_loc option can still be used, while eqtl_scale
-will have no impact. This option sets the conditional means to be the
-same across genotypes (0, 1, 2).}
+\item{neg_ctrl}{A logical value for whether to set a negative control eQTL (ie. a
+non-eGene).  This option sets the conditional means to be identical across
+genotypes (0, 1, 2).  If \code{neg_ctrl = TRUE}, the \code{mean_log2fc} option
+will still be applied if set, but eqtl_log2fc will be overidden and have
+no impact.  Default is \code{FALSE}.}
 
-\item{eqtl_loc}{A non-negative numeric value used as multiplicative factor to
-increase or decrease the celltype eQTL mean effect size at genotype 1. The
-default is eqtl_loc = NULL, where no effect size changes are made.}
+\item{mean_log2fc}{A numeric value for the log2 fold-change parameter to
+increase or decrease the conditional mean at genotype 1 \eqn{\mu_{1}} in
+a cell type. Default is \code{mean_log2fc = 0} (no parameters are modified
+and uses estimated parameters from the fitted marginal model).}
 
-\item{eqtl_scale}{A non-negative numeric value used as multiplicative factor
-to adjust the slope of celltype eQTL effect size. If NULL then no effect
-size changes are made.}
+\item{eqtl_log2fc}{A numeric value for the log2 fold-change parameter to
+increase or decrease the slope of eQTL effect in a celltype. The eQTL slope
+is defined as the difference between the conditional mean at genotype 1
+and genotype 0 (\eqn{\mu_{1}} - \eqn{\mu_{0}}). Default is
+\code{eqtl_log2fc = mean_log2fc} (eQTL slope is scaled the same as the
+conditional mean log2 fold-change).}
 
-\item{direction}{A logical value to determine whether the eQTL slope is in
-nominal or reverse direction.}
+\item{eqtl_reverse}{A logical value to determine whether the eQTL slope trends
+in the reverse direction (TRUE) or same (FALSE). Default is \code{FALSE}.}
+
+\item{mean_baseline}{A numeric value to specify the minimum conditional mean
+at genotype 1 \eqn{\mu_{1}}.  If \code{mean_baseline_only = FALSE},
+then the conditional mean will be the maximum of the fitted (estimated from
+marginal model) and the \code{mean_baseline} value.  Otherwise, the
+conditional mean will be set to the \code{mean_baseline} value.  Default
+value is \code{NULL}.}
+
+\item{eqtl_baseline}{A numeric value to specify the minimum eQTL slope
+between genotype 1 and 0 (\eqn{\mu_{1}} - \eqn{\mu_{0}}).  If
+\code{eqtl_baseline_only = FALSE}, then the eQTL slope will be the
+maximum of the slope of fitted (estimated from marginal model) and
+the \code{eqtl_baseline} value.  Otherwise, the eQTL slope will be set to
+the \code{eqtl_baseline} value.  Default value is \code{NULL}.}
+
+\item{mean_baseline_only}{A logical value to force the conditional mean (in
+linear prediction) at genotype 1 \eqn{\mu_{1}}. Default is \code{FALSE}.}
+
+\item{eqtl_baseline_only}{A logical value to force the eQTL slope between
+genotype 1 and 0 (\eqn{\mu_{1}} - \eqn{\mu_{0}}). Default is \code{FALSE}.}
+
+\item{disp_scaling}{A string value to specify the dispersion-mean scaling for
+certain parametric models. Current options are either \code{"linear"},
+\code{"quadratic"}, or \code{"none"}. (NOTE: currently only applicable to
+the negative binomial model.)}
 
 \item{cellstate_colname}{A string for cell state variable name.}
 
 \item{snp_colname}{A string for SNP id variable name.}
 
 \item{verbose}{A logical value for whether to output messages related to
-modified parameters. The default is TRUE.}
+modified parameters. Default is \code{TRUE}.}
 
 \item{debug}{A logical value for whether to output intermediate objects used
-for debugging purposes. The default is FALSE.}
+for debugging purposes. Default is \code{FALSE}.}
+
+\item{log_tol}{A numeric value used as tolerance in log computation. Default
+value is \eqn{1e-4}.}
 
 \item{...}{Additional options.}
 }
 \value{
-A list of dataframe of coefficients, model objects, and optional .
+A list of dataframe of coefficients, model objects, and optional outputs
+if debugging is enabled.
 }
 \description{
 Modify parameters of a glmmTMB model object
