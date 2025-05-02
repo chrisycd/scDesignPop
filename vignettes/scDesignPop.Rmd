@@ -17,9 +17,9 @@ output:
     toc_depth: 2
     code_folding: show
 date: "`r doc_date()`"
-package: "`r pkg_ver('scDesign3')`"
+package: "`r pkg_ver('scDesignPop')`"
 vignette: >
-  %\VignetteIndexEntry{scDesign3-quickstart-vignette}
+  %\VignetteIndexEntry{scDesignPop-quickstart-vignette}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}  
 ---
@@ -32,7 +32,6 @@ pre {
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(
-    eval = FALSE,
     message = FALSE,
     collapse = TRUE,
     comment = "#>",
@@ -56,31 +55,10 @@ scDesignPop is a simulator for population-scale single-cell RNA-sequencing (scRN
 
 To run scDesignPop, a list of data is required as input. This is done using the `constructDataPop` function. A `SingleCellExperiment` object and an `eqtlgeno` dataframe are the two main inputs needed. The `eqtlgeno` dataframe consists of eQTL annotations (it must have cell state, gene, SNP, chromosome, and position columns at a minimum), and genotypes across individuals (columns) for every SNP (rows). The structure of an example `eqtlgeno` dataframe is given below.
 
+
 ```{r}
-data("example_eqtlgeno")
-data("example_sce")
-head(example_eqtlgeno)
-#>   cell_type         gene_id      snp_id CHR       POS indiv1 indiv2 indiv3
-#> 1     cd4nc ENSG00000023902 1:150133323   1 150133323      0      1      0
-#> 2     cd8nc ENSG00000023902 1:150159616   1 150159616      2      2      2
-#> 3     cd4nc ENSG00000028137  1:12192270   1  12192270      2      0      2
-#> 4     cd8nc ENSG00000028137  1:12267999   1  12267999      1      0      1
-#> 5        nk ENSG00000028137  1:12267999   1  12267999      2      0      2
-#> 6     cd4et ENSG00000049247   1:8175947   1   8175947      1      1      1
-#>   indiv4 indiv5 indiv6 indiv7 indiv8 indiv9 indiv10 indiv11 indiv12 indiv13
-#> 1      1      1      0      0      1      0       0       1       0       1
-#> 2      1      2      1      1      2      2       2       1       2       2
-#> 3      2      2      1      2      2      2       2       2       2       2
-#> 4      1      1      1      0      0      1       1       1       1       1
-#> 5      1      1      1      1      0      1       1       0       2       0
-#> 6      0      1      0      1      1      2       1       1       0       2
-#>   indiv14 indiv15 indiv16 indiv17 indiv18 indiv19 indiv20
-#> 1       0       0       1       0       0       0       1
-#> 2       1       1       2       2       1       2       2
-#> 3       1       2       1       2       2       1       1
-#> 4       0       1       1       2       0       1       2
-#> 5       1       0       0       2       0       1       0
-#> 6       1       1       0       1       2       0       2
+load("/home/ycen/proj/scEQTLsim/data/tutorials/example_sce.rda")
+load("/home/ycen/proj/scEQTLsim/data/tutorials/example_eqtlgeno.rda")
 ```
 
 ```{r}
@@ -116,7 +94,7 @@ marginal_list <- fitMarginalPop(
     model_family = "nb",
     interact_colnames = "cell_type",
     parallelization = "pbmcapply",
-    n_threads = 50L,
+    n_threads = 20L,
     loc_colname = "POS",
     snp_colname = "snp_id",
     cellstate_colname = "cell_type",
@@ -143,7 +121,7 @@ copula_fit <- fitCopulaPop(
     marginal_list = marginal_list,
     family_use = "nb",
     copula = "gaussian",
-    n_cores = 6L,
+    n_cores = 2L,
     parallelization = "mcmapply"
     )
 
@@ -160,8 +138,9 @@ para_new <- extractParaPop(
     sce = example_sce,
     assay_use = "counts",
     marginal_list = marginal_list,
-    n_cores = 6L,
+    n_cores = 2L,
     family_use = "nb",
+    indiv_colname = "indiv",
     new_covariate = data_list[["new_covariate"]],
     new_eqtl_geno_list = data_list[["eqtl_geno_list"]],
     data = data_list[["covariate"]],
@@ -183,7 +162,7 @@ newcount_mat <- simuNewPop(
     zero_mat = para_new[["zero_mat"]],
     quantile_mat = NULL,
     copula_list = copula_fit[["copula_list"]],
-    n_cores = 6L,
+    n_cores = 2L,
     family_use = "nb",
     nonnegative = TRUE,
     input_data = data_list[["covariate"]],
@@ -213,24 +192,19 @@ rowData(simu_sce) <- rowData(example_sce)
 The simulated data can be visualized using a UMAP plot as follows.
 
 ```{r}
+source("/home/ycen/proj/scEQTLsim/tutorial/plot_reduceddim_pop.R")
+
 logcounts(simu_sce) <- log1p(counts(simu_sce))
-
-simu_sce <- runPCA(simu_sce,
-                   ncomponents = 30)  # default is 50
-
 set.seed(123)
-simu_sce <- runUMAP(
-  simu_sce,
-  dimred = "PCA",
-  n_neighbors = 15,   # default
-  min_dist = 0.3,     # default
-  n_threads = 10L
-  )
-
-plotReducedDim(simu_sce, "UMAP", color_by = "cell_type")
+compare_figure <- plot_reduceddim_pop(ref_sce = example_sce, 
+                                      sce_list = list(simu_sce), 
+                                      name_vec = c("Reference", "scDesignPop"),
+                                      assay_use = "logcounts", 
+                                      if_plot = TRUE, 
+                                      color_by = "cell_type", 
+                                      n_pc = 10)
+plot(compare_figure$p_umap)
 ```
-
-<img src="man/figures/README-visualize_umap-1.png" width="100%" />
 
 ## Session information
 ```{r}

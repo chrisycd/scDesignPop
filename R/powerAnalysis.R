@@ -266,7 +266,7 @@ simulatePADesignMatrix <- function(fit,
     # extract genotypes
     geno <- df_sel[,snpid]
     names(geno) <- df_sel$indiv
-    geno <- geno[unique(df_sel$indiv)]
+    geno <- geno[as.character(unique(df_sel$indiv))] # bug fixed for indexing
     geno0 <- geno[which(geno==0)]
     geno1 <- geno[which(geno==1)]
     geno2 <- geno[which(geno==2)]
@@ -523,7 +523,7 @@ powerAnalysis <- function(marginal_list,
       # control MAFs
       geno <- df_sel[,snpid]
       names(geno) <- df_sel$indiv
-      geno <- geno[unique(df_sel$indiv)]
+      geno <- geno[as.character(unique(df_sel$indiv))] # bug fixed for index
       geno0 <- geno[which(geno==0)]
       geno1 <- geno[which(geno==1)]
       geno2 <- geno[which(geno==2)]
@@ -690,8 +690,8 @@ powerCICalculation <- function(res,
                                     ncell=ncell,
                                     mean=mean(ps),
                                     sd=stats::sd(ps),
-                                    ci1=stats::quantile(ps,conf/2),
-                                    ci2=stats::quantile(ps,(1-(conf/2))),
+                                    ci1=stats::quantile(ps,conf/2,na.rm = T),
+                                    ci2=stats::quantile(ps,(1-(conf/2)),na.rm = T),
                                     intercept=intercept,
                                     slope=slope)
               powerCIs <- c(powerCIs,list(powerCI))

@@ -1,0 +1,98 @@
+---
+title: "Modify eQTL effect for eGenes / non-eGenes"
+author: 
+  - name: Chris Dong
+    affiliation:
+    - Department of Statistics and Data Science, University of California, Los Angeles
+    email: cycd@g.ucla.edu
+  - name: Yihui Cen
+    affiliation:
+    - Department of Computational Medicine, University of California, Los Angeles
+    email: yihuicen@g.ucla.edu
+output: 
+  BiocStyle::html_document:
+    self_contained: yes
+    toc: true
+    toc_float: true
+    toc_depth: 2
+    code_folding: show
+date: "`r doc_date()`"
+package: "`r pkg_ver('scDesignPop')`"
+vignette: >
+  %\VignetteIndexEntry{scDesignPop-modifyEQTL-vignette}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}  
+---
+```{css, echo=FALSE}
+pre {
+  white-space: pre !important;
+  overflow-x: scroll !important;
+}
+```
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+    collapse = TRUE,
+    comment = "#>",
+    crop = NULL ## Related to https://stat.ethz.ch/pipermail/bioc-devel/2020-April/016656.html
+)
+tools::R_user_dir("scDesignPop", which="cache")
+```
+
+## Step 1: construct a data list
+
+To run scDesignPop, a list of data is required as input. This is done using the `constructDataPop` function. A `SingleCellExperiment` object and an `eqtlgeno` dataframe are the two main inputs needed. The `eqtlgeno` dataframe consists of eQTL annotations (it must have cell state, gene, SNP, chromosome, and position columns at a minimum), and genotypes across individuals (columns) for every SNP (rows). The structure of an example `eqtlgeno` dataframe is given below.
+
+```{r}
+library(scDesignPop)
+load("/home/ycen/proj/scEQTLsim/data/tutorials/example_sce.rda")
+load("/home/ycen/proj/scEQTLsim/data/tutorials/example_eqtlgeno.rda")
+```
+
+
+```{r}
+data_list <- constructDataPop(
+    sce = example_sce,
+    eqtlgeno_df = example_eqtlgeno,
+    new_covariate = as.data.frame(colData(example_sce)),
+    overlap_features = NULL,
+    sampid_vec = NULL,
+    ct_copula = TRUE,
+    slot_name = "counts",
+    snp_model = "single",
+    cellstate_colname = "cell_type",
+    feature_colname = "gene_id",
+    snp_colname = "snp_id",
+    loc_colname = "POS",
+    chrom_colname = "CHR",
+    indiv_colname = "indiv",
+    prune_thres = 0.9
+    )
+```
+
+## Step 2: modify a existing fitted marginal model
+
+```{r}
+load("/home/ycen/proj/scEQTLsim/data/tutorials/marginal_list_sel.rda")
+marginal_mod <- scDesignPop::modifyMarginalModels(
+  marginal_list = marginal_list_sel["ENSG00000163221"],
+  eqtlgeno_list = data_list[["eqtl_geno_list"]],
+  features = "ENSG00000163221",
+  celltype = "cd4nc",
+  mean_log2fc = -1,
+  eqtl_log2fc = 2,
+  neg_ctrl = TRUE,
+  mean_baseline = 0.0214,   # 0.114
+  eqtl_baseline = 0.0023,  # 0.0023
+  mean_baseline_only = FALSE,
+  eqtl_baseline_only = FALSE,
+  disp_scaling = "linear",
+  cellstate_colname = "cell_type",
+  snp_colname = "snp_id",
+  verbose = TRUE,
+  debug = TRUE)
+```
+
+## Step 2: generate simulated data with modified marginal model
+
+## Step 3: visualize the modified eQTL effect

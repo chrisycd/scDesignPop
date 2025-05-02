@@ -1,0 +1,144 @@
+---
+title: "Power analysis for selected genes"
+author: 
+  - name: Chris Dong
+    affiliation:
+    - Department of Statistics and Data Science, University of California, Los Angeles
+    email: cycd@g.ucla.edu
+  - name: Yihui Cen
+    affiliation:
+    - Department of Computational Medicine, University of California, Los Angeles
+    email: yihuicen@g.ucla.edu
+output: 
+  BiocStyle::html_document:
+    self_contained: yes
+    toc: true
+    toc_float: true
+    toc_depth: 2
+    code_folding: show
+date: "`r doc_date()`"
+package: "`r pkg_ver('scDesignPop')`"
+vignette: >
+  %\VignetteIndexEntry{scDesignPop-poweranalysisR-vignette}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}  
+---
+```{css, echo=FALSE}
+pre {
+  white-space: pre !important;
+  overflow-x: scroll !important;
+}
+```
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+    message = FALSE,
+    collapse = TRUE,
+    comment = "#>",
+    crop = NULL ## Related to https://stat.ethz.ch/pipermail/bioc-devel/2020-April/016656.html
+)
+tools::R_user_dir("scDesignPop", which="cache")
+```
+
+## Step 1: construct a data list
+
+Given raw count data, scDesignPop can also perform simulation-based power analysis for a
+specific gene-SNP pair across cell types. A list of data is required as input. This is done using the `constructDataPop` function. A `SingleCellExperiment` object and an `eqtlgeno` dataframe are the two main inputs needed. The `eqtlgeno` dataframe consists of eQTL annotations (it must have cell state, gene, SNP, chromosome, and position columns at a minimum), and genotypes across individuals (columns) for every SNP (rows). The structure of an example `eqtlgeno` dataframe is given below.
+
+```{r}
+library(scDesignPop)
+library(SingleCellExperiment)
+load("/home/ycen/proj/scEQTLsim/data/tutorials/example_sce.rda")
+load("/home/ycen/proj/scEQTLsim/data/tutorials/example_eqtlgeno.rda")
+example_sce_sel <- example_sce[c("ENSG00000163221","ENSG00000135218"),]
+example_eqtlgeno_sel <- example_eqtlgeno[
+    which(example_eqtlgeno$gene_id%in%c("ENSG00000163221","ENSG00000135218")),]
+```
+
+```{r}
+data_list_sel <- constructDataPop(
+    sce = example_sce_sel,
+    eqtlgeno_df = example_eqtlgeno_sel,
+    new_covariate = as.data.frame(colData(example_sce_sel)),
+    overlap_features = NULL,
+    sampid_vec = NULL,
+    ct_copula = TRUE,
+    slot_name = "counts",
+    snp_model = "single",
+    cellstate_colname = "cell_type",
+    feature_colname = "gene_id",
+    snp_colname = "snp_id",
+    loc_colname = "POS",
+    chrom_colname = "CHR",
+    indiv_colname = "indiv",
+    prune_thres = 0.9
+    )
+```
+
+## Step 2: fit marginal model
+
+Next, a marginal model is specified to fit each gene using the
+`fitMarginalPop` function.  
+Here we use a Negative Binominal as the parametric model using `"nb"`.
+
+```{r}
+marginal_list_sel <- fitMarginalPop(
+    data_list = data_list_sel,
+    mean_formula = "(1|indiv) + cell_type",
+    model_family = "nb",
+    interact_colnames = "cell_type",
+    parallelization = "pbmcapply",
+    n_threads = 1L,
+    loc_colname = "POS",
+    snp_colname = "snp_id",
+    cellstate_colname = "cell_type",
+    indiv_colname = "indiv",
+    filter_snps = TRUE,
+    snpvar_thres = 0,
+    force_formula = FALSE,
+    data_maxsize = 1
+    )
+```
+
+## Step 3: running power analysis
+
+Then simulation-based power analysis for a
+specific gene-SNP pair across cell types will be performed using the `runPowerAnalysis`
+function. Here, we choose the negative binomial mixed model using `"nb"`
+option.
+
+```{r}
+set.seed(123)
+power_data <- runPowerAnalysis(marginal_list = marginal_list_sel,
+                               marginal_model = "nb",
+                               geneid = "ENSG00000163221",
+                               snpid = "1:153337943",
+                               type_specific = "cell_type",
+                               type_vector = c("bmem", "monoc"),
+                               methods = c("poisson","pseudoBulkLinear"),
+                               nindivs = c(50, 200),
+                               ncells = c(10),
+                               alpha = 0.05,
+                               power_nsim = 50,
+                               snp_number = 10,
+                               gene_number = 200,
+                               CI_nsim = 1000,
+                               CI_conf = 0.05,
+                               ncores = 50L)
+```
+
+
+## Step 4: visualizing power results
+
+The power analysis results can be visualized using the
+`visualizePowerResult` function.
+
+```{r}
+visualizePowerResult(power_result = power_data,
+                     celltypes = c("bmem", "monoc"),
+                     x_axis = "nindiv",
+                     y_axis = "ncell",
+                     col_group = "method",
+                     geneid = "ENSG00000163221",
+                     snpid = "1:153337943")
+```

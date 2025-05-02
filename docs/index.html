@@ -33,6 +33,14 @@
       <ul class="navbar-nav me-auto">
 <li class="nav-item"><a class="nav-link" href="articles/scDesignPop.html">Get started</a></li>
 <li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
+<li><a class="dropdown-item" href="articles/scDesignPop-modify-eQTL-effects.html">Modify eQTL effect for eGenes / non-eGenes</a></li>
+    <li><a class="dropdown-item" href="articles/scDesignPop-power-analysis-fitted.html">Power analysis based on a fitted scDesignPop marginal model</a></li>
+    <li><a class="dropdown-item" href="articles/scDesignPop-power-analysis-selected.html">Power analysis for selected genes</a></li>
+  </ul>
+</li>
       </ul>
 <ul class="navbar-nav">
 <li class="nav-item"><form class="form-inline" role="search">
@@ -49,11 +57,38 @@
   <main id="main" class="col-md-9"><div class="section level1">
 <div class="page-header"><h1 id="scdesignpop">scDesignPop<a class="anchor" aria-label="anchor" href="#scdesignpop"></a>
 </h1></div>
-<!-- badges: start -->
-<!-- badges: end -->
-<p>scDesignPop is a simulator for population-scale single-cell RNA-sequencing (scRNA-seq) data.</p>
+<hr>
+<p>scDesignPop is a simulator for population-scale single-cell RNA-sequencing (scRNA-seq) data. By incorporating eQTL effects from genotype data with other covariates, scDesignPop has several key applications:</p>
+<ul>
+<li><ol style="list-style-type: decimal">
+<li>performing eQTL power analyses at cell-type resolution,</li>
+</ol></li>
+<li><ol start="2" style="list-style-type: decimal">
+<li>protecting genomic privacy by mitigating eQTL-based re-identification of individuals via linking attacks,</li>
+</ol></li>
+<li><ol start="3" style="list-style-type: decimal">
+<li>simulating scRNA-seq data for new individuals using either simulated or real genotype data, and</li>
+</ol></li>
+<li><ol start="4" style="list-style-type: decimal">
+<li>generating positive- and negative-control data for cell-type-specific eQTLs.</li>
+</ol></li>
+</ul>
+<p><span style="color:blue"> <strong>Detailed tutorials that illustrate various functionalities of scDesignPop are available at this <a href="https://chrisycd.github.io/scDesignPop/docs/index.html" class="external-link">website</a></strong></span>. The following illustration figure summarizes the workflow of scDesignPop:</p>
+<p><img src="reference/figures/scDesignPop_illustration.jpg" width="600"></p>
+</div>
+<div class="section level1">
+<h1 id="table-of-contents">Table of contents<a class="anchor" aria-label="anchor" href="#table-of-contents"></a>
+</h1>
+<ol style="list-style-type: decimal">
+<li><a href="#installation">Installation</a></li>
+<li><a href="#quick-start">Quick Start</a></li>
+<li><a href="#tutorials">Tutorials</a></li>
+<li><a href="#contact">Contact</a></li>
+<li><a href="#related-manuscripts">Related Manuscripts</a></li>
+</ol>
 <div class="section level2">
-<h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
+<h2 id="installation">Installation<a name="installation"></a>
+<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
 <p>You can install the development version of scDesignPop from <a href="https://github.com" class="external-link">GitHub</a> with:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
@@ -61,241 +96,76 @@
 <span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"chrisycd/scDesignPop"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="running-scdesignpop">Running scDesignPop<a class="anchor" aria-label="anchor" href="#running-scdesignpop"></a>
+<h2 id="quick-start">Quick Start<a name="quick-start"></a>
+<a class="anchor" aria-label="anchor" href="#quick-start"></a>
 </h2>
-<p>Below is an example showing how to run scDesignPop in several sequential steps.</p>
 </div>
 <div class="section level2">
-<h2 id="step-1-construct-a-data-list">Step 1: construct a data list<a class="anchor" aria-label="anchor" href="#step-1-construct-a-data-list"></a>
+<h2 id="tutorials">Tutorials<a name="tutorials"></a>
+<a class="anchor" aria-label="anchor" href="#tutorials"></a>
 </h2>
-<p>To run scDesignPop, a list of data is required as input. This is done using the <code>constructDataPop</code> function. A <code>SingleCellExperiment</code> object and an <code>eqtlgeno</code> dataframe are the two main inputs needed. The <code>eqtlgeno</code> dataframe consists of eQTL annotations (it must have cell state, gene, SNP, chromosome, and position columns at a minimum), and genotypes across individuals (columns) for every SNP (rows). The structure of an example <code>eqtlgeno</code> dataframe is given below.</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/chrisycd/scDesignPop">scDesignPop</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">SingleCellExperiment</span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://bioconductor.org/packages/SummarizedExperiment" class="external-link">SummarizedExperiment</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="http://bioconductor.org/packages/scater/" class="external-link">scater</a></span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="st">"example_eqtlgeno"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="st">"example_sce"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">example_eqtlgeno</span><span class="op">)</span></span>
-<span><span class="co">#&gt;   cell_type         gene_id      snp_id CHR       POS indiv1 indiv2 indiv3</span></span>
-<span><span class="co">#&gt; 1     cd4nc ENSG00000023902 1:150133323   1 150133323      0      1      0</span></span>
-<span><span class="co">#&gt; 2     cd8nc ENSG00000023902 1:150159616   1 150159616      2      2      2</span></span>
-<span><span class="co">#&gt; 3     cd4nc ENSG00000028137  1:12192270   1  12192270      2      0      2</span></span>
-<span><span class="co">#&gt; 4     cd8nc ENSG00000028137  1:12267999   1  12267999      1      0      1</span></span>
-<span><span class="co">#&gt; 5        nk ENSG00000028137  1:12267999   1  12267999      2      0      2</span></span>
-<span><span class="co">#&gt; 6     cd4et ENSG00000049247   1:8175947   1   8175947      1      1      1</span></span>
-<span><span class="co">#&gt;   indiv4 indiv5 indiv6 indiv7 indiv8 indiv9 indiv10 indiv11 indiv12 indiv13</span></span>
-<span><span class="co">#&gt; 1      1      1      0      0      1      0       0       1       0       1</span></span>
-<span><span class="co">#&gt; 2      1      2      1      1      2      2       2       1       2       2</span></span>
-<span><span class="co">#&gt; 3      2      2      1      2      2      2       2       2       2       2</span></span>
-<span><span class="co">#&gt; 4      1      1      1      0      0      1       1       1       1       1</span></span>
-<span><span class="co">#&gt; 5      1      1      1      1      0      1       1       0       2       0</span></span>
-<span><span class="co">#&gt; 6      0      1      0      1      1      2       1       1       0       2</span></span>
-<span><span class="co">#&gt;   indiv14 indiv15 indiv16 indiv17 indiv18 indiv19 indiv20</span></span>
-<span><span class="co">#&gt; 1       0       0       1       0       0       0       1</span></span>
-<span><span class="co">#&gt; 2       1       1       2       2       1       2       2</span></span>
-<span><span class="co">#&gt; 3       1       2       1       2       2       1       1</span></span>
-<span><span class="co">#&gt; 4       0       1       1       2       0       1       2</span></span>
-<span><span class="co">#&gt; 5       1       0       0       2       0       1       0</span></span>
-<span><span class="co">#&gt; 6       1       1       0       1       2       0       2</span></span></code></pre></div>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
-<span><span class="va">data_list</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/constructDataPop.html">constructDataPop</a></span><span class="op">(</span></span>
-<span>    sce <span class="op">=</span> <span class="va">example_sce</span>,</span>
-<span>    eqtlgeno_df <span class="op">=</span> <span class="va">example_eqtlgeno</span>,</span>
-<span>    new_covariate <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/SummarizedExperiment/man/SummarizedExperiment-class.html" class="external-link">colData</a></span><span class="op">(</span><span class="va">example_sce</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>    overlap_features <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>    sampid_vec <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>    ct_copula <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>    slot_name <span class="op">=</span> <span class="st">"counts"</span>,</span>
-<span>    snp_model <span class="op">=</span> <span class="st">"single"</span>,</span>
-<span>    cellstate_colname <span class="op">=</span> <span class="st">"cell_type"</span>,</span>
-<span>    feature_colname <span class="op">=</span> <span class="st">"gene_id"</span>,</span>
-<span>    snp_colname <span class="op">=</span> <span class="st">"snp_id"</span>,</span>
-<span>    loc_colname <span class="op">=</span> <span class="st">"POS"</span>,</span>
-<span>    chrom_colname <span class="op">=</span> <span class="st">"CHR"</span>,</span>
-<span>    indiv_colname <span class="op">=</span> <span class="st">"indiv"</span>,</span>
-<span>    prune_thres <span class="op">=</span> <span class="fl">0.9</span></span>
-<span>    <span class="op">)</span></span></code></pre></div>
+<p>For all detailed tutorials, please check the <a href="https://chrisycd.github.io/scDesignPop/docs/index.html" class="external-link">website</a>. The tutorials will demonstrate the applications of <strong>scDesignPop</strong> from the following perspectives: preprocessing, data simulation, model alteration, and power analysis.</p>
+<ul>
+<li><p>Preprocessing</p></li>
+<li><p>Data simulation</p></li>
+<li>
+<p>Model alteration</p>
+<ul>
+<li><a href="https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop-modify-eQTL-effect.html" class="external-link">Modify eQTL effect for eGenes / non-eGenes</a></li>
+</ul>
+</li>
+<li>
+<p>Power Analysis</p>
+<ul>
+<li><a href="https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop-power-analysis-fitted.html" class="external-link">Power analysis based on a fitted scDesignPop marginal model</a></li>
+<li><a href="https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop-power-analysis-selected.html" class="external-link">Power analysis for selected genes</a></li>
+</ul>
+</li>
+</ul>
 </div>
 <div class="section level2">
-<h2 id="step-2-fit-marginal-model">Step 2: fit marginal model<a class="anchor" aria-label="anchor" href="#step-2-fit-marginal-model"></a>
+<h2 id="contact">Contact<a name="contact"></a>
+<a class="anchor" aria-label="anchor" href="#contact"></a>
 </h2>
-<p>Next, a marginal model is specified to fit each gene using the <code>fitMarginalPop</code> function.<br>
-Here we use a Negative Binominal as the parametric model using <code>"nb"</code>.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">marginal_list</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/fitMarginalPop.html">fitMarginalPop</a></span><span class="op">(</span></span>
-<span>    data_list <span class="op">=</span> <span class="va">data_list</span>,</span>
-<span>    mean_formula <span class="op">=</span> <span class="st">"(1|indiv) + cell_type"</span>,</span>
-<span>    model_family <span class="op">=</span> <span class="st">"nb"</span>,</span>
-<span>    interact_colnames <span class="op">=</span> <span class="st">"cell_type"</span>,</span>
-<span>    parallelization <span class="op">=</span> <span class="st">"pbmcapply"</span>,</span>
-<span>    n_threads <span class="op">=</span> <span class="fl">50L</span>,</span>
-<span>    loc_colname <span class="op">=</span> <span class="st">"POS"</span>,</span>
-<span>    snp_colname <span class="op">=</span> <span class="st">"snp_id"</span>,</span>
-<span>    cellstate_colname <span class="op">=</span> <span class="st">"cell_type"</span>,</span>
-<span>    indiv_colname <span class="op">=</span> <span class="st">"indiv"</span>,</span>
-<span>    filter_snps <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>    snpvar_thres <span class="op">=</span> <span class="fl">0</span>,</span>
-<span>    force_formula <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>    data_maxsize <span class="op">=</span> <span class="fl">1</span></span>
-<span>    <span class="op">)</span></span></code></pre></div>
+<p>Any questions or advice on <code>scDesignPop</code> are welcomed! Please report it on <a href="https://github.com/chrisycd/scDesignPop/issues">issues</a>, or contact Chris Dong (<a href="mailto:cycd@g.ucla.edu" class="email">cycd@g.ucla.edu</a>) or Yihui Cen (<a href="mailto:yihuicen@g.ucla.edu" class="email">yihuicen@g.ucla.edu</a>).</p>
 </div>
 <div class="section level2">
-<h2 id="step-3-fit-a-gaussian-copula">Step 3: fit a Gaussian copula<a class="anchor" aria-label="anchor" href="#step-3-fit-a-gaussian-copula"></a>
+<h2 id="related-manuscripts">Related Manuscripts<a name="related-manuscripts"></a>
+<a class="anchor" aria-label="anchor" href="#related-manuscripts"></a>
 </h2>
-<p>The third step is to fit a Gaussian copula using the <code>fitCopulaPop</code> function.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">123</span>, kind <span class="op">=</span> <span class="st">"L'Ecuyer-CMRG"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">copula_fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/fitCopulaPop.html">fitCopulaPop</a></span><span class="op">(</span></span>
-<span>    sce <span class="op">=</span> <span class="va">example_sce</span>,</span>
-<span>    assay_use <span class="op">=</span> <span class="st">"counts"</span>,</span>
-<span>    input_data <span class="op">=</span> <span class="va">data_list</span><span class="op">[[</span><span class="st">"new_covariate"</span><span class="op">]</span><span class="op">]</span>,</span>
-<span>    marginal_list <span class="op">=</span> <span class="va">marginal_list</span>,</span>
-<span>    family_use <span class="op">=</span> <span class="st">"nb"</span>,</span>
-<span>    copula <span class="op">=</span> <span class="st">"gaussian"</span>,</span>
-<span>    n_cores <span class="op">=</span> <span class="fl">6L</span>,</span>
-<span>    parallelization <span class="op">=</span> <span class="st">"mcmapply"</span></span>
-<span>    <span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">RNGkind</a></span><span class="op">(</span><span class="st">"Mersenne-Twister"</span><span class="op">)</span>  <span class="co"># reset</span></span></code></pre></div>
-</div>
-<div class="section level2">
-<h2 id="step-4-extract-parameters">Step 4: extract parameters<a class="anchor" aria-label="anchor" href="#step-4-extract-parameters"></a>
-</h2>
-<p>The fourth step is to compute the mean, sigma, and zero probability parameters using the <code>extractParaPop</code> function.</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">para_new</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/extractParaPop.html">extractParaPop</a></span><span class="op">(</span></span>
-<span>    sce <span class="op">=</span> <span class="va">example_sce</span>,</span>
-<span>    assay_use <span class="op">=</span> <span class="st">"counts"</span>,</span>
-<span>    marginal_list <span class="op">=</span> <span class="va">marginal_list</span>,</span>
-<span>    n_cores <span class="op">=</span> <span class="fl">6L</span>,</span>
-<span>    family_use <span class="op">=</span> <span class="st">"nb"</span>,</span>
-<span>    new_covariate <span class="op">=</span> <span class="va">data_list</span><span class="op">[[</span><span class="st">"new_covariate"</span><span class="op">]</span><span class="op">]</span>,</span>
-<span>    new_eqtl_geno_list <span class="op">=</span> <span class="va">data_list</span><span class="op">[[</span><span class="st">"eqtl_geno_list"</span><span class="op">]</span><span class="op">]</span>,</span>
-<span>    data <span class="op">=</span> <span class="va">data_list</span><span class="op">[[</span><span class="st">"covariate"</span><span class="op">]</span><span class="op">]</span>,</span>
-<span>    parallelization <span class="op">=</span> <span class="st">"pbmcmapply"</span></span>
-<span>    <span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level2">
-<h2 id="step-5-simulate-counts">Step 5: simulate counts<a class="anchor" aria-label="anchor" href="#step-5-simulate-counts"></a>
-</h2>
-<p>The fifth step is to simulate counts using the <code>simuNewPop</code> function.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">123</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">newcount_mat</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/simuNewPop.html">simuNewPop</a></span><span class="op">(</span></span>
-<span>    sce <span class="op">=</span> <span class="va">example_sce</span>,</span>
-<span>    mean_mat <span class="op">=</span> <span class="va">para_new</span><span class="op">[[</span><span class="st">"mean_mat"</span><span class="op">]</span><span class="op">]</span>,</span>
-<span>    sigma_mat <span class="op">=</span> <span class="va">para_new</span><span class="op">[[</span><span class="st">"sigma_mat"</span><span class="op">]</span><span class="op">]</span>,</span>
-<span>    zero_mat <span class="op">=</span> <span class="va">para_new</span><span class="op">[[</span><span class="st">"zero_mat"</span><span class="op">]</span><span class="op">]</span>,</span>
-<span>    quantile_mat <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>    copula_list <span class="op">=</span> <span class="va">copula_fit</span><span class="op">[[</span><span class="st">"copula_list"</span><span class="op">]</span><span class="op">]</span>,</span>
-<span>    n_cores <span class="op">=</span> <span class="fl">6L</span>,</span>
-<span>    family_use <span class="op">=</span> <span class="st">"nb"</span>,</span>
-<span>    nonnegative <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>    input_data <span class="op">=</span> <span class="va">data_list</span><span class="op">[[</span><span class="st">"covariate"</span><span class="op">]</span><span class="op">]</span>,</span>
-<span>    new_covariate <span class="op">=</span> <span class="va">data_list</span><span class="op">[[</span><span class="st">"new_covariate"</span><span class="op">]</span><span class="op">]</span>,</span>
-<span>    important_feature <span class="op">=</span> <span class="va">copula_fit</span><span class="op">[[</span><span class="st">"important_feature"</span><span class="op">]</span><span class="op">]</span>,</span>
-<span>    filtered_gene <span class="op">=</span> <span class="va">data_list</span><span class="op">[[</span><span class="st">"filtered_gene"</span><span class="op">]</span><span class="op">]</span>,</span>
-<span>    parallelization <span class="op">=</span> <span class="st">"pbmcmapply"</span></span>
-<span>    <span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level2">
-<h2 id="step-6-create-singlecellexperiment-object-using-simulated-data">Step 6: create SingleCellExperiment object using simulated data<a class="anchor" aria-label="anchor" href="#step-6-create-singlecellexperiment-object-using-simulated-data"></a>
-</h2>
-<p>After simulating the data, we can create a <code>SingleCellExperiment</code> object as follows.</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">simu_sce</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/SingleCellExperiment/man/SingleCellExperiment.html" class="external-link">SingleCellExperiment</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>counts <span class="op">=</span> <span class="va">newcount_mat</span><span class="op">)</span>, </span>
-<span>                                 colData <span class="op">=</span> <span class="va">data_list</span><span class="op">[[</span><span class="st">"new_covariate"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/SummarizedExperiment/man/SummarizedExperiment-class.html" class="external-link">assays</a></span><span class="op">(</span><span class="va">simu_sce</span><span class="op">)</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="st">"counts"</span></span>
-<span></span>
-<span><span class="co"># save gene meta data</span></span>
-<span><span class="fu"><a href="https://rdrr.io/pkg/SummarizedExperiment/man/SummarizedExperiment-class.html" class="external-link">rowData</a></span><span class="op">(</span><span class="va">simu_sce</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/SummarizedExperiment/man/SummarizedExperiment-class.html" class="external-link">rowData</a></span><span class="op">(</span><span class="va">example_sce</span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level2">
-<h2 id="step-7-visualize-using-umap">Step 7: visualize using UMAP<a class="anchor" aria-label="anchor" href="#step-7-visualize-using-umap"></a>
-</h2>
-<p>The simulated data can be visualized using a UMAP plot as follows.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/SingleCellExperiment/man/assays.html" class="external-link">logcounts</a></span><span class="op">(</span><span class="va">simu_sce</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log1p</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/BiocGenerics/man/dge.html" class="external-link">counts</a></span><span class="op">(</span><span class="va">simu_sce</span><span class="op">)</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">simu_sce</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/BiocSingular/man/runPCA.html" class="external-link">runPCA</a></span><span class="op">(</span><span class="va">simu_sce</span>,</span>
-<span>                   ncomponents <span class="op">=</span> <span class="fl">30</span><span class="op">)</span>  <span class="co"># default is 50</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">123</span><span class="op">)</span></span>
-<span><span class="va">simu_sce</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/scater/man/runUMAP.html" class="external-link">runUMAP</a></span><span class="op">(</span></span>
-<span>  <span class="va">simu_sce</span>,</span>
-<span>  dimred <span class="op">=</span> <span class="st">"PCA"</span>,</span>
-<span>  n_neighbors <span class="op">=</span> <span class="fl">15</span>,   <span class="co"># default</span></span>
-<span>  min_dist <span class="op">=</span> <span class="fl">0.3</span>,     <span class="co"># default</span></span>
-<span>  n_threads <span class="op">=</span> <span class="fl">10L</span></span>
-<span>  <span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/pkg/scater/man/plotReducedDim.html" class="external-link">plotReducedDim</a></span><span class="op">(</span><span class="va">simu_sce</span>, <span class="st">"UMAP"</span>, color_by <span class="op">=</span> <span class="st">"cell_type"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="reference/figures/README-visualize_umap-1.png" width="100%"></p>
-</div>
-<div class="section level2">
-<h2 id="step-8-running-power-analysis">Step 8: running power analysis<a class="anchor" aria-label="anchor" href="#step-8-running-power-analysis"></a>
-</h2>
-<p>Lastly, scDesignPop can perform simulation-based power analysis for a specific gene-SNP pair across cell types using the <code>runPowerAnalysis</code> function. Here, we choose the negative binomial mixed model using <code>"nb"</code> option.</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">123</span><span class="op">)</span></span>
-<span><span class="va">power_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/runPowerAnalysis.html">runPowerAnalysis</a></span><span class="op">(</span>marginal_list <span class="op">=</span> <span class="va">marginal_list</span>,</span>
-<span>                               marginal_model <span class="op">=</span> <span class="st">"nb"</span>,</span>
-<span>                               geneid <span class="op">=</span> <span class="st">"ENSG00000163221"</span>,</span>
-<span>                               snpid <span class="op">=</span> <span class="st">"1:153337943"</span>,</span>
-<span>                               type_specific <span class="op">=</span> <span class="st">"cell_type"</span>,</span>
-<span>                               type_vector <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"bmem"</span>, <span class="st">"monoc"</span><span class="op">)</span>,</span>
-<span>                               methods <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nb"</span><span class="op">)</span>,</span>
-<span>                               nindivs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">50</span>, <span class="fl">200</span><span class="op">)</span>,</span>
-<span>                               ncells <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10</span>, <span class="fl">50</span><span class="op">)</span>,</span>
-<span>                               alpha <span class="op">=</span> <span class="fl">0.05</span>,</span>
-<span>                               power_nsim <span class="op">=</span> <span class="fl">100</span>,</span>
-<span>                               snp_number <span class="op">=</span> <span class="fl">10</span>,</span>
-<span>                               gene_number <span class="op">=</span> <span class="fl">800</span>,</span>
-<span>                               CI_nsim <span class="op">=</span> <span class="fl">1000</span>,</span>
-<span>                               CI_conf <span class="op">=</span> <span class="fl">0.05</span>,</span>
-<span>                               ncores <span class="op">=</span> <span class="fl">50L</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] -4.760502</span></span>
-<span><span class="co">#&gt; [1] 0.07402542</span></span>
-<span><span class="co">#&gt; [1] 1.848063</span></span>
-<span><span class="co">#&gt; [1] -0.1496348</span></span></code></pre></div>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">power_data</span><span class="op">)</span></span>
-<span><span class="co">#&gt;        power nindiv ncell    mean         sd  ci1  ci2 intercept       slope</span></span>
-<span><span class="co">#&gt; 2.5%    0.06     50    10 0.03258 0.01892358 0.00 0.08 -4.760502  0.07402542</span></span>
-<span><span class="co">#&gt; 2.5%1   0.11     50    50 0.05419 0.02388125 0.01 0.11 -4.760502  0.07402542</span></span>
-<span><span class="co">#&gt; 2.5%2   0.08    200    10 0.02983 0.02186205 0.00 0.08 -4.760502  0.07402542</span></span>
-<span><span class="co">#&gt; 2.5%3   0.15    200    50 0.09287 0.03008934 0.04 0.16 -4.760502  0.07402542</span></span>
-<span><span class="co">#&gt; 2.5%4   0.46     50    10 0.22914 0.08725293 0.11 0.45  1.848063 -0.14963478</span></span>
-<span><span class="co">#&gt; 2.5%11  0.49     50    50 0.11778 0.15279993 0.00 0.42  1.848063 -0.14963478</span></span>
-<span><span class="co">#&gt;        celltype   method</span></span>
-<span><span class="co">#&gt; 2.5%       bmem NB mixed</span></span>
-<span><span class="co">#&gt; 2.5%1      bmem NB mixed</span></span>
-<span><span class="co">#&gt; 2.5%2      bmem NB mixed</span></span>
-<span><span class="co">#&gt; 2.5%3      bmem NB mixed</span></span>
-<span><span class="co">#&gt; 2.5%4     monoc NB mixed</span></span>
-<span><span class="co">#&gt; 2.5%11    monoc NB mixed</span></span></code></pre></div>
-</div>
-<div class="section level2">
-<h2 id="step-9-visualizing-power-results">Step 9: visualizing power results<a class="anchor" aria-label="anchor" href="#step-9-visualizing-power-results"></a>
-</h2>
-<p>The power analysis results can be visualized using the <code>visualizePowerResult</code> function.</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="reference/visualizePowerResult.html">visualizePowerResult</a></span><span class="op">(</span>power_result <span class="op">=</span> <span class="va">power_data</span>,</span>
-<span>                     celltypes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"bmem"</span>, <span class="st">"monoc"</span><span class="op">)</span>,</span>
-<span>                     x_axis <span class="op">=</span> <span class="st">"nindiv"</span>,</span>
-<span>                     y_axis <span class="op">=</span> <span class="st">"ncell"</span>,</span>
-<span>                     col_group <span class="op">=</span> <span class="st">"method"</span>,</span>
-<span>                     geneid <span class="op">=</span> <span class="st">"ENSG00000163221"</span>,</span>
-<span>                     snpid <span class="op">=</span> <span class="st">"1:153337943"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="reference/figures/README-visualize_power-1.png" width="100%"></p>
+<ul>
+<li><p>The original <strong>scDesignPop</strong> paper</p></li>
+<li>
+<p>The simulator for general single-cell counts: <strong>scDesign3</strong></p>
+<ul>
+<li>
+<strong>scDesign3</strong>: <a href="https://www.nature.com/articles/s41587-023-01772-1" class="external-link">Song, D., Wang, Q., Yan, G. <em>et al.</em> scDesign3 generates realistic in silico data for multimodal single-cell and spatial omics. <em>Nat Biotechnol</em> <strong>42</strong>, 247–252 (2024).</a>
+</li>
+</ul>
+</li>
+<li>
+<p>The predecessors of <strong>scDesign3</strong></p>
+<ul>
+<li>
+<strong>scDesign</strong>: <a href="https://academic.oup.com/bioinformatics/article/35/14/i41/5529133" class="external-link">Li, W. V., &amp; Li, J. J. (2019). A statistical simulator scDesign for rational scRNA-seq experimental design. <em>Bioinformatics</em>, <strong>35</strong>(14), i41-i50.</a>
+</li>
+<li>
+<strong>scDesign2</strong>: <a href="https://link.springer.com/article/10.1186/s13059-021-02367-2" class="external-link">Sun, T., Song, D., Li, W. V., &amp; Li, J. J. (2021). scDesign2: a transparent simulator that generates high-fidelity single-cell gene expression count data with gene correlations captured. <em>Genome biology</em>, <strong>22</strong>(1), 1-37.</a>
+</li>
+</ul>
+</li>
+<li>
+<p>The simulator for single-cell multi-omics reads developed by our lab member Guanao Yan</p>
+<ul>
+<li>
+<strong>scReadSim</strong>: <a href="https://doi.org/10.1038/s41467-023-43162-w" class="external-link">Yan, G., Song, D. &amp; Li, J.J. scReadSim: a single-cell RNA-seq and ATAC-seq read simulator. <em>Nat Commun</em> <strong>14</strong>, 7482 (2023)</a>
+</li>
+</ul>
+</li>
+</ul>
 </div>
 </div>
+
   </main><aside class="col-md-3"><div class="links">
 <h2 data-toc-skip>Links</h2>
 <ul class="list-unstyled">

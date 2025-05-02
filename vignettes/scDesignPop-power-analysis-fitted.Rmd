@@ -1,0 +1,87 @@
+---
+title: "Power analysis based on a fitted scDesignPop marginal model"
+author: 
+  - name: Chris Dong
+    affiliation:
+    - Department of Statistics and Data Science, University of California, Los Angeles
+    email: cycd@g.ucla.edu
+  - name: Yihui Cen
+    affiliation:
+    - Department of Computational Medicine, University of California, Los Angeles
+    email: yihuicen@g.ucla.edu
+output: 
+  BiocStyle::html_document:
+    self_contained: yes
+    toc: true
+    toc_float: true
+    toc_depth: 2
+    code_folding: show
+date: "`r doc_date()`"
+package: "`r pkg_ver('scDesignPop')`"
+vignette: >
+  %\VignetteIndexEntry{scDesignPop-poweranalysisD-vignette}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}  
+---
+```{css, echo=FALSE}
+pre {
+  white-space: pre !important;
+  overflow-x: scroll !important;
+}
+```
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+    message = FALSE,
+    collapse = TRUE,
+    comment = "#>",
+    crop = NULL ## Related to https://stat.ethz.ch/pipermail/bioc-devel/2020-April/016656.html
+)
+tools::R_user_dir("scDesignPop", which="cache")
+```
+
+## Step 1: running power analysis
+
+Given fitted marginal model, scDesignPop can perform simulation-based power analysis for a
+specific gene-SNP pair across cell types using the `runPowerAnalysis`
+function. Here, we choose the negative binomial mixed model using `"nb"`
+option.
+
+```{r}
+library(scDesignPop)
+library(SingleCellExperiment)
+load("/home/ycen/proj/scEQTLsim/data/tutorials/marginal_list_sel.rda")
+set.seed(123)
+power_data <- runPowerAnalysis(marginal_list = marginal_list_sel,
+                               marginal_model = "nb",
+                               geneid = "ENSG00000163221",
+                               snpid = "1:153337943",
+                               type_specific = "cell_type",
+                               type_vector = c("bmem", "monoc"),
+                               methods = c("poisson","pseudoBulkLinear"),
+                               nindivs = c(50, 200),
+                               ncells = c(10),
+                               alpha = 0.05,
+                               power_nsim = 50,
+                               snp_number = 10,
+                               gene_number = 200,
+                               CI_nsim = 1000,
+                               CI_conf = 0.05,
+                               ncores = 50L)
+```
+
+## Step 2: visualizing power results
+
+The power analysis results can be visualized using the
+`visualizePowerResult` function.
+
+```{r}
+visualizePowerResult(power_result = power_data,
+                     celltypes = c("bmem", "monoc"),
+                     x_axis = "nindiv",
+                     y_axis = "ncell",
+                     col_group = "method",
+                     geneid = "ENSG00000163221",
+                     snpid = "1:153337943")
+```
+
