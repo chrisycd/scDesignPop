@@ -44,7 +44,7 @@ For all detailed tutorials, please check the [website](https://chrisycd.github.i
 -   Data simulation
 
 -   Model alteration
-    -   [Modify eQTL effect for eGenes / non-eGenes](https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop-modify-eQTL-effect.html)
+    -   [Modify eQTL effect for eGenes / non-eGenes](https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop-modify-eQTL-effects.html)
     
 -   Power Analysis
     -   [Power analysis based on a fitted scDesignPop marginal model](https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop-power-analysis-fitted.html)
