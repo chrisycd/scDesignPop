@@ -280,3 +280,145 @@ fitCellTotalModel <- function(frame,
 
     return(cellnum_fit)
 }
+
+#' Visualize the cell type proportions across individuals
+#'
+#' Function visiualizes the simulated output of the cell type proportion modelling function
+#'
+#' @param col_data a data frame with two columns: individual ids with
+#' column name \code{indiv_colname}, and cell types with column
+#' name \code{cellstate_colname}.
+#' @param title a string scalar specifiying the title of the output barplot.
+#' @param color_vec a named vector of color hex codes named by the ordered
+#' cell type names. If NULL, the cell types contained in \code{col_data} will
+#' be ordered by alphabetical order with R default color schemes.
+#' @param cellstate_colname a string scalar to specify the cell type variable
+#' in \code{col_data}
+#' @param indiv_colname a string scalar to specify the individual id variable
+#' in \code{col_data}.
+#' @param width an numeric scalar specifying the width of each bar
+#' in the output barplot.
+#' @param linewidth an numeric scalar specifying the line width of each bar
+#' in the output barplot.
+#'
+#' @return outputs a ggplot2 object
+#'
+#' @import ggplot2
+#'
+#' @export
+#'
+#' @examples
+#' NULL
+plotCellProp <- function(col_data, title = NULL, color_vec = NULL,
+                         cellstate_colname = "cell_type",
+                         indiv_colname = "indiv",
+                         width = 1, linewidth = 0.01){
+
+    # extract metadata as a tibble
+    meta <- as.data.frame(col_data) %>%
+        # ensure column names match what you said:
+        dplyr::rename(Individual = rlang::sym(indiv_colname),
+                      CellType   = rlang::sym(cellstate_colname)) %>%
+        # if you want to keep the cell barcodes, you can do:
+        tibble::rownames_to_column(var = "cell_barcode") %>%
+        dplyr::select(cell_barcode, Individual, CellType)
+
+    # compute counts + percentages per individual
+    prop_df <- meta %>%
+        dplyr::count(Individual, CellType, name = "n_cells") %>%
+        dplyr::group_by(Individual) %>%
+        dplyr::mutate(pct = n_cells / sum(n_cells) * 100) %>%
+        dplyr::ungroup()
+
+    # order individuals
+    # define your exact legend order:
+    prop_df$CellType <- factor(prop_df$CellType)
+    if(is.null(color_vec)){
+        order_inds <- prop_df %>%
+            dplyr::filter(CellType == levels(prop_df$CellType)[1]) %>%
+            dplyr::arrange(pct) %>%
+            dplyr::pull(Individual)
+
+        ct_order <- levels(prop_df$CellType)
+    }else{
+        order_inds <- prop_df %>%
+            dplyr::filter(CellType == names(color_vec)[1]) %>%
+            dplyr::arrange(pct) %>%
+            dplyr::pull(Individual)
+
+        ct_order <- names(color_vec)
+        my_cols <- color_vec
+    }
+
+    # refactor your data.frame
+    prop_df <- prop_df %>%
+        dplyr::mutate(CellType = factor(CellType, levels = ct_order))
+
+    prop_df <- prop_df %>%
+        dplyr::mutate(
+            Individual = factor(Individual, levels = order_inds)
+        )
+
+    # remove potential NAs
+    prop_df <- prop_df[which(!is.na(prop_df$Individual)),]
+
+    if(is.null(color_vec)){
+        p <- ggplot(prop_df, aes(
+            y    = Individual,
+            x    = pct,
+            fill = CellType
+        )) +
+            geom_col(
+                width  = width,
+                colour = "black",   # border color between bars
+                linewidth   = linewidth       # border thickness
+            ) +
+            scale_x_continuous(
+                expand = c(0,0),
+                labels = function(x) paste0(x, "%")
+            ) +
+            labs(
+                x    = "Percentage of cells (%)",
+                y    = "Individual",
+                fill = "Cell type"
+            ) +
+            theme_minimal(base_size = 12) +
+            theme(
+                axis.text.y        = element_blank(),
+                axis.ticks.y       = element_blank(),
+                panel.grid.major.y = element_blank(),
+                panel.grid.minor   = element_blank()
+            )+ggtitle(title)
+
+    }else{
+        p <- ggplot(prop_df, aes(
+            y    = Individual,
+            x    = pct,
+            fill = CellType
+        )) +
+            geom_col(
+                width  = width,
+                colour = "black",   # border color between bars
+                linewidth   = linewidth       # border thickness
+            ) +
+            scale_x_continuous(
+                expand = c(0,0),
+                labels = function(x) paste0(x, "%")
+            ) +
+            scale_fill_manual(values = my_cols) +
+            labs(
+                x    = "Percentage of cells (%)",
+                y    = "Individual",
+                fill = "Cell type"
+            ) +
+            theme_minimal(base_size = 12) +
+            theme(
+                axis.text.y        = element_blank(),
+                axis.ticks.y       = element_blank(),
+                panel.grid.major.y = element_blank(),
+                panel.grid.minor   = element_blank()
+            )+ggtitle(title)
+    }
+
+    return(p)
+}

@@ -192,17 +192,16 @@ rowData(simu_sce) <- rowData(example_sce)
 The simulated data can be visualized using a UMAP plot as follows.
 
 ```{r}
-source("/home/ycen/proj/scEQTLsim/tutorial/plot_reduceddim_pop.R")
-
 logcounts(simu_sce) <- log1p(counts(simu_sce))
 set.seed(123)
-compare_figure <- plot_reduceddim_pop(ref_sce = example_sce, 
-                                      sce_list = list(simu_sce), 
-                                      name_vec = c("Reference", "scDesignPop"),
-                                      assay_use = "logcounts", 
-                                      if_plot = TRUE, 
-                                      color_by = "cell_type", 
-                                      n_pc = 10)
+compare_figure <- scDesignPop::plotReducedDimPop(
+    ref_sce = example_sce,
+    sce_list = list(simu_sce), 
+    name_vec = c("Reference", "scDesignPop"),
+    assay_use = "logcounts", 
+    if_plot = TRUE, 
+    color_by = "cell_type", point_size = 1,
+    n_pc = 30)
 plot(compare_figure$p_umap)
 ```
 

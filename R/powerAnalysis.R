@@ -4,7 +4,8 @@
 #' @param method a character object specifying the method that will be analyzed for power.
 #' (Options: nb,poisson,gaussian,pseudoBulkLinear).
 #' @param snpid a character object contains snpid.
-#' @param type_specific a character object contains the name of the covariate that the analysis is specific on.
+#' @param cellstate_colname a string scalar specifying the cell state variable
+#'     The default is "cell_type".
 #'
 #' @return a stats::formula object for power analysis in each specified type.
 #' @export
@@ -14,21 +15,21 @@
 constructPAFormula <- function(fm,
                                method=c("nb","poisson","gaussian","pseudoBulkLinear"),
                                snpid=NULL,
-                               type_specific=NULL){
+                               cellstate_colname=NULL){
   # checks
   method = match.arg(method)
   stopifnot("snpid is not included in the formula. Please check input!" =
                 (stringr::str_detect(as.character(fm)[3],snpid)))
-  stopifnot("type_specific is not included in the formula. Please check input!" =
-                (stringr::str_detect(as.character(fm)[3],type_specific)))
+  stopifnot("cellstate_colname is not included in the formula. Please check input!" =
+                (stringr::str_detect(as.character(fm)[3],cellstate_colname)))
 
   # model formula
   fm <- as.character(fm)
   # separate all terms from the rightside of the formula
   fm_rs <- fm[3]
   fm_rspart <- unlist(stringr::str_split(fm_rs,pattern = " \\+ "))
-  # remove all effects related to the type_specific parameter
-  fm_rspart1 <- fm_rspart[!stringr::str_detect(fm_rspart,type_specific)]
+  # remove all effects related to the cellstate_colname parameter
+  fm_rspart1 <- fm_rspart[!stringr::str_detect(fm_rspart,cellstate_colname)]
   # remove all genotype effects
   fm_rspart2 <- fm_rspart1[!stringr::str_detect(fm_rspart1,"`")]
   # add specified snp's genotype effect
@@ -60,6 +61,8 @@ constructPAFormula <- function(fm,
 #' @param method a character object specifying the method that will be analyzed for power.
 #' (Options: nb,poisson,gaussian,pseudoBulkLinear).
 #' @param snpid a character object contains snpid.
+#' @param indiv_colname a string scalar of the sample ID variable in cell covariate
+#'     of \code{marginal_list[[geneid]]$frame}. The default is "indiv".
 #'
 #' @return a fitted stats::model object.
 #' @export
@@ -70,7 +73,8 @@ fitPAModel <- function(df,
                        model_formula,
                        idx,
                        method=c("nb","poisson","gaussian","pseudoBulkLinear"),
-                       snpid) {
+                       snpid,
+                       indiv_colname) {
   # checks
   method = match.arg(method)
   stopifnot("snpid is not included in the formula. Please check input!" =
@@ -187,7 +191,7 @@ fitPAModel <- function(df,
 
   }else if (method=="pseudoBulkLinear"){
       # generate pseudo-bulk
-      df <- df %>% dplyr::group_by(!!rlang::sym("indiv")) %>%
+      df <- df %>% dplyr::group_by(!!rlang::sym(indiv_colname)) %>%
           dplyr::mutate("response"=sum(!!rlang::sym("response"))) %>%
           dplyr::distinct()
 
@@ -237,7 +241,11 @@ fitPAModel <- function(df,
 #' @param snpid a character object contains snpid.
 #' @param nindiv a numeric value showing the number of individuals that user wants to simulate.
 #' @param ncell a numeric value showing the number of cells per each individual that user wants to simulate.
-#' @param type_specific a character object contains the name of the covariate that the analysis is specific on.
+#' @param cellstate_colname a string scalar specifying the cell state variable in
+#'     \code{df_sel}.
+#'     The default is "cell_type".
+#' @param indiv_colname a string scalar of the sample ID variable in cell covariate
+#'     of \code{marginal_list[[geneid]]$frame}. The default is "indiv".
 #'
 #' @return a new data frame contains the design matrix with simulated response.
 #' @export
@@ -251,7 +259,8 @@ simulatePADesignMatrix <- function(fit,
                                    snpid,
                                    nindiv,
                                    ncell,
-                                   type_specific){
+                                   cellstate_colname,
+                                   indiv_colname){
     # checks
     stopifnot("nindiv_total doesn't contain three numbers of individuals for the three genotypes. Please check input!" =
                   (length(nindiv_total) == 3))
@@ -265,8 +274,8 @@ simulatePADesignMatrix <- function(fit,
 
     # extract genotypes
     geno <- df_sel[,snpid]
-    names(geno) <- df_sel$indiv
-    geno <- geno[as.character(unique(df_sel$indiv))] # bug fixed for indexing
+    names(geno) <- df_sel[,indiv_colname]
+    geno <- geno[as.character(unique(df_sel[,indiv_colname]))] # bug fixed for indexing
     geno0 <- geno[which(geno==0)]
     geno1 <- geno[which(geno==1)]
     geno2 <- geno[which(geno==2)]
@@ -278,8 +287,8 @@ simulatePADesignMatrix <- function(fit,
         rand_indiv <- c(sample(names(geno0),nindiv_total[1],replace = T),
                         sample(names(geno1),nindiv_total[2],replace = T),
                         sample(names(geno2),nindiv_total[3],replace = T))
-        df_tmp <- df_sel[which(df_sel$indiv%in%rand_indiv),]
-        df_tmp <- df_tmp[,setdiff(colnames(df_tmp),c("response","indiv"))]
+        df_tmp <- df_sel[which(df_sel[,indiv_colname]%in%rand_indiv),]
+        df_tmp <- df_tmp[,setdiff(colnames(df_tmp),c("response",indiv_colname))]
         if(length(unique(df_tmp))>=length(colnames(df_tmp))){
             flag1=T
         }
@@ -289,14 +298,15 @@ simulatePADesignMatrix <- function(fit,
     flag2=F
     while(flag2==F){
         rand_cellindex <- lapply(rand_indiv,function(indiv){
-            return(sample(x = rep(which(df_sel$indiv==indiv),2),size = ncell,replace = T))
+            return(sample(x = rep(which(df_sel[,indiv_colname]==indiv),2),
+                          size = ncell,replace = T))
         }) # in case only one cells, causing program truffles
 
         # construct new covariates data with new individuals
         df_news <- do.call(rbind,lapply(1:length(rand_cellindex),function(n){
             cellindex <- rand_cellindex[[n]]
             df_new <- df_sel[cellindex,]
-            df_new$indiv <- paste0("NewIndiv",n)
+            df_new[,indiv_colname] <- paste0("NewIndiv",n)
             return(df_new)
         }))
         if(model=="nb" || model=="poisson"){
@@ -308,16 +318,17 @@ simulatePADesignMatrix <- function(fit,
         }
     }
 
-    df_news$indiv=factor(df_news$indiv,
-                         levels=paste0("NewIndiv",1:length(rand_cellindex)))
+    df_news[,indiv_colname]=factor(df_news[,indiv_colname],
+                                   levels=paste0("NewIndiv",
+                                                 1:length(rand_cellindex)))
 
     # use the following line to generate mean estimates without random effect
-    colnames(df_news)[colnames(df_news)=="type"] <- type_specific
+    colnames(df_news)[colnames(df_news)=="type"] <- cellstate_colname
     response_new <- stats::predict(fit,type = "response",newdata=df_news,
                                    allow.new.levels = TRUE)
     # manually add random effect
     # simulate
-    rand_sd <- sqrt(as.numeric(summary(fit)$varcor$cond$indiv))
+    rand_sd <- sqrt(as.numeric(summary(fit)$varcor$cond[indiv_colname]))
     newindiv_effect <- stats::rnorm(nindiv,mean = 0,sd = rand_sd)
 
     if(model=="gaussian"){
@@ -337,15 +348,19 @@ simulatePADesignMatrix <- function(fit,
 }
 
 
-#' Perform a power analysis
+#' Perform a cell-type-specific power analysis on eQTL effects
 #'
 #' @param marginal_list the output of function fitMarginalPop().
 #' @param marginal_model a character showing the model types of the full marginal model.
 #' @param refit_formula the formula used to refit the marginal full model if user wants to. Default is null.
 #' @param geneid a character object contains geneid.
 #' @param snpid a character object contains snpid.
-#' @param type_specific a character object contains the name of the covariate that the analysis is specific on.
-#' @param type_vector a vector object contains the specified type/level names of the covariate.
+#' @param cellstate_colname a string scalar specifying the cell state variable in
+#'     \code{marginal_list[[geneid]]$frame}.
+#'     The default is "cell_type".
+#' @param cellstate_vector a vector object specifies the cell type that will be tested
+#' @param indiv_colname a string scalar of the sample ID variable in cell covariate
+#'     of \code{marginal_list[[geneid]]$frame}. The default is "indiv".
 #' @param method a character object specifying the method that will be analyzed for power.
 #' (Options: nb,poisson,gaussian,pseudoBulkLinear).
 #' @param nindivs a vector of numeric values showing the numbers of individuals that user wants to simulate.
@@ -369,12 +384,13 @@ simulatePADesignMatrix <- function(fit,
 #' @examples
 #' NULL
 powerAnalysis <- function(marginal_list,
-                          marginal_model,
+                          marginal_model = NULL,
                           refit_formula = NULL,
-                          geneid,
-                          snpid,
-                          type_specific,
-                          type_vector,
+                          geneid = NULL,
+                          snpid = NULL,
+                          cellstate_colname = "cell_type",
+                          cellstate_vector = NULL,
+                          indiv_colname = "indiv",
                           method = c("nb","poisson","gaussian","pseudoBulkLinear"),
                           nindivs = NULL,
                           ncells = NULL,
@@ -391,10 +407,12 @@ powerAnalysis <- function(marginal_list,
                 (geneid%in%names(marginal_list)))
   stopifnot("snpid is not included in the selected gene's marginal model. Please check input!" =
                  (snpid%in%colnames(marginal_list[[geneid]]$fit$frame)))
-  stopifnot("type_specific is not included in the selected gene's marginal model. Please check input!" =
-                (type_specific%in%colnames(marginal_list[[geneid]]$fit$frame)))
-  stopifnot("type_vector is not included in the selected gene's marginal model. Please check input!" =
-                (type_vector%in%unique(marginal_list[[geneid]]$fit$frame[,type_specific])))
+  stopifnot("cellstate_colname is not included in the selected gene's marginal model. Please check input!" =
+                (cellstate_colname%in%colnames(marginal_list[[geneid]]$fit$frame)))
+  stopifnot("cellstate_vector is not included in the selected gene's marginal model. Please check input!" =
+                (cellstate_vector%in%unique(marginal_list[[geneid]]$fit$frame[,cellstate_colname])))
+  stopifnot("indiv_colname is not included in the selected gene's marginal model. Please check input!" =
+                (indiv_colname%in%colnames(marginal_list[[geneid]]$fit$frame)))
   method = match.arg(method)
   stopifnot("alpha input is not between 0 and 1. Please check input!" =
                 (alpha >=0 && alpha <=1))
@@ -459,14 +477,17 @@ powerAnalysis <- function(marginal_list,
     }
 
     # build the formula using snpid
-    model_formula <- constructPAFormula(fm=refit_formula,method = method,snpid = snpid,type_specific = type_specific)
+    model_formula <- constructPAFormula(fm=refit_formula,method = method,snpid = snpid,cellstate_colname = cellstate_colname)
 
   }else{
     fit <- marginal_list[[geneid]]$fit
     fm <- marginal_list[[geneid]][["fit"]][["call"]][["formula"]]
 
     # build the formula using snpid
-    model_formula <- constructPAFormula(fm=fm,method = method,snpid = snpid,type_specific = type_specific)
+    model_formula <- constructPAFormula(fm = fm,
+                                        method = method,
+                                        snpid = snpid,
+                                        cellstate_colname = cellstate_colname)
   }
 
   # null model
@@ -479,20 +500,20 @@ powerAnalysis <- function(marginal_list,
 
   # main
   res <- list()
-  for(type in type_vector){
+  for(type in cellstate_vector){
 
     #TODO: construct the PAModel based on user specified input
 
-    message(paste0(type_specific,": ",type))
+    message(paste0(cellstate_colname,": ",type))
 
     # collect intercept and slope of genotype effects for celltypes
-    # TODO: for other type_specific order
-    ct_index <- 1:length(type_vector)
+    # TODO: for other cellstate_colname order
+    ct_index <- 1:length(cellstate_vector)
     # d_index <- ct_index[length(ct_index)]+1
     # a_index <- d_index[length(d_index)]+1
     snp_cov <-glmmTMB::fixef(fit)$cond[snp_index]
 
-    colnames(df)[colnames(df)==type_specific] <- "type"
+    colnames(df)[colnames(df)==cellstate_colname] <- "type"
     if(which(levels(df$type)==type)==1){
       intercept <- as.numeric(glmmTMB::fixef(fit)$cond[1])
     }else{
@@ -500,8 +521,8 @@ powerAnalysis <- function(marginal_list,
     }
     if(which(levels(df$type)==type)==1){
       slope <- as.numeric(snp_cov[1])
-    }else if(mean(stringr::str_detect(names(snp_cov),paste0(type_specific,type))) > 0){
-      slope <- sum(snp_cov[1],snp_cov[which(stringr::str_detect(names(snp_cov),paste0(type_specific,type)))])
+    }else if(mean(stringr::str_detect(names(snp_cov),paste0(cellstate_colname,type))) > 0){
+      slope <- sum(snp_cov[1],snp_cov[which(stringr::str_detect(names(snp_cov),paste0(cellstate_colname,type)))])
     }else{
       slope <- as.numeric(snp_cov[1])
     }
@@ -522,8 +543,8 @@ powerAnalysis <- function(marginal_list,
       # power analysis
       # control MAFs
       geno <- df_sel[,snpid]
-      names(geno) <- df_sel$indiv
-      geno <- geno[as.character(unique(df_sel$indiv))] # bug fixed for index
+      names(geno) <- df_sel[,indiv_colname]
+      geno <- geno[as.character(unique(df_sel[,indiv_colname]))] # bug fixed for index
       geno0 <- geno[which(geno==0)]
       geno1 <- geno[which(geno==1)]
       geno2 <- geno[which(geno==2)]
@@ -556,7 +577,8 @@ powerAnalysis <- function(marginal_list,
                                           snpid = snpid,
                                           nindiv = nindiv,
                                           ncell = ncell,
-                                          type_specific = type_specific)
+                                          cellstate_colname = cellstate_colname,
+                                          indiv_colname = indiv_colname)
         ######
         # H0 data
         df0_news <- simulatePADesignMatrix(fit = fit0,
@@ -566,14 +588,23 @@ powerAnalysis <- function(marginal_list,
                                            snpid = snpid,
                                            nindiv = nindiv,
                                            ncell = ncell,
-                                           type_specific = type_specific)
+                                           cellstate_colname = cellstate_colname,
+                                           indiv_colname = indiv_colname)
 
         # refit on H0 and H1 data
         # record the effect coefficients
-        stat1 <- fitPAModel(df = df_news,model_formula = model_formula,idx = x,
-                            method = method,snpid = snpid)
-        stat0 <- fitPAModel(df = df0_news,model_formula = model_formula,idx = x,
-                            method = method,snpid = snpid)
+        stat1 <- fitPAModel(df = df_news,
+                            model_formula = model_formula,
+                            idx = x,
+                            method = method,
+                            snpid = snpid,
+                            indiv_colname = indiv_colname)
+        stat0 <- fitPAModel(df = df0_news,
+                            model_formula = model_formula,
+                            idx = x,
+                            method = method,
+                            snpid = snpid,
+                            indiv_colname = indiv_colname)
 
         return(c(as.numeric(stat1),as.numeric(stat0)))
       },mc.cores = ncores))
@@ -605,14 +636,14 @@ powerAnalysis <- function(marginal_list,
     res_tmp <- list(intercept = intercept,slope = slope,powers=powers,data=output)
     res <- c(res,list(res_tmp))
   }
-  names(res) <- type_vector
+  names(res) <- cellstate_vector
   return(res)
 }
 
 #' Calculate a bootstrap confidence interval for each power
 #'
 #' @param res the output of function powerAnalysis()
-#' @param types a vector object contains the specified type/level names of the covariate.
+#' @param cellstate_vector a vector object specifies the cell type that will be tested
 #' @param nindivs a vector of numeric values showing the numbers of individuals that user wants to simulate.
 #' @param ncells a vector of numeric values showing the numbers of cells per each individual that user wants to simulate.
 #' @param snp_number the number of SNPs for multiple testing correction.
@@ -627,7 +658,7 @@ powerAnalysis <- function(marginal_list,
 #' @examples
 #' NULL
 powerCICalculation <- function(res,
-                               types,
+                               cellstate_vector,
                                nindivs,
                                ncells,
                                snp_number=10,
@@ -636,8 +667,8 @@ powerCICalculation <- function(res,
                                nsim=1000,
                                conf=0.05){
   # check
-  stopifnot("types is included in the res object. Please check input!" =
-                 (types %in% names(res)))
+  stopifnot("cellstate_vector is included in the res object. Please check input!" =
+                 (cellstate_vector %in% names(res)))
   stopifnot("nindivs input is not a vector of numeric values. Please check input!" =
                 (class(nindivs)=="numeric"))
   stopifnot("nindivs input is not a vector of integer values. Please check input!" =
@@ -656,7 +687,7 @@ powerCICalculation <- function(res,
                 (conf >=0 && conf <=1))
 
   # set.seed(111)
-  res_new <- pbapply::pblapply(types,function(type){
+  res_new <- pbapply::pblapply(cellstate_vector,function(type){
       data <- res[[type]]$data
       intercept <- res[[type]]$intercept
       slope <- res[[type]]$slope
@@ -717,8 +748,12 @@ powerCICalculation <- function(res,
 #' @param refit_formula the formula used to refit the marginal full model if user wants to. Default is null.
 #' @param geneid a character object contains geneid.
 #' @param snpid a character object contains snpid.
-#' @param type_specific a character object contains the name of the covariate that the analysis is specific on.
-#' @param type_vector a vector object contains the specified type/level names of the covariate.
+#' @param cellstate_colname a string scalar specifying the cell state variable in
+#'     \code{marginal_list[[geneid]]$frame}.
+#'     The default is "cell_type".
+#' @param cellstate_vector a vector object specifies the cell type that will be tested
+#' @param indiv_colname a string scalar of the sample ID variable in cell covariate
+#'     of \code{marginal_list[[geneid]]$frame}. The default is "indiv".
 #' @param methods a vector of character objects specifying the methods that will be analyzed for power.
 #' (Options: nb,poisson,gaussian,pseudoBulkLinear).
 #' @param nindivs a vector of numeric values showing the numbers of individuals that user wants to simulate.
@@ -740,13 +775,14 @@ powerCICalculation <- function(res,
 #' @examples
 #' NULL
 runPowerAnalysis <- function(marginal_list,
-                             marginal_model,
+                             marginal_model = "nb",
                              refit_formula = NULL,
-                             geneid,
-                             snpid,
-                             type_specific,
-                             type_vector,
-                             methods,
+                             geneid = NULL,
+                             snpid = NULL,
+                             cellstate_colname = "cell_type",
+                             cellstate_vector = NULL,
+                             indiv_colname = "indiv",
+                             methods = NULL,
                              nindivs = NULL,
                              ncells = NULL,
                              nPool = NULL,
@@ -767,8 +803,9 @@ runPowerAnalysis <- function(marginal_list,
                              refit_formula = refit_formula,
                              geneid = geneid,
                              snpid = snpid,
-                             type_specific = type_specific,
-                             type_vector = type_vector,
+                             cellstate_colname = cellstate_colname,
+                             cellstate_vector = cellstate_vector,
+                             indiv_colname = indiv_colname,
                              method = method,
                              nindivs = nindivs,
                              ncells = ncells,
@@ -782,7 +819,7 @@ runPowerAnalysis <- function(marginal_list,
 
         message(paste("Calculating confidence intervals for method",method))
         res_CI <- powerCICalculation(res = res,
-                                     types = type_vector,
+                                     cellstate_vector = cellstate_vector,
                                      nindivs = nindivs,
                                      ncells = ncells,
                                      snp_number = snp_number,
@@ -794,12 +831,12 @@ runPowerAnalysis <- function(marginal_list,
         power_data_CI <- res_CI[[1]]$powers
 
         if(length(res_CI)>1){
-            for(i in 1:(length(type_vector)-1)){
+            for(i in 1:(length(cellstate_vector)-1)){
                 power_data_CI <- rbind(power_data_CI,res_CI[[i+1]]$powers)
             }
         }
 
-        power_data_CI$celltype <- c(rep(type_vector,each=length(res_CI[[1]]$powers[,1])))
+        power_data_CI$celltype <- c(rep(cellstate_vector,each=length(res_CI[[1]]$powers[,1])))
         power_data_CI$ncell <- factor(power_data_CI$ncell)
 
         if(method=="nb"){
@@ -831,7 +868,7 @@ runPowerAnalysis <- function(marginal_list,
 #' Visualize the power analysis result
 #'
 #' @param power_result a data frame contains power analysis result in different parameter settings.
-#' @param celltypes a vector of cell types that will be selected for visualization.
+#' @param cellstate_vector a vector of cell types that will be selected for visualization.
 #' @param x_axis a character that specifies the x axis. Default is the number of individuals.
 #' @param y_axis a character that specifies the y axis. Default is the number of cells per individual.
 #' @param col_group a character that specifies the color groups. Default is the eQTL model.
@@ -845,19 +882,19 @@ runPowerAnalysis <- function(marginal_list,
 #' @examples
 #' NULL
 visualizePowerResult <- function(power_result,
-                                 celltypes,
+                                 cellstate_vector,
                                  x_axis="nindiv",
                                  y_axis="ncell",
                                  col_group="method",
                                  geneid,
                                  snpid){
     # select cell types
-    power_result <- power_result[which(power_result$celltype%in%celltypes),]
+    power_result <- power_result[which(power_result$celltype%in%cellstate_vector),]
     # add slope
     power_result$celltype <- as.character(power_result$celltype)
 
-    for(i in 1:length(celltypes)){
-        celltype = celltypes[i]
+    for(i in 1:length(cellstate_vector)){
+        celltype = cellstate_vector[i]
         power_result$celltype[which(power_result$celltype==celltype)] <- paste0(celltype,
                                                                                 " (ES:",
                                                                                 round(unique(as.numeric(power_result[which(power_result$celltype==celltype),"slope"])),3),

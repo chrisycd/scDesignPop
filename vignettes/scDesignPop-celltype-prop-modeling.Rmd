@@ -1,0 +1,121 @@
+---
+title: "Model cell type proportions for new individuals"
+author: 
+  - name: Chris Dong
+    affiliation:
+    - Department of Statistics and Data Science, University of California, Los Angeles
+    email: cycd@g.ucla.edu
+  - name: Yihui Cen
+    affiliation:
+    - Department of Computational Medicine, University of California, Los Angeles
+    email: yihuicen@g.ucla.edu
+output: 
+  BiocStyle::html_document:
+    self_contained: yes
+    toc: true
+    toc_float: true
+    toc_depth: 2
+    code_folding: show
+date: "`r doc_date()`"
+package: "`r pkg_ver('scDesignPop')`"
+vignette: >
+  %\VignetteIndexEntry{scDesignPop-celltypepropmodel-vignette}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}  
+---
+
+```{css, echo=FALSE}
+pre {
+  white-space: pre !important;
+  overflow-x: scroll !important;
+}
+```
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+    warning = FALSE,
+    collapse = TRUE,
+    comment = "#>",
+    crop = NULL ## Related to https://stat.ethz.ch/pipermail/bioc-devel/2020-April/016656.html
+)
+tools::R_user_dir("scDesignPop", which="cache")
+```
+
+## Introduction
+
+scDesignPop provide modeling of the cell type proportions for generating new cell type proportions for new simulated individuals. The default covariates used are the PCs of the genotypes, which we will show in the following tutorial.
+
+## Library and data preparation
+
+Here, we load the `example_sce` data with both the genotype PCs of the training `example_sce` data and those of the new simulated individuals.
+
+```{r}
+load("/home/ycen/proj/scEQTLsim/data/tutorials/example_sce.rda")
+load("/home/ycen/proj/scEQTLsim/data/tutorials/example_genoPCs.rda")
+othercov_new <- dplyr::select(genopc_new, indiv)
+
+head(genopc_train)
+head(genopc_new)
+```
+
+## Celltype proportion modeling
+
+We model the cell type proportions with a Multinomial model using genotype PCs as covariates. We also model the total cell number per individuals with a log-normal distribution. Here, `indiv_colname` is used to specify the shared column name for individual ids in both the `colData(example_sce)` and `genopc_train`. We use `cellstate_colname` to specify the column name for the cell states or cell types in `colData(example_sce)`.
+
+```{r}
+set.seed(123)
+simu_cellprop_list <- scDesignPop::simuCellProportion(
+  sce = example_sce,
+  genoPC = genopc_train,
+  new_genoPC = genopc_new,
+  new_othercov = othercov_new,
+  PCnum = 30L,
+  cov_colnames = NULL,
+  indiv_colname = "indiv",
+  cellstate_colname = "cell_type",
+  cn_model_family = "lognormal",    # cell number model
+  cp_model_family = "MN",  # cell proportion model
+  cp_intercept = TRUE
+)
+```
+
+## Showing the covariates for new individuals
+
+The covariates including the cell types for the new simulated individuals will be contained in the following data frame, which can be given to the `new_covariate` parameter in function `constructDataPop()`.
+
+```{r}
+head(simu_cellprop_list[["simu_cov"]])
+```
+
+## Visualizing the cell type proportion structures
+
+By specifying the colors for each cell type, we can visualize the cell type proportion structure between the original data and simulated data after ordering individuals with the cell number of the first cell type. If no colors are specified for cell types, the function will still plot the data using the R default colors and ordering individuals based on the cell number of the first cell type after factorizing the cell types of the given data. 
+
+```{r}
+color_vec <- c(
+  "cd4nc"   = "#5E3C99",
+  "bmem"    = "#FFEDA0",
+  "monoc"   = "#FD8D3C",
+  "mononc"  = "#FC4E2A"
+)
+
+
+p1 <- scDesignPop::plotCellProp(colData(example_sce), 
+                   title = "Original 40 individuals",
+                   color_vec = color_vec, 
+                   cellstate_colname = "cell_type",
+                   indiv_colname = "indiv",
+                   width = 1, linewidth = 0.02)
+
+p2 <- scDesignPop::plotCellProp(simu_cellprop_list[["simu_cov"]], 
+                   title = "Simulated 982 individuals",
+                   color_vec = color_vec, 
+                   cellstate_colname = "cell_type",
+                   indiv_colname = "indiv",
+                   width = 1, linewidth = 0.01)
+
+
+cowplot::plot_grid(p1, p2)
+```
+
+
