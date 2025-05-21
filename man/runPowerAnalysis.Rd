@@ -6,13 +6,14 @@
 \usage{
 runPowerAnalysis(
   marginal_list,
-  marginal_model,
+  marginal_model = "nb",
   refit_formula = NULL,
-  geneid,
-  snpid,
-  type_specific,
-  type_vector,
-  methods,
+  geneid = NULL,
+  snpid = NULL,
+  cellstate_colname = "cell_type",
+  cellstate_vector = NULL,
+  indiv_colname = "indiv",
+  methods = NULL,
   nindivs = NULL,
   ncells = NULL,
   nPool = NULL,
@@ -38,9 +39,14 @@ runPowerAnalysis(
 
 \item{snpid}{a character object contains snpid.}
 
-\item{type_specific}{a character object contains the name of the covariate that the analysis is specific on.}
+\item{cellstate_colname}{a string scalar specifying the cell state variable in
+\code{marginal_list[[geneid]]$frame}.
+The default is "cell_type".}
 
-\item{type_vector}{a vector object contains the specified type/level names of the covariate.}
+\item{cellstate_vector}{a vector object specifies the cell type that will be tested}
+
+\item{indiv_colname}{a string scalar of the sample ID variable in cell covariate
+of \code{marginal_list[[geneid]]$frame}. The default is "indiv".}
 
 \item{methods}{a vector of character objects specifying the methods that will be analyzed for power.
 (Options: nb,poisson,gaussian,pseudoBulkLinear).}
