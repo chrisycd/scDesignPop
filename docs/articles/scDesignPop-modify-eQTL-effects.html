@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">scDesignPop</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.0.9004</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.0.9005</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,7 +34,8 @@
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/scDesignPop-modify-eQTL-effects.html">Modify eQTL effect for eGenes / non-eGenes</a></li>
+<li><a class="dropdown-item" href="../articles/scDesignPop-celltype-prop-modeling.html">Model cell type proportions for new individuals</a></li>
+    <li><a class="dropdown-item" href="../articles/scDesignPop-modify-eQTL-effects.html">Modify eQTL effect for eGenes / non-eGenes</a></li>
     <li><a class="dropdown-item" href="../articles/scDesignPop-power-analysis-fitted.html">Power analysis based on a fitted scDesignPop marginal model</a></li>
     <li><a class="dropdown-item" href="../articles/scDesignPop-power-analysis-selected.html">Power analysis for selected genes</a></li>
   </ul>
@@ -72,7 +73,7 @@ Cen</h4>
 Los Angeles<br><a class="author_email" href="mailto:#"></a><a href="mailto:yihuicen@g.ucla.edu" class="email">yihuicen@g.ucla.edu</a>
       </address>
                   
-            <h4 data-toc-skip class="date">3 May 2025</h4>
+            <h4 data-toc-skip class="date">21 May 2025</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/chrisycd/scDesignPop/blob/HEAD/vignettes/scDesignPop-modify-eQTL-effects.Rmd"><code>vignettes/scDesignPop-modify-eQTL-effects.Rmd</code></a></small>
       <div class="d-none name"><code>scDesignPop-modify-eQTL-effects.Rmd</code></div>
@@ -205,12 +206,12 @@ example <code>eqtlgeno</code> dataframe is given below.</p>
 <span>  verbose <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  debug <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Modifying parameters for ENSG00000163221 in cd4nc celltype...</span></span>
-<span><span class="co">#&gt; celltype effect: 0.07560 ===&gt; new value: -0.96276</span></span>
-<span><span class="co">#&gt; interaction effect: -0.56622 ===&gt; new value: -0.22101</span></span>
+<span><span class="co">#&gt; celltype effect: -6.44683 ===&gt; new value: -7.33082</span></span>
+<span><span class="co">#&gt; interaction effect: -0.16812 ===&gt; new value: 0.02273</span></span>
 <span><span class="co">#&gt; &lt;&lt; Setting conditional means to be negative controls (no eQTL effect) &gt;&gt;</span></span>
-<span><span class="co">#&gt; conditional means at geno 0, 1, 2: 0.01123, 0.00795, 0.00563 ===&gt; new values: 0.00398, 0.00398, 0.00398</span></span>
-<span><span class="co">#&gt; eQTL slope between geno 1 and 0: -0.00328 ===&gt; new value: 0.00000</span></span>
-<span><span class="co">#&gt; Phi parameter: 1.19236 ===&gt; new value: 0.59618</span></span></code></pre></div>
+<span><span class="co">#&gt; conditional means at geno 0, 1, 2: 0.00963, 0.00796, 0.00657 ===&gt; new values: 0.00398, 0.00398, 0.00398</span></span>
+<span><span class="co">#&gt; eQTL slope between geno 1 and 0: -0.00167 ===&gt; new value: 0.00000</span></span>
+<span><span class="co">#&gt; Phi parameter: 1.14919 ===&gt; new value: 0.57459</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="step-2-generate-simulated-data-with-modified-marginal-model">Step 2: generate simulated data with modified marginal model<a class="anchor" aria-label="anchor" href="#step-2-generate-simulated-data-with-modified-marginal-model"></a>

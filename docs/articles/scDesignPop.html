@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">scDesignPop</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.0.9004</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.0.9005</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,7 +34,8 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/scDesignPop-modify-eQTL-effects.html">Modify eQTL effect for eGenes / non-eGenes</a></li>
+<li><a class="dropdown-item" href="../articles/scDesignPop-celltype-prop-modeling.html">Model cell type proportions for new individuals</a></li>
+    <li><a class="dropdown-item" href="../articles/scDesignPop-modify-eQTL-effects.html">Modify eQTL effect for eGenes / non-eGenes</a></li>
     <li><a class="dropdown-item" href="../articles/scDesignPop-power-analysis-fitted.html">Power analysis based on a fitted scDesignPop marginal model</a></li>
     <li><a class="dropdown-item" href="../articles/scDesignPop-power-analysis-selected.html">Power analysis for selected genes</a></li>
   </ul>
@@ -72,7 +73,7 @@ Cen</h4>
 Los Angeles<br><a class="author_email" href="mailto:#"></a><a href="mailto:yihuicen@g.ucla.edu" class="email">yihuicen@g.ucla.edu</a>
       </address>
                   
-            <h4 data-toc-skip class="date">3 May 2025</h4>
+            <h4 data-toc-skip class="date">21 May 2025</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/chrisycd/scDesignPop/blob/HEAD/vignettes/scDesignPop.Rmd"><code>vignettes/scDesignPop.Rmd</code></a></small>
       <div class="d-none name"><code>scDesignPop.Rmd</code></div>
@@ -241,47 +242,27 @@ parameters using the <code>extractParaPop</code> function.</p>
 <p>The simulated data can be visualized using a UMAP plot as
 follows.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/source.html" class="external-link">source</a></span><span class="op">(</span><span class="st">"/home/ycen/proj/scEQTLsim/tutorial/plot_reduceddim_pop.R"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/pkg/SingleCellExperiment/man/assays.html" class="external-link">logcounts</a></span><span class="op">(</span><span class="va">simu_sce</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log1p</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/BiocGenerics/man/dge.html" class="external-link">counts</a></span><span class="op">(</span><span class="va">simu_sce</span><span class="op">)</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/SingleCellExperiment/man/assays.html" class="external-link">logcounts</a></span><span class="op">(</span><span class="va">simu_sce</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log1p</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/BiocGenerics/man/dge.html" class="external-link">counts</a></span><span class="op">(</span><span class="va">simu_sce</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">123</span><span class="op">)</span></span>
-<span><span class="va">compare_figure</span> <span class="op">&lt;-</span> <span class="fu">plot_reduceddim_pop</span><span class="op">(</span>ref_sce <span class="op">=</span> <span class="va">example_sce</span>, </span>
-<span>                                      sce_list <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">simu_sce</span><span class="op">)</span>, </span>
-<span>                                      name_vec <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Reference"</span>, <span class="st">"scDesignPop"</span><span class="op">)</span>,</span>
-<span>                                      assay_use <span class="op">=</span> <span class="st">"logcounts"</span>, </span>
-<span>                                      if_plot <span class="op">=</span> <span class="cn">TRUE</span>, </span>
-<span>                                      color_by <span class="op">=</span> <span class="st">"cell_type"</span>, </span>
-<span>                                      n_pc <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Warning: Using an external vector in selections was deprecated in tidyselect 1.1.0.</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Please use `all_of()` or `any_of()` instead.</span></span>
-<span><span class="co">#&gt;   # Was:</span></span>
-<span><span class="co">#&gt;   data %&gt;% select(color_by)</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt;   # Now:</span></span>
-<span><span class="co">#&gt;   data %&gt;% select(all_of(color_by))</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; See &lt;https://tidyselect.r-lib.org/reference/faq-external-vector.html&gt;.</span></span>
-<span><span class="co">#&gt; <span style="color: #555555;">This warning is displayed once every 8 hours.</span></span></span>
-<span><span class="co">#&gt; <span style="color: #555555;">Call `lifecycle::last_lifecycle_warnings()` to see where this warning was</span></span></span>
-<span><span class="co">#&gt; <span style="color: #555555;">generated.</span></span></span>
-<span><span class="co">#&gt; Warning: `aes_string()` was deprecated in ggplot2 3.0.0.</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Please use tidy evaluation idioms with `aes()`.</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> See also `vignette("ggplot2-in-packages")` for more information.</span></span>
-<span><span class="co">#&gt; <span style="color: #555555;">This warning is displayed once every 8 hours.</span></span></span>
-<span><span class="co">#&gt; <span style="color: #555555;">Call `lifecycle::last_lifecycle_warnings()` to see where this warning was</span></span></span>
-<span><span class="co">#&gt; <span style="color: #555555;">generated.</span></span></span></code></pre></div>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">compare_figure</span><span class="op">$</span><span class="va">p_umap</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">compare_figure</span> <span class="op">&lt;-</span> <span class="fu">scDesignPop</span><span class="fu">::</span><span class="fu"><a href="../reference/plotReducedDimPop.html">plotReducedDimPop</a></span><span class="op">(</span></span>
+<span>    ref_sce <span class="op">=</span> <span class="va">example_sce</span>,</span>
+<span>    sce_list <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">simu_sce</span><span class="op">)</span>, </span>
+<span>    name_vec <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Reference"</span>, <span class="st">"scDesignPop"</span><span class="op">)</span>,</span>
+<span>    assay_use <span class="op">=</span> <span class="st">"logcounts"</span>, </span>
+<span>    if_plot <span class="op">=</span> <span class="cn">TRUE</span>, </span>
+<span>    color_by <span class="op">=</span> <span class="st">"cell_type"</span>, point_size <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>    n_pc <span class="op">=</span> <span class="fl">30</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">compare_figure</span><span class="op">$</span><span class="va">p_umap</span><span class="op">)</span></span></code></pre></div>
 <p><img src="scDesignPop_files/figure-html/unnamed-chunk-10-1.png" width="700"></p>
 </div>
 <div class="section level2">
 <h2 id="session-information">Session information<a class="anchor" aria-label="anchor" href="#session-information"></a>
 </h2>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; R version 4.2.3 (2023-03-15)</span></span>
 <span><span class="co">#&gt; Platform: x86_64-pc-linux-gnu (64-bit)</span></span>
-<span><span class="co">#&gt; Running under: Ubuntu 22.04.4 LTS</span></span>
+<span><span class="co">#&gt; Running under: Ubuntu 22.04.5 LTS</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Matrix products: default</span></span>
 <span><span class="co">#&gt; BLAS:   /usr/lib/x86_64-linux-gnu/openblas-pthread/libblas.so.3</span></span>
@@ -306,7 +287,7 @@ follows.</p>
 <span><span class="co">#&gt;  [7] GenomicRanges_1.50.2        GenomeInfoDb_1.34.9        </span></span>
 <span><span class="co">#&gt;  [9] IRanges_2.32.0              S4Vectors_0.36.2           </span></span>
 <span><span class="co">#&gt; [11] BiocGenerics_0.44.0         MatrixGenerics_1.10.0      </span></span>
-<span><span class="co">#&gt; [13] matrixStats_1.3.0           scDesignPop_0.0.0.9004     </span></span>
+<span><span class="co">#&gt; [13] matrixStats_1.3.0           scDesignPop_0.0.0.9005     </span></span>
 <span><span class="co">#&gt; [15] BiocStyle_2.26.0           </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; loaded via a namespace (and not attached):</span></span>
@@ -345,19 +326,18 @@ follows.</p>
 <span><span class="co">#&gt; [65] yaml_2.3.8                MASS_7.3-58.2            </span></span>
 <span><span class="co">#&gt; [67] zlibbioc_1.44.0           grid_4.2.3               </span></span>
 <span><span class="co">#&gt; [69] parallel_4.2.3            ggrepel_0.9.5            </span></span>
-<span><span class="co">#&gt; [71] crayon_1.5.2              lattice_0.22-6           </span></span>
-<span><span class="co">#&gt; [73] beachmat_2.14.2           splines_4.2.3            </span></span>
-<span><span class="co">#&gt; [75] knitr_1.47                pillar_1.9.0             </span></span>
-<span><span class="co">#&gt; [77] boot_1.3-30               codetools_0.2-20         </span></span>
-<span><span class="co">#&gt; [79] ScaledMatrix_1.6.0        glue_1.8.0               </span></span>
-<span><span class="co">#&gt; [81] evaluate_0.24.0           BiocManager_1.30.23      </span></span>
-<span><span class="co">#&gt; [83] nloptr_2.0.3              vctrs_0.6.5              </span></span>
-<span><span class="co">#&gt; [85] gtable_0.3.5              assertthat_0.2.1         </span></span>
-<span><span class="co">#&gt; [87] cachem_1.1.0              xfun_0.52                </span></span>
-<span><span class="co">#&gt; [89] rsvd_1.0.5                ragg_1.3.2               </span></span>
-<span><span class="co">#&gt; [91] viridisLite_0.4.2         tibble_3.2.1             </span></span>
-<span><span class="co">#&gt; [93] pbmcapply_1.5.1           glmmTMB_1.1.9            </span></span>
-<span><span class="co">#&gt; [95] beeswarm_0.4.0</span></span></code></pre></div>
+<span><span class="co">#&gt; [71] lattice_0.22-6            beachmat_2.14.2          </span></span>
+<span><span class="co">#&gt; [73] splines_4.2.3             knitr_1.47               </span></span>
+<span><span class="co">#&gt; [75] pillar_1.9.0              boot_1.3-30              </span></span>
+<span><span class="co">#&gt; [77] codetools_0.2-20          ScaledMatrix_1.6.0       </span></span>
+<span><span class="co">#&gt; [79] glue_1.8.0                evaluate_0.24.0          </span></span>
+<span><span class="co">#&gt; [81] BiocManager_1.30.23       nloptr_2.0.3             </span></span>
+<span><span class="co">#&gt; [83] vctrs_0.6.5               gtable_0.3.5             </span></span>
+<span><span class="co">#&gt; [85] assertthat_0.2.1          cachem_1.1.0             </span></span>
+<span><span class="co">#&gt; [87] xfun_0.52                 rsvd_1.0.5               </span></span>
+<span><span class="co">#&gt; [89] ragg_1.3.2                viridisLite_0.4.2        </span></span>
+<span><span class="co">#&gt; [91] tibble_3.2.1              pbmcapply_1.5.1          </span></span>
+<span><span class="co">#&gt; [93] glmmTMB_1.1.9             beeswarm_0.4.0</span></span></code></pre></div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>
