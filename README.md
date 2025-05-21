@@ -1,4 +1,4 @@
-# scDesignPop
+## scDesignPop
 
 ------------------------------------------------------------------------
 
@@ -42,6 +42,7 @@ For all detailed tutorials, please check the [website](https://chrisycd.github.i
 -   Preprocessing
 
 -   Data simulation
+    -   [Model cell type proportions for new individuals](https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop-celltype-prop-modeling.html)
 
 -   Model alteration
     -   [Modify eQTL effect for eGenes / non-eGenes](https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop-modify-eQTL-effects.html)
