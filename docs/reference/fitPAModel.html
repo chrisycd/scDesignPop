@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">scDesignPop</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.0.9004</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.0.9005</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -19,7 +19,8 @@
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/scDesignPop-modify-eQTL-effects.html">Modify eQTL effect for eGenes / non-eGenes</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/scDesignPop-celltype-prop-modeling.html">Model cell type proportions for new individuals</a></li>
+    <li><a class="dropdown-item" href="../articles/scDesignPop-modify-eQTL-effects.html">Modify eQTL effect for eGenes / non-eGenes</a></li>
     <li><a class="dropdown-item" href="../articles/scDesignPop-power-analysis-fitted.html">Power analysis based on a fitted scDesignPop marginal model</a></li>
     <li><a class="dropdown-item" href="../articles/scDesignPop-power-analysis-selected.html">Power analysis for selected genes</a></li>
   </ul></li>
@@ -50,7 +51,8 @@
 <span>  <span class="va">model_formula</span>,</span>
 <span>  <span class="va">idx</span>,</span>
 <span>  method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nb"</span>, <span class="st">"poisson"</span>, <span class="st">"gaussian"</span>, <span class="st">"pseudoBulkLinear"</span><span class="op">)</span>,</span>
-<span>  <span class="va">snpid</span></span>
+<span>  <span class="va">snpid</span>,</span>
+<span>  <span class="va">indiv_colname</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -77,6 +79,11 @@
 
 <dt id="arg-snpid">snpid<a class="anchor" aria-label="anchor" href="#arg-snpid"></a></dt>
 <dd><p>a character object contains snpid.</p></dd>
+
+
+<dt id="arg-indiv-colname">indiv_colname<a class="anchor" aria-label="anchor" href="#arg-indiv-colname"></a></dt>
+<dd><p>a string scalar of the sample ID variable in cell covariate
+of <code>marginal_list[[geneid]]$frame</code>. The default is "indiv".</p></dd>
 
 </dl></div>
     <div class="section level2">

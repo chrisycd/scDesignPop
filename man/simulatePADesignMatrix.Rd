@@ -12,7 +12,8 @@ simulatePADesignMatrix(
   snpid,
   nindiv,
   ncell,
-  type_specific
+  cellstate_colname,
+  indiv_colname
 )
 }
 \arguments{
@@ -30,7 +31,12 @@ simulatePADesignMatrix(
 
 \item{ncell}{a numeric value showing the number of cells per each individual that user wants to simulate.}
 
-\item{type_specific}{a character object contains the name of the covariate that the analysis is specific on.}
+\item{cellstate_colname}{a string scalar specifying the cell state variable in
+\code{df_sel}.
+The default is "cell_type".}
+
+\item{indiv_colname}{a string scalar of the sample ID variable in cell covariate
+of \code{marginal_list[[geneid]]$frame}. The default is "indiv".}
 }
 \value{
 a new data frame contains the design matrix with simulated response.

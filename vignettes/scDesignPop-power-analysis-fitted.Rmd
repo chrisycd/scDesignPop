@@ -40,27 +40,42 @@ knitr::opts_chunk$set(
 tools::R_user_dir("scDesignPop", which="cache")
 ```
 
-## Step 1: running power analysis
+## Introduction
 
-Given fitted marginal model, scDesignPop can perform simulation-based power analysis for a
-specific gene-SNP pair across cell types using the `runPowerAnalysis`
-function. Here, we choose the negative binomial mixed model using `"nb"`
-option.
+scDesignPop provides power analysis tools at cell-type-specific level. Since fitted marginal models can be obtained by users already for generating synthetic datasets, the tutorial here is about how to conduct the power analysis on the basis of the marginal model files.
+
+## Library and data preparation
+
+Here, we load the pre-saved `marginal_list` object to obtain the fitted marginal model of gene ENSG00000163221 (S100A12) for simplicity.
 
 ```{r}
 library(scDesignPop)
 library(SingleCellExperiment)
+
 load("/home/ycen/proj/scEQTLsim/data/tutorials/marginal_list_sel.rda")
+summary(marginal_list_sel$ENSG00000163221$fit)
+```
+
+
+## Performing power analysis
+
+Given fitted marginal model, scDesignPop can perform simulation-based power analysis for a
+specific gene-SNP pair across selected cell types using the `runPowerAnalysis`
+function. Based on the previous naming of covariates, we specify the fitted snpid as `"1:153337943"`, the name of the column for fixed cell state effect and random individual effect as `"cell_type"` and `"indiv"` in the input parameters. To check these namings, we can call the covariate data frame using `marginal_list_sel[["ENSG00000163221"]]$fit$frame`. The selected cell types for testing are specified in cellstate_vector and have to be consistent with the covariate data frame.
+
+Particarly, parameters `snp_number` and `gene_number` are used to account for multiple testing correction with Bonferroni correction. Parameter `methods` is used to specify the marginal eQTL model from `c("nb", "poisson", "gaussian", "pseudoBulkLinear")`. Parameter `nindivs` and `ncells` are used to specify the number of individuals and number of cells per individual, from which we can analyze the performance of power analysis and find the optimal setting.
+
+```{r}
 set.seed(123)
 power_data <- runPowerAnalysis(marginal_list = marginal_list_sel,
-                               marginal_model = "nb",
                                geneid = "ENSG00000163221",
                                snpid = "1:153337943",
-                               type_specific = "cell_type",
-                               type_vector = c("bmem", "monoc"),
+                               cellstate_colname = "cell_type",
+                               cellstate_vector = c("bmem", "monoc"),
+                               indiv_colname = "indiv",
                                methods = c("poisson","pseudoBulkLinear"),
                                nindivs = c(50, 200),
-                               ncells = c(10),
+                               ncells = c(10, 50),
                                alpha = 0.05,
                                power_nsim = 50,
                                snp_number = 10,
@@ -70,14 +85,13 @@ power_data <- runPowerAnalysis(marginal_list = marginal_list_sel,
                                ncores = 50L)
 ```
 
-## Step 2: visualizing power results
+## Visualization of power results
 
-The power analysis results can be visualized using the
-`visualizePowerResult` function.
+The power analysis results can be visualized using the `visualizePowerResult` function. The cell type names in the `cellstate_vector` must be included in the above power analysis.
 
 ```{r}
 visualizePowerResult(power_result = power_data,
-                     celltypes = c("bmem", "monoc"),
+                     cellstate_vector = c("bmem", "monoc"),
                      x_axis = "nindiv",
                      y_axis = "ncell",
                      col_group = "method",
@@ -85,3 +99,14 @@ visualizePowerResult(power_result = power_data,
                      snpid = "1:153337943")
 ```
 
+By swaping the x and y axis, we can show the result in a different way.
+
+```{r}
+visualizePowerResult(power_result = power_data,
+                     cellstate_vector = c("bmem", "monoc"),
+                     x_axis = "ncell",
+                     y_axis = "nindiv",
+                     col_group = "method",
+                     geneid = "ENSG00000163221",
+                     snpid = "1:153337943")
+```

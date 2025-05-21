@@ -2,16 +2,17 @@
 % Please edit documentation in R/powerAnalysis.R
 \name{powerAnalysis}
 \alias{powerAnalysis}
-\title{Perform a power analysis}
+\title{Perform a cell-type-specific power analysis on eQTL effects}
 \usage{
 powerAnalysis(
   marginal_list,
-  marginal_model,
+  marginal_model = NULL,
   refit_formula = NULL,
-  geneid,
-  snpid,
-  type_specific,
-  type_vector,
+  geneid = NULL,
+  snpid = NULL,
+  cellstate_colname = "cell_type",
+  cellstate_vector = NULL,
+  indiv_colname = "indiv",
   method = c("nb", "poisson", "gaussian", "pseudoBulkLinear"),
   nindivs = NULL,
   ncells = NULL,
@@ -34,9 +35,14 @@ powerAnalysis(
 
 \item{snpid}{a character object contains snpid.}
 
-\item{type_specific}{a character object contains the name of the covariate that the analysis is specific on.}
+\item{cellstate_colname}{a string scalar specifying the cell state variable in
+\code{marginal_list[[geneid]]$frame}.
+The default is "cell_type".}
 
-\item{type_vector}{a vector object contains the specified type/level names of the covariate.}
+\item{cellstate_vector}{a vector object specifies the cell type that will be tested}
+
+\item{indiv_colname}{a string scalar of the sample ID variable in cell covariate
+of \code{marginal_list[[geneid]]$frame}. The default is "indiv".}
 
 \item{method}{a character object specifying the method that will be analyzed for power.
 (Options: nb,poisson,gaussian,pseudoBulkLinear).}
@@ -67,7 +73,7 @@ a list of named features, each containing a list with the following items:
 }
 }
 \description{
-Perform a power analysis
+Perform a cell-type-specific power analysis on eQTL effects
 }
 \examples{
 NULL

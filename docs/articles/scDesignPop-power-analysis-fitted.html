@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">scDesignPop</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.0.9004</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.0.9005</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,7 +34,8 @@
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/scDesignPop-modify-eQTL-effects.html">Modify eQTL effect for eGenes / non-eGenes</a></li>
+<li><a class="dropdown-item" href="../articles/scDesignPop-celltype-prop-modeling.html">Model cell type proportions for new individuals</a></li>
+    <li><a class="dropdown-item" href="../articles/scDesignPop-modify-eQTL-effects.html">Modify eQTL effect for eGenes / non-eGenes</a></li>
     <li><a class="dropdown-item" href="../articles/scDesignPop-power-analysis-fitted.html">Power analysis based on a fitted scDesignPop marginal model</a></li>
     <li><a class="dropdown-item" href="../articles/scDesignPop-power-analysis-selected.html">Power analysis for selected genes</a></li>
   </ul>
@@ -72,7 +73,7 @@ Cen</h4>
 Los Angeles<br><a class="author_email" href="mailto:#"></a><a href="mailto:yihuicen@g.ucla.edu" class="email">yihuicen@g.ucla.edu</a>
       </address>
                   
-            <h4 data-toc-skip class="date">3 May 2025</h4>
+            <h4 data-toc-skip class="date">21 May 2025</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/chrisycd/scDesignPop/blob/HEAD/vignettes/scDesignPop-power-analysis-fitted.Rmd"><code>vignettes/scDesignPop-power-analysis-fitted.Rmd</code></a></small>
       <div class="d-none name"><code>scDesignPop-power-analysis-fitted.Rmd</code></div>
@@ -87,26 +88,89 @@ pre {
 }
 </style>
 <div class="section level2">
-<h2 id="step-1-running-power-analysis">Step 1: running power analysis<a class="anchor" aria-label="anchor" href="#step-1-running-power-analysis"></a>
+<h2 id="introduction">Introduction<a class="anchor" aria-label="anchor" href="#introduction"></a>
 </h2>
-<p>Given fitted marginal model, scDesignPop can perform simulation-based
-power analysis for a specific gene-SNP pair across cell types using the
-<code>runPowerAnalysis</code> function. Here, we choose the negative
-binomial mixed model using <code>"nb"</code> option.</p>
+<p>scDesignPop provides power analysis tools at cell-type-specific
+level. Since fitted marginal models can be obtained by users already for
+generating synthetic datasets, the tutorial here is about how to conduct
+the power analysis on the basis of the marginal model files.</p>
+</div>
+<div class="section level2">
+<h2 id="library-and-data-preparation">Library and data preparation<a class="anchor" aria-label="anchor" href="#library-and-data-preparation"></a>
+</h2>
+<p>Here, we load the pre-saved <code>marginal_list</code> object to
+obtain the fitted marginal model of gene ENSG00000163221 (S100A12) for
+simplicity.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/chrisycd/scDesignPop">scDesignPop</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">SingleCellExperiment</span><span class="op">)</span></span>
+<span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/load.html" class="external-link">load</a></span><span class="op">(</span><span class="st">"/home/ycen/proj/scEQTLsim/data/tutorials/marginal_list_sel.rda"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">123</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">marginal_list_sel</span><span class="op">$</span><span class="va">ENSG00000163221</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span></span>
+<span><span class="co">#&gt;  Family: nbinom2  ( log )</span></span>
+<span><span class="co">#&gt; Formula:          </span></span>
+<span><span class="co">#&gt; response ~ (1 | indiv) + cell_type + `1:153337943` + `1:153337943`:cell_type</span></span>
+<span><span class="co">#&gt; Data: res_list[["dmat_df"]]</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;      AIC      BIC   logLik deviance df.resid </span></span>
+<span><span class="co">#&gt;  11088.7  11158.3  -5534.4  11068.7     7801 </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Random effects:</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Conditional model:</span></span>
+<span><span class="co">#&gt;  Groups Name        Variance Std.Dev.</span></span>
+<span><span class="co">#&gt;  indiv  (Intercept) 0.08141  0.2853  </span></span>
+<span><span class="co">#&gt; Number of obs: 7811, groups:  indiv, 40</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Dispersion parameter for nbinom2 family (): 1.15 </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Conditional model:</span></span>
+<span><span class="co">#&gt;                               Estimate Std. Error z value Pr(&gt;|z|)    </span></span>
+<span><span class="co">#&gt; (Intercept)                    1.80392    0.07763  23.237   &lt;2e-16 ***</span></span>
+<span><span class="co">#&gt; cell_typemononc               -4.65391    0.22215 -20.949   &lt;2e-16 ***</span></span>
+<span><span class="co">#&gt; cell_typebmem                 -5.96487    0.31401 -18.996   &lt;2e-16 ***</span></span>
+<span><span class="co">#&gt; cell_typecd4nc                -6.44683    0.22816 -28.256   &lt;2e-16 ***</span></span>
+<span><span class="co">#&gt; `1:153337943`                 -0.02273    0.08603  -0.264    0.792    </span></span>
+<span><span class="co">#&gt; cell_typemononc:`1:153337943` -0.15160    0.27980  -0.542    0.588    </span></span>
+<span><span class="co">#&gt; cell_typebmem:`1:153337943`   -0.55004    0.39328  -1.399    0.162    </span></span>
+<span><span class="co">#&gt; cell_typecd4nc:`1:153337943`  -0.16812    0.29164  -0.576    0.564    </span></span>
+<span><span class="co">#&gt; ---</span></span>
+<span><span class="co">#&gt; Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="performing-power-analysis">Performing power analysis<a class="anchor" aria-label="anchor" href="#performing-power-analysis"></a>
+</h2>
+<p>Given fitted marginal model, scDesignPop can perform simulation-based
+power analysis for a specific gene-SNP pair across selected cell types
+using the <code>runPowerAnalysis</code> function. Based on the previous
+naming of covariates, we specify the fitted snpid as
+<code>"1:153337943"</code>, the name of the column for fixed cell state
+effect and random individual effect as <code>"cell_type"</code> and
+<code>"indiv"</code> in the input parameters. To check these namings, we
+can call the covariate data frame using
+<code>marginal_list_sel[["ENSG00000163221"]]$fit$frame</code>. The
+selected cell types for testing are specified in cellstate_vector and
+have to be consistent with the covariate data frame.</p>
+<p>Particarly, parameters <code>snp_number</code> and
+<code>gene_number</code> are used to account for multiple testing
+correction with Bonferroni correction. Parameter <code>methods</code> is
+used to specify the marginal eQTL model from
+<code>c("nb", "poisson", "gaussian", "pseudoBulkLinear")</code>.
+Parameter <code>nindivs</code> and <code>ncells</code> are used to
+specify the number of individuals and number of cells per individual,
+from which we can analyze the performance of power analysis and find the
+optimal setting.</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">123</span><span class="op">)</span></span>
 <span><span class="va">power_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/runPowerAnalysis.html">runPowerAnalysis</a></span><span class="op">(</span>marginal_list <span class="op">=</span> <span class="va">marginal_list_sel</span>,</span>
-<span>                               marginal_model <span class="op">=</span> <span class="st">"nb"</span>,</span>
 <span>                               geneid <span class="op">=</span> <span class="st">"ENSG00000163221"</span>,</span>
 <span>                               snpid <span class="op">=</span> <span class="st">"1:153337943"</span>,</span>
-<span>                               type_specific <span class="op">=</span> <span class="st">"cell_type"</span>,</span>
-<span>                               type_vector <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"bmem"</span>, <span class="st">"monoc"</span><span class="op">)</span>,</span>
+<span>                               cellstate_colname <span class="op">=</span> <span class="st">"cell_type"</span>,</span>
+<span>                               cellstate_vector <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"bmem"</span>, <span class="st">"monoc"</span><span class="op">)</span>,</span>
+<span>                               indiv_colname <span class="op">=</span> <span class="st">"indiv"</span>,</span>
 <span>                               methods <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"poisson"</span>,<span class="st">"pseudoBulkLinear"</span><span class="op">)</span>,</span>
 <span>                               nindivs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">50</span>, <span class="fl">200</span><span class="op">)</span>,</span>
-<span>                               ncells <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10</span><span class="op">)</span>,</span>
+<span>                               ncells <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10</span>, <span class="fl">50</span><span class="op">)</span>,</span>
 <span>                               alpha <span class="op">=</span> <span class="fl">0.05</span>,</span>
 <span>                               power_nsim <span class="op">=</span> <span class="fl">50</span>,</span>
 <span>                               snp_number <span class="op">=</span> <span class="fl">10</span>,</span>
@@ -114,29 +178,42 @@ binomial mixed model using <code>"nb"</code> option.</p>
 <span>                               CI_nsim <span class="op">=</span> <span class="fl">1000</span>,</span>
 <span>                               CI_conf <span class="op">=</span> <span class="fl">0.05</span>,</span>
 <span>                               ncores <span class="op">=</span> <span class="fl">50L</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] -4.564454</span></span>
-<span><span class="co">#&gt; [1] 0.2210074</span></span>
-<span><span class="co">#&gt; [1] 1.855003</span></span>
-<span><span class="co">#&gt; [1] -0.1721982</span></span>
-<span><span class="co">#&gt; [1] -4.564454</span></span>
-<span><span class="co">#&gt; [1] 0.2210074</span></span>
-<span><span class="co">#&gt; [1] 1.855003</span></span>
-<span><span class="co">#&gt; [1] -0.1721982</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] -4.160949</span></span>
+<span><span class="co">#&gt; [1] -0.5727631</span></span>
+<span><span class="co">#&gt; [1] 1.803924</span></span>
+<span><span class="co">#&gt; [1] -0.02272728</span></span>
+<span><span class="co">#&gt; [1] -4.160949</span></span>
+<span><span class="co">#&gt; [1] -0.5727631</span></span>
+<span><span class="co">#&gt; [1] 1.803924</span></span>
+<span><span class="co">#&gt; [1] -0.02272728</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="step-2-visualizing-power-results">Step 2: visualizing power results<a class="anchor" aria-label="anchor" href="#step-2-visualizing-power-results"></a>
+<h2 id="visualization-of-power-results">Visualization of power results<a class="anchor" aria-label="anchor" href="#visualization-of-power-results"></a>
 </h2>
 <p>The power analysis results can be visualized using the
-<code>visualizePowerResult</code> function.</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code>visualizePowerResult</code> function. The cell type names in the
+<code>cellstate_vector</code> must be included in the above power
+analysis.</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/visualizePowerResult.html">visualizePowerResult</a></span><span class="op">(</span>power_result <span class="op">=</span> <span class="va">power_data</span>,</span>
-<span>                     celltypes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"bmem"</span>, <span class="st">"monoc"</span><span class="op">)</span>,</span>
+<span>                     cellstate_vector <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"bmem"</span>, <span class="st">"monoc"</span><span class="op">)</span>,</span>
 <span>                     x_axis <span class="op">=</span> <span class="st">"nindiv"</span>,</span>
 <span>                     y_axis <span class="op">=</span> <span class="st">"ncell"</span>,</span>
 <span>                     col_group <span class="op">=</span> <span class="st">"method"</span>,</span>
 <span>                     geneid <span class="op">=</span> <span class="st">"ENSG00000163221"</span>,</span>
 <span>                     snpid <span class="op">=</span> <span class="st">"1:153337943"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="scDesignPop-power-analysis-fitted_files/figure-html/unnamed-chunk-3-1.png" width="700"></p>
+<p><img src="scDesignPop-power-analysis-fitted_files/figure-html/unnamed-chunk-4-1.png" width="700"></p>
+<p>By swaping the x and y axis, we can show the result in a different
+way.</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/visualizePowerResult.html">visualizePowerResult</a></span><span class="op">(</span>power_result <span class="op">=</span> <span class="va">power_data</span>,</span>
+<span>                     cellstate_vector <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"bmem"</span>, <span class="st">"monoc"</span><span class="op">)</span>,</span>
+<span>                     x_axis <span class="op">=</span> <span class="st">"ncell"</span>,</span>
+<span>                     y_axis <span class="op">=</span> <span class="st">"nindiv"</span>,</span>
+<span>                     col_group <span class="op">=</span> <span class="st">"method"</span>,</span>
+<span>                     geneid <span class="op">=</span> <span class="st">"ENSG00000163221"</span>,</span>
+<span>                     snpid <span class="op">=</span> <span class="st">"1:153337943"</span><span class="op">)</span></span></code></pre></div>
+<p><img src="scDesignPop-power-analysis-fitted_files/figure-html/unnamed-chunk-5-1.png" width="700"></p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

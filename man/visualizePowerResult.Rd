@@ -6,7 +6,7 @@
 \usage{
 visualizePowerResult(
   power_result,
-  celltypes,
+  cellstate_vector,
   x_axis = "nindiv",
   y_axis = "ncell",
   col_group = "method",
@@ -17,7 +17,7 @@ visualizePowerResult(
 \arguments{
 \item{power_result}{a data frame contains power analysis result in different parameter settings.}
 
-\item{celltypes}{a vector of cell types that will be selected for visualization.}
+\item{cellstate_vector}{a vector of cell types that will be selected for visualization.}
 
 \item{x_axis}{a character that specifies the x axis. Default is the number of individuals.}
 

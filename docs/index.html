@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="index.html">scDesignPop</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.0.9004</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.0.9005</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -36,7 +36,8 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="articles/scDesignPop-modify-eQTL-effects.html">Modify eQTL effect for eGenes / non-eGenes</a></li>
+<li><a class="dropdown-item" href="articles/scDesignPop-celltype-prop-modeling.html">Model cell type proportions for new individuals</a></li>
+    <li><a class="dropdown-item" href="articles/scDesignPop-modify-eQTL-effects.html">Modify eQTL effect for eGenes / non-eGenes</a></li>
     <li><a class="dropdown-item" href="articles/scDesignPop-power-analysis-fitted.html">Power analysis based on a fitted scDesignPop marginal model</a></li>
     <li><a class="dropdown-item" href="articles/scDesignPop-power-analysis-selected.html">Power analysis for selected genes</a></li>
   </ul>
@@ -54,9 +55,9 @@
   </div>
 </nav><div class="container template-home">
 <div class="row">
-  <main id="main" class="col-md-9"><div class="section level1">
-<div class="page-header"><h1 id="scdesignpop">scDesignPop<a class="anchor" aria-label="anchor" href="#scdesignpop"></a>
-</h1></div>
+  <main id="main" class="col-md-9"><div class="section level2">
+<h2 id="scdesignpop">scDesignPop<a class="anchor" aria-label="anchor" href="#scdesignpop"></a>
+</h2>
 <hr>
 <p>scDesignPop is a simulator for population-scale single-cell RNA-sequencing (scRNA-seq) data. By incorporating eQTL effects from genotype data with other covariates, scDesignPop has several key applications:</p>
 <ul>
@@ -77,8 +78,8 @@
 <p><img src="reference/figures/scDesignPop_illustration.jpg" width="600"></p>
 </div>
 <div class="section level1">
-<h1 id="table-of-contents">Table of contents<a class="anchor" aria-label="anchor" href="#table-of-contents"></a>
-</h1>
+<div class="page-header"><h1 id="table-of-contents">Table of contents<a class="anchor" aria-label="anchor" href="#table-of-contents"></a>
+</h1></div>
 <ol style="list-style-type: decimal">
 <li><a href="#installation">Installation</a></li>
 <li><a href="#quick-start">Quick Start</a></li>
@@ -107,7 +108,12 @@
 <p>For all detailed tutorials, please check the <a href="https://chrisycd.github.io/scDesignPop/docs/index.html" class="external-link">website</a>. The tutorials will demonstrate the applications of <strong>scDesignPop</strong> from the following perspectives: preprocessing, data simulation, model alteration, and power analysis.</p>
 <ul>
 <li><p>Preprocessing</p></li>
-<li><p>Data simulation</p></li>
+<li>
+<p>Data simulation</p>
+<ul>
+<li><a href="https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop-celltype-prop-modeling.html" class="external-link">Model cell type proportions for new individuals</a></li>
+</ul>
+</li>
 <li>
 <p>Model alteration</p>
 <ul>

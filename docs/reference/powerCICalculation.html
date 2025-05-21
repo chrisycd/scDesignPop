@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">scDesignPop</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.0.9004</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.0.9005</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -19,7 +19,8 @@
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/scDesignPop-modify-eQTL-effects.html">Modify eQTL effect for eGenes / non-eGenes</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/scDesignPop-celltype-prop-modeling.html">Model cell type proportions for new individuals</a></li>
+    <li><a class="dropdown-item" href="../articles/scDesignPop-modify-eQTL-effects.html">Modify eQTL effect for eGenes / non-eGenes</a></li>
     <li><a class="dropdown-item" href="../articles/scDesignPop-power-analysis-fitted.html">Power analysis based on a fitted scDesignPop marginal model</a></li>
     <li><a class="dropdown-item" href="../articles/scDesignPop-power-analysis-selected.html">Power analysis for selected genes</a></li>
   </ul></li>
@@ -47,7 +48,7 @@
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">powerCICalculation</span><span class="op">(</span></span>
 <span>  <span class="va">res</span>,</span>
-<span>  <span class="va">types</span>,</span>
+<span>  <span class="va">cellstate_vector</span>,</span>
 <span>  <span class="va">nindivs</span>,</span>
 <span>  <span class="va">ncells</span>,</span>
 <span>  snp_number <span class="op">=</span> <span class="fl">10</span>,</span>
@@ -66,8 +67,8 @@
 <dd><p>the output of function powerAnalysis()</p></dd>
 
 
-<dt id="arg-types">types<a class="anchor" aria-label="anchor" href="#arg-types"></a></dt>
-<dd><p>a vector object contains the specified type/level names of the covariate.</p></dd>
+<dt id="arg-cellstate-vector">cellstate_vector<a class="anchor" aria-label="anchor" href="#arg-cellstate-vector"></a></dt>
+<dd><p>a vector object specifies the cell type that will be tested</p></dd>
 
 
 <dt id="arg-nindivs">nindivs<a class="anchor" aria-label="anchor" href="#arg-nindivs"></a></dt>
