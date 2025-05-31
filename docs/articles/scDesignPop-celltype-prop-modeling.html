@@ -73,7 +73,7 @@ Cen</h4>
 Los Angeles<br><a class="author_email" href="mailto:#"></a><a href="mailto:yihuicen@g.ucla.edu" class="email">yihuicen@g.ucla.edu</a>
       </address>
                   
-            <h4 data-toc-skip class="date">21 May 2025</h4>
+            <h4 data-toc-skip class="date">31 May 2025</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/chrisycd/scDesignPop/blob/HEAD/vignettes/scDesignPop-celltype-prop-modeling.Rmd"><code>vignettes/scDesignPop-celltype-prop-modeling.Rmd</code></a></small>
       <div class="d-none name"><code>scDesignPop-celltype-prop-modeling.Rmd</code></div>
@@ -102,8 +102,9 @@ in the following tutorial.</p>
 genotype PCs of the training <code>example_sce</code> data and those of
 the new simulated individuals.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/load.html" class="external-link">load</a></span><span class="op">(</span><span class="st">"/home/ycen/proj/scEQTLsim/data/tutorials/example_sce.rda"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/load.html" class="external-link">load</a></span><span class="op">(</span><span class="st">"/home/ycen/proj/scEQTLsim/data/tutorials/example_genoPCs.rda"</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/chrisycd/scDesignPop">scDesignPop</a></span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="st">"example_sce"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="st">"example_genoPCs"</span><span class="op">)</span></span>
 <span><span class="va">othercov_new</span> <span class="op">&lt;-</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">genopc_new</span>, <span class="va">indiv</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">genopc_train</span><span class="op">)</span></span>

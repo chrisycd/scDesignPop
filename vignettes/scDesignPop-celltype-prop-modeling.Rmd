@@ -50,8 +50,9 @@ scDesignPop provide modeling of the cell type proportions for generating new cel
 Here, we load the `example_sce` data with both the genotype PCs of the training `example_sce` data and those of the new simulated individuals.
 
 ```{r}
-load("/home/ycen/proj/scEQTLsim/data/tutorials/example_sce.rda")
-load("/home/ycen/proj/scEQTLsim/data/tutorials/example_genoPCs.rda")
+library(scDesignPop)
+data("example_sce")
+data("example_genoPCs")
 othercov_new <- dplyr::select(genopc_new, indiv)
 
 head(genopc_train)

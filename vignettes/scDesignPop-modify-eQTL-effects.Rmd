@@ -45,8 +45,8 @@ To run scDesignPop, a list of data is required as input. This is done using the 
 
 ```{r}
 library(scDesignPop)
-load("/home/ycen/proj/scEQTLsim/data/tutorials/example_sce.rda")
-load("/home/ycen/proj/scEQTLsim/data/tutorials/example_eqtlgeno.rda")
+data("example_sce")
+data("example_eqtlgeno")
 ```
 
 
