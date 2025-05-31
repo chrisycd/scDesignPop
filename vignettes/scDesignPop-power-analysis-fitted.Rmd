@@ -52,7 +52,7 @@ Here, we load the pre-saved `marginal_list` object to obtain the fitted marginal
 library(scDesignPop)
 library(SingleCellExperiment)
 
-load("/home/ycen/proj/scEQTLsim/data/tutorials/marginal_list_sel.rda")
+data("marginal_list_sel")
 summary(marginal_list_sel$ENSG00000163221$fit)
 ```
 
