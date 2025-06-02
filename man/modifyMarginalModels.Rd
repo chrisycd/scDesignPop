@@ -55,24 +55,24 @@ conditional mean log2 fold-change).}
 \item{eqtl_reverse}{A logical value to determine whether the eQTL slope trends
 in the reverse direction (TRUE) or same (FALSE). Default is \code{FALSE}.}
 
-\item{mean_baseline}{A numeric value to specify the minimum conditional mean
+\item{mean_baseline}{A numeric scalar or vector to specify the minimum conditional mean
 at genotype 1 \eqn{\mu_{1}}.  If \code{mean_baseline_only = FALSE},
 then the conditional mean will be the maximum of the fitted (estimated from
 marginal model) and the \code{mean_baseline} value.  Otherwise, the
 conditional mean will be set to the \code{mean_baseline} value.  Default
 value is \code{NULL}.}
 
-\item{eqtl_baseline}{A numeric value to specify the minimum eQTL slope
+\item{eqtl_baseline}{A numeric scalar or vector to specify the minimum eQTL slope
 between genotype 1 and 0 (\eqn{\mu_{1}} - \eqn{\mu_{0}}).  If
 \code{eqtl_baseline_only = FALSE}, then the eQTL slope will be the
 maximum of the slope of fitted (estimated from marginal model) and
 the \code{eqtl_baseline} value.  Otherwise, the eQTL slope will be set to
 the \code{eqtl_baseline} value.  Default value is \code{NULL}.}
 
-\item{mean_baseline_only}{A logical value to force the conditional mean (in
+\item{mean_baseline_only}{A logical scalar or vector to force the conditional mean (in
 linear prediction) at genotype 1 \eqn{\mu_{1}}. Default is \code{FALSE}.}
 
-\item{eqtl_baseline_only}{A logical value to force the eQTL slope between
+\item{eqtl_baseline_only}{A logical scalar or vector to force the eQTL slope between
 genotype 1 and 0 (\eqn{\mu_{1}} - \eqn{\mu_{0}}). Default is \code{FALSE}.}
 
 \item{disp_scaling}{A string value to specify the dispersion-mean scaling for
