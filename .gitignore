@@ -1,3 +1,5 @@
+scDesignPop.Rproj
+.Rproj
 .Rproj.user
 .Rhistory
 .Rdata
@@ -8,3 +10,13 @@
 # local system folders
 localtest/
 local/
+
+# pkgdown site
+docs/
+
+# builder file
+pkg.R
+
+# produced vignettes
+vignettes/*.html
+vignettes/*.pdf
