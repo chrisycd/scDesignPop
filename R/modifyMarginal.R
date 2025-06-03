@@ -15,6 +15,22 @@
 #'     and genotype 0 (\eqn{\mu_{1}} - \eqn{\mu_{0}}). Default is
 #'     \code{eqtl_log2fc = mean_log2fc} (eQTL slope is scaled the same as the
 #'     conditional mean log2 fold-change).
+#' @param mean_baseline A numeric scalar or vector to specify the minimum conditional mean
+#'     at genotype 1 \eqn{\mu_{1}}.  If \code{mean_baseline_only = FALSE},
+#'     then the conditional mean will be the maximum of the fitted (estimated from
+#'     marginal model) and the \code{mean_baseline} value.  Otherwise, the
+#'     conditional mean will be set to the \code{mean_baseline} value.  Default
+#'     value is \code{NULL}.
+#' @param eqtl_baseline A numeric scalar or vector to specify the minimum eQTL slope
+#'     between genotype 1 and 0 (\eqn{\mu_{1}} - \eqn{\mu_{0}}).  If
+#'     \code{eqtl_baseline_only = FALSE}, then the eQTL slope will be the
+#'     maximum of the slope of fitted (estimated from marginal model) and
+#'     the \code{eqtl_baseline} value.  Otherwise, the eQTL slope will be set to
+#'     the \code{eqtl_baseline} value.  Default value is \code{NULL}.
+#' @param mean_baseline_only A logical scalar or vector to force the conditional mean (in
+#'     linear prediction) at genotype 1 \eqn{\mu_{1}}. Default is \code{FALSE}.
+#' @param eqtl_baseline_only A logical scalar or vector to force the eQTL slope between
+#'     genotype 1 and 0 (\eqn{\mu_{1}} - \eqn{\mu_{0}}). Default is \code{FALSE}.
 #' @param features A scalar or vector of features (ie. genes) to apply the modifications.
 #' @param debug A logical for whether to output a \code{mod_list} list in addition
 #'     to \code{marginal_list}.
@@ -60,6 +76,11 @@ modifyMarginalModels <- function(marginal_list,
     mean_log2fc <- rep(mean_log2fc, length.out = n_feat)
     eqtl_log2fc <- rep(eqtl_log2fc, length.out = n_feat)
     eqtl_reverse <- rep(eqtl_reverse, length.out = n_feat)
+    mean_baseline <-  if(!is.null(mean_baseline)) rep(mean_baseline, length.out = n_feat)
+    eqtl_baseline <- if(!is.null(eqtl_baseline)) rep(eqtl_baseline, length.out = n_feat)
+    mean_baseline_only <- rep(mean_baseline_only, length.out = n_feat)
+    eqtl_baseline_only <- rep(eqtl_baseline_only, length.out = n_feat)
+
 
     # iterate thru genes to modify parameters
     mod_list <- lapply(1:n_feat, FUN = function(idx) {
@@ -69,13 +90,21 @@ modifyMarginalModels <- function(marginal_list,
                             features[idx], celltype))
         }
 
+        # for handling NULL
+        mean_baseline_val <- if(is.null(mean_baseline)) NULL else mean_baseline[idx]
+        eqtl_baseline_val <- if(is.null(eqtl_baseline)) NULL else eqtl_baseline[idx]
+
         modifyModelPara(model_obj = marginal_list[[features[idx]]][["fit"]],
                         eqtlgeno = eqtlgeno_list[[features[idx]]],
                         celltype = celltype,
                         neg_ctrl = neg_ctrl[idx],
-                        mean_log2fc = mean_log2fc[idx], # eqtl mean fold change
-                        eqtl_log2fc = eqtl_log2fc[idx],  # eqtl diff fold change
+                        mean_log2fc = mean_log2fc[idx],
+                        eqtl_log2fc = eqtl_log2fc[idx],
                         eqtl_reverse = eqtl_reverse[idx],
+                        mean_baseline = mean_baseline_val,
+                        eqtl_baseline = eqtl_baseline_val,
+                        mean_baseline_only = mean_baseline_only[idx],
+                        eqtl_baseline_only = eqtl_baseline_only[idx],
                         cellstate_colname = cellstate_colname,
                         snp_colname = snp_colname,
                         verbose = verbose,
