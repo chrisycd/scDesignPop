@@ -6,7 +6,7 @@
 \usage{
 powerCICalculation(
   res,
-  types,
+  cellstate_vector,
   nindivs,
   ncells,
   snp_number = 10,
@@ -19,7 +19,7 @@ powerCICalculation(
 \arguments{
 \item{res}{the output of function powerAnalysis()}
 
-\item{types}{a vector object contains the specified type/level names of the covariate.}
+\item{cellstate_vector}{a vector object specifies the cell type that will be tested}
 
 \item{nindivs}{a vector of numeric values showing the numbers of individuals that user wants to simulate.}
 

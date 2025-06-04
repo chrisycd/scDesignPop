@@ -8,7 +8,7 @@ constructPAFormula(
   fm,
   method = c("nb", "poisson", "gaussian", "pseudoBulkLinear"),
   snpid = NULL,
-  type_specific = NULL
+  cellstate_colname = NULL
 )
 }
 \arguments{
@@ -19,7 +19,8 @@ constructPAFormula(
 
 \item{snpid}{a character object contains snpid.}
 
-\item{type_specific}{a character object contains the name of the covariate that the analysis is specific on.}
+\item{cellstate_colname}{a string scalar specifying the cell state variable
+The default is "cell_type".}
 }
 \value{
 a stats::formula object for power analysis in each specified type.

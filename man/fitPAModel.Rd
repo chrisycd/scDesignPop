@@ -9,7 +9,8 @@ fitPAModel(
   model_formula,
   idx,
   method = c("nb", "poisson", "gaussian", "pseudoBulkLinear"),
-  snpid
+  snpid,
+  indiv_colname
 )
 }
 \arguments{
@@ -23,6 +24,9 @@ fitPAModel(
 (Options: nb,poisson,gaussian,pseudoBulkLinear).}
 
 \item{snpid}{a character object contains snpid.}
+
+\item{indiv_colname}{a string scalar of the sample ID variable in cell covariate
+of \code{marginal_list[[geneid]]$frame}. The default is "indiv".}
 }
 \value{
 a fitted stats::model object.
