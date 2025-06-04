@@ -33,9 +33,9 @@ You can install the development version of scDesignPop from
 remotes::install_github("chrisycd/scDesignPop")
 ```
 
-## Quick Start<a name="quick-start"></a>
-
 ## Tutorials<a name="tutorials"></a>
+
+-   [Quick start](https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop.html)
 
 For all detailed tutorials, please check the [website](https://chrisycd.github.io/scDesignPop/docs/index.html). The tutorials will demonstrate the applications of **scDesignPop** from the following perspectives: preprocessing, data simulation, model alteration, and power analysis.
 
@@ -58,7 +58,7 @@ Any questions or advice on `scDesignPop` are welcomed! Please report it on [issu
 
 ## Related Manuscripts<a name="related-manuscripts"></a>
 
--   The original **scDesignPop** paper
+-   The original **scDesignPop** paper (TBD. Coming soon...)
 
 -   The simulator for general single-cell counts: **scDesign3**
     -   **scDesign3**: [Song, D., Wang, Q., Yan, G. *et al.* scDesign3 generates realistic in silico data for multimodal single-cell and spatial omics. *Nat Biotechnol* **42**, 247–252 (2024).](https://www.nature.com/articles/s41587-023-01772-1)
