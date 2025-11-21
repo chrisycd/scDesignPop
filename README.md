@@ -18,10 +18,9 @@ scDesignPop is a simulator for population-scale single-cell RNA-sequencing (scRN
 
 # Table of contents
 1. [Installation](#installation)
-2. [Quick Start](#quick-start)
-3. [Tutorials](#tutorials)
-4. [Contact](#contact)
-5. [Related Manuscripts](#related-manuscripts)
+2. [Tutorials](#tutorials)
+3. [Contact](#contact)
+4. [Related Manuscripts](#related-manuscripts)
 
 ## Installation<a name="installation"></a>
 
@@ -35,21 +34,13 @@ remotes::install_github("chrisycd/scDesignPop")
 
 ## Tutorials<a name="tutorials"></a>
 
--   [Quick start](https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop.html)
+For tutorials, please check the [website](https://chrisycd.github.io/scDesignPop/docs/index.html). The tutorials will demonstrate the applications of **scDesignPop** as follows.
 
-For all detailed tutorials, please check the [website](https://chrisycd.github.io/scDesignPop/docs/index.html). The tutorials will demonstrate the applications of **scDesignPop** from the following perspectives: preprocessing, data simulation, model alteration, and power analysis.
-
--   Preprocessing
-
--   Data simulation
-    -   [Model cell type proportions for new individuals](https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop-celltype-prop-modeling.html)
-
--   Model alteration
-    -   [Modify eQTL effect for eGenes / non-eGenes](https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop-modify-eQTL-effects.html)
-    
--   Power Analysis
-    -   [Power analysis based on a fitted scDesignPop marginal model](https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop-power-analysis-fitted.html)
-    -   [Power analysis for selected genes](https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop-power-analysis-selected.html)
+-   [Population-scale scRNA-seq data simulation (Get started)](https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop.html)
+-   [Model cell type proportions for new individuals](https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop-celltype-prop-modeling.html)
+-   [Modify eQTL effect for eGenes / non-eGenes](https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop-modify-eQTL-effects.html)
+-   [Power analysis based on a fitted scDesignPop marginal model](https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop-power-analysis-fitted.html)
+-   [Power analysis for selected genes](https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop-power-analysis-selected.html)
 
 ## Contact<a name="contact"></a>
 
