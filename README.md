@@ -4,13 +4,11 @@
 
 scDesignPop is a simulator for population-scale single-cell RNA-sequencing (scRNA-seq) data. By incorporating eQTL effects from genotype data with other covariates, scDesignPop has several key applications: 
 
-- 1) performing eQTL power analyses at cell-type resolution, 
+- 1) performing eQTL power analysis across cell types, 
 
-- 2) protecting genomic privacy by mitigating eQTL-based re-identification of individuals via linking attacks, 
+- 2) benchmarking single-cell eQTL mapping methods with user-specified eQTLs, 
 
-- 3) simulating scRNA-seq data for new individuals using either simulated or real genotype data, and 
-
-- 4) generating positive- and negative-control data for cell-type-specific eQTLs.
+- 3) protecting genomic privacy by mitigating eQTL-based re-identification of individuals via linking attacks
 
 <span style="color:blue"> **Detailed tutorials that illustrate various functionalities of scDesignPop are available at this [website](https://chrisycd.github.io/scDesignPop/docs/index.html)**</span>. The following illustration figure summarizes the workflow of scDesignPop:
 
@@ -24,23 +22,39 @@ scDesignPop is a simulator for population-scale single-cell RNA-sequencing (scRN
 
 ## Installation<a name="installation"></a>
 
+To install the key dependence of scDesignPop, we recommend:
+
+``` r
+if(!require("SingleCellExperiment")){
+  BiocManager::install("SingleCellExperiment")
+}
+```
+
 You can install the development version of scDesignPop from
 [GitHub](https://github.com) with:
 
 ``` r
-# install.packages("remotes")
+if(!require("remotes")){
+    install.packages("remotes")
+}
 remotes::install_github("chrisycd/scDesignPop")
 ```
 
 ## Tutorials<a name="tutorials"></a>
 
-For tutorials, please check the [website](https://chrisycd.github.io/scDesignPop/docs/index.html). The tutorials will demonstrate the applications of **scDesignPop** as follows.
+For tutorials, please check the [website](https://chrisycd.github.io/scDesignPop/docs/index.html). The tutorials will demonstrate the applications of **scDesignPop** as follows:
 
--   [Population-scale scRNA-seq data simulation (Get started)](https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop.html)
+-   [Model population-scale scRNA-seq data](https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop.html)
+
 -   [Model cell type proportions for new individuals](https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop-celltype-prop-modeling.html)
+
 -   [Modify eQTL effect for eGenes / non-eGenes](https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop-modify-eQTL-effects.html)
+    
 -   [Power analysis based on a fitted scDesignPop marginal model](https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop-power-analysis-fitted.html)
+
 -   [Power analysis for selected genes](https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop-power-analysis-selected.html)
+
+-   [Power analysis based on user specified eQTL effect sizes](https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop-power-analysis-ES-specification.html)
 
 ## Contact<a name="contact"></a>
 
