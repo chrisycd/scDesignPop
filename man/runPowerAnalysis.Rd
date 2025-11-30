@@ -10,8 +10,9 @@ runPowerAnalysis(
   refit_formula = NULL,
   geneid = NULL,
   snpid = NULL,
-  cellstate_colname = "cell_type",
-  cellstate_vector = NULL,
+  celltype_colname = "cell_type",
+  celltype_vector = NULL,
+  celltype_specific_ES_list = NULL,
   indiv_colname = "indiv",
   methods = NULL,
   nindivs = NULL,
@@ -39,11 +40,13 @@ runPowerAnalysis(
 
 \item{snpid}{a character object contains snpid.}
 
-\item{cellstate_colname}{a string scalar specifying the cell state variable in
+\item{celltype_colname}{a string scalar specifying the cell state variable in
 \code{marginal_list[[geneid]]$frame}.
 The default is "cell_type".}
 
-\item{cellstate_vector}{a vector object specifies the cell type that will be tested}
+\item{celltype_vector}{a vector object specifies the cell type that will be tested}
+
+\item{celltype_specific_ES_list}{a list object specifies different vectors of the genotype effect size (ES) for each cell type}
 
 \item{indiv_colname}{a string scalar of the sample ID variable in cell covariate
 of \code{marginal_list[[geneid]]$frame}. The default is "indiv".}

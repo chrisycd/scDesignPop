@@ -70,10 +70,10 @@ data_list <- constructDataPop(
     )
 ```
 
-## Step 2: modify a existing fitted marginal model
+## Step 2: modify eQTL effects
 
 ```{r}
-load("/home/ycen/proj/scEQTLsim/data/tutorials/marginal_list_sel.rda")
+data("marginal_list_sel")
 marginal_mod <- scDesignPop::modifyMarginalModels(
   marginal_list = marginal_list_sel["ENSG00000163221"],
   eqtlgeno_list = data_list[["eqtl_geno_list"]],
@@ -93,6 +93,3 @@ marginal_mod <- scDesignPop::modifyMarginalModels(
   debug = TRUE)
 ```
 
-## Step 2: generate simulated data with modified marginal model
-
-## Step 3: visualize the modified eQTL effect
