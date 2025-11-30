@@ -1,6 +1,6 @@
 Package: scDesignPop
 Title: Simulator for population-scale single-cell expression RNA-sequencing data
-Version: 0.0.0.9005
+Version: 0.0.0.9006
 Authors@R: 
     c(person("Chris", "Y. Dong", , "chris.dong@ucla.edu", role = c("aut", "cre"),
            comment = c(ORCID = "0009-0006-2282-0394")),
@@ -13,7 +13,7 @@ Description: Simulate realistic population-scale single-cell RNA-sequencing
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.1
+RoxygenNote: 7.3.3
 Imports: 
     assertthat,
     BiocParallel,

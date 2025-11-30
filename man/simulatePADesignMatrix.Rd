@@ -12,7 +12,7 @@ simulatePADesignMatrix(
   snpid,
   nindiv,
   ncell,
-  cellstate_colname,
+  celltype_colname,
   indiv_colname
 )
 }
@@ -31,7 +31,7 @@ simulatePADesignMatrix(
 
 \item{ncell}{a numeric value showing the number of cells per each individual that user wants to simulate.}
 
-\item{cellstate_colname}{a string scalar specifying the cell state variable in
+\item{celltype_colname}{a string scalar specifying the cell state variable in
 \code{df_sel}.
 The default is "cell_type".}
 

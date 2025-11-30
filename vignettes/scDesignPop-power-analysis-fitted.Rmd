@@ -68,21 +68,22 @@ Particarly, parameters `snp_number` and `gene_number` are used to account for mu
 ```{r}
 set.seed(123)
 power_data <- runPowerAnalysis(marginal_list = marginal_list_sel,
+                               marginal_model = "nb",
                                geneid = "ENSG00000163221",
                                snpid = "1:153337943",
-                               cellstate_colname = "cell_type",
-                               cellstate_vector = c("bmem", "monoc"),
+                               celltype_colname = "cell_type",
+                               celltype_vector = c("bmem", "monoc"),
                                indiv_colname = "indiv",
                                methods = c("poisson","pseudoBulkLinear"),
                                nindivs = c(50, 200),
                                ncells = c(10, 50),
                                alpha = 0.05,
-                               power_nsim = 50,
+                               power_nsim = 1000,
                                snp_number = 10,
-                               gene_number = 200,
+                               gene_number = 800,
                                CI_nsim = 1000,
                                CI_conf = 0.05,
-                               ncores = 50L)
+                               ncores = 25)
 ```
 
 ## Visualization of power results
@@ -91,9 +92,9 @@ The power analysis results can be visualized using the `visualizePowerResult` fu
 
 ```{r}
 visualizePowerResult(power_result = power_data,
-                     cellstate_vector = c("bmem", "monoc"),
+                     celltype_vector = c("bmem", "monoc"),
                      x_axis = "nindiv",
-                     y_axis = "ncell",
+                     y_facet = "ncell",
                      col_group = "method",
                      geneid = "ENSG00000163221",
                      snpid = "1:153337943")
@@ -103,9 +104,9 @@ By swaping the x and y axis, we can show the result in a different way.
 
 ```{r}
 visualizePowerResult(power_result = power_data,
-                     cellstate_vector = c("bmem", "monoc"),
+                     celltype_vector = c("bmem", "monoc"),
                      x_axis = "ncell",
-                     y_axis = "nindiv",
+                     y_facet = "nindiv",
                      col_group = "method",
                      geneid = "ENSG00000163221",
                      snpid = "1:153337943")

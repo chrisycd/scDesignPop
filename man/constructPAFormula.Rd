@@ -8,7 +8,7 @@ constructPAFormula(
   fm,
   method = c("nb", "poisson", "gaussian", "pseudoBulkLinear"),
   snpid = NULL,
-  cellstate_colname = NULL
+  celltype_colname = NULL
 )
 }
 \arguments{
@@ -19,7 +19,7 @@ constructPAFormula(
 
 \item{snpid}{a character object contains snpid.}
 
-\item{cellstate_colname}{a string scalar specifying the cell state variable
+\item{celltype_colname}{a string scalar specifying the cell state variable
 The default is "cell_type".}
 }
 \value{

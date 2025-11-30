@@ -1,5 +1,5 @@
 ---
-title: "Power analysis for selected genes"
+title: "Power analysis based on user specified eQTL effect sizes"
 author: 
   - name: Chris Dong
     affiliation:
@@ -19,7 +19,7 @@ output:
 date: "`r doc_date()`"
 package: "`r pkg_ver('scDesignPop')`"
 vignette: >
-  %\VignetteIndexEntry{scDesignPop-poweranalysisR-vignette}
+  %\VignetteIndexEntry{scDesignPop-poweranalysisD-vignette}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}  
 ---
@@ -42,75 +42,30 @@ tools::R_user_dir("scDesignPop", which="cache")
 
 ## Introduction
 
-scDesignPop provides power analysis tools at cell-type-specific level. The tutorial here is about how to conduct the power analysis for selected genes using the expression count data.
+scDesignPop provides power analysis tools at cell-type-specific level. Since fitted marginal models can be obtained by users already for generating synthetic datasets, the tutorial here is about how to conduct the power analysis on the basis of the marginal model files.
 
 ## Library and data preparation
 
-Given raw count data, scDesignPop can also perform simulation-based power analysis for a
-specific gene-SNP pair across cell types from the expression count data. A list of data is required as input. This is done using the `constructDataPop` function. A `SingleCellExperiment` object and an `eqtlgeno` dataframe are the two main inputs needed. The `eqtlgeno` dataframe consists of eQTL annotations (it must have cell state, gene, SNP, chromosome, and position columns at a minimum), and genotypes across individuals (columns) for every SNP (rows). The structure of an example `eqtlgeno` dataframe is given below.
+Here, we load the pre-saved `marginal_list` object to obtain the fitted marginal model of gene ENSG00000163221 (S100A12) for simplicity.
 
 ```{r}
 library(scDesignPop)
 library(SingleCellExperiment)
-data("example_sce")
-data("example_eqtlgeno")
-example_sce_sel <- example_sce[c("ENSG00000163221","ENSG00000135218"),]
-example_eqtlgeno_sel <- example_eqtlgeno[
-    which(example_eqtlgeno$gene_id%in%c("ENSG00000163221","ENSG00000135218")),]
+
+data("marginal_list_sel")
+summary(marginal_list_sel$ENSG00000163221$fit)
 ```
 
-```{r}
-data_list_sel <- constructDataPop(
-    sce = example_sce_sel,
-    eqtlgeno_df = example_eqtlgeno_sel,
-    new_covariate = as.data.frame(colData(example_sce_sel)),
-    overlap_features = NULL,
-    sampid_vec = NULL,
-    ct_copula = TRUE,
-    slot_name = "counts",
-    snp_model = "single",
-    cellstate_colname = "cell_type",
-    feature_colname = "gene_id",
-    snp_colname = "snp_id",
-    loc_colname = "POS",
-    chrom_colname = "CHR",
-    indiv_colname = "indiv",
-    prune_thres = 0.9
-    )
-```
 
-## Fitting the marginal model
-
-Next, a marginal model is specified to fit each gene using the
-`fitMarginalPop` function.  
-Here we use a Negative Binominal as the parametric model using `"nb"`.
-
-```{r}
-marginal_list_sel <- fitMarginalPop(
-    data_list = data_list_sel,
-    mean_formula = "(1|indiv) + cell_type",
-    model_family = "nb",
-    interact_colnames = "cell_type",
-    parallelization = "pbmcapply",
-    n_threads = 1L,
-    loc_colname = "POS",
-    snp_colname = "snp_id",
-    cellstate_colname = "cell_type",
-    indiv_colname = "indiv",
-    filter_snps = TRUE,
-    snpvar_thres = 0,
-    force_formula = FALSE,
-    data_maxsize = 1
-    )
-```
-
-## Performing power analysis
+## Performing power analysis with user specified eQTL effect size at cell-type level
 
 Given fitted marginal model, scDesignPop can perform simulation-based power analysis for a
 specific gene-SNP pair across selected cell types using the `runPowerAnalysis`
 function. Based on the previous naming of covariates, we specify the fitted snpid as `"1:153337943"`, the name of the column for fixed cell state effect and random individual effect as `"cell_type"` and `"indiv"` in the input parameters. To check these namings, we can call the covariate data frame using `marginal_list_sel[["ENSG00000163221"]]$fit$frame`. The selected cell types for testing are specified in cellstate_vector and have to be consistent with the covariate data frame.
 
 Particarly, parameters `snp_number` and `gene_number` are used to account for multiple testing correction with Bonferroni correction. Parameter `methods` is used to specify the marginal eQTL model from `c("nb", "poisson", "gaussian", "pseudoBulkLinear")`. Parameter `nindivs` and `ncells` are used to specify the number of individuals and number of cells per individual, from which we can analyze the performance of power analysis and find the optimal setting.
+
+Here, users can specify different eQTL effect sizes in each cell type using the input parameter `celltype_specific_ES_list` as follows, where each element of the list represents one scenario allowing eQTL effect sizes in multiple cell types can be specified at the same time. (bmem cell type is also included but without user specification)
 
 ```{r}
 set.seed(123)
@@ -119,7 +74,11 @@ power_data <- runPowerAnalysis(marginal_list = marginal_list_sel,
                                geneid = "ENSG00000163221",
                                snpid = "1:153337943",
                                celltype_colname = "cell_type",
-                               celltype_vector = c("bmem", "monoc"),
+                               celltype_vector = c("monoc"),
+                               celltype_specific_ES_list = list(
+                                   c("monoc" = 0.05),
+                                   c("monoc" = 0.1),
+                                   c("monoc" = 0.2)),
                                indiv_colname = "indiv",
                                methods = c("poisson","pseudoBulkLinear"),
                                nindivs = c(50, 200),
@@ -133,15 +92,15 @@ power_data <- runPowerAnalysis(marginal_list = marginal_list_sel,
                                ncores = 25)
 ```
 
-
 ## Visualization of power results
 
-The power analysis results can be visualized using the `visualizePowerResult` function. The cell type names in the `cellstate_vector` in the input parameters above must be included in the above power analysis.
+The power analysis results can be visualized using the `visualizePowerResult` function. The cell type names in the `cellstate_vector` must be included in the above power analysis.
 
 ```{r}
 visualizePowerResult(power_result = power_data,
-                     celltype_vector = c("bmem", "monoc"),
-                     x_axis = "nindiv",
+                     celltype_vector = c("monoc"),
+                     x_axis = "specifiedES",
+                     x_facet="nindiv",
                      y_facet = "ncell",
                      col_group = "method",
                      geneid = "ENSG00000163221",
@@ -152,8 +111,9 @@ By swaping the x and y axis, we can show the result in a different way.
 
 ```{r}
 visualizePowerResult(power_result = power_data,
-                     celltype_vector = c("bmem", "monoc"),
-                     x_axis = "ncell",
+                     celltype_vector = c("monoc"),
+                     x_axis = "specifiedES",
+                     x_facet="ncell",
                      y_facet = "nindiv",
                      col_group = "method",
                      geneid = "ENSG00000163221",

@@ -4,7 +4,7 @@
 #' @param method a character object specifying the method that will be analyzed for power.
 #' (Options: nb,poisson,gaussian,pseudoBulkLinear).
 #' @param snpid a character object contains snpid.
-#' @param cellstate_colname a string scalar specifying the cell state variable
+#' @param celltype_colname a string scalar specifying the cell state variable
 #'     The default is "cell_type".
 #'
 #' @return a stats::formula object for power analysis in each specified type.
@@ -15,21 +15,21 @@
 constructPAFormula <- function(fm,
                                method=c("nb","poisson","gaussian","pseudoBulkLinear"),
                                snpid=NULL,
-                               cellstate_colname=NULL){
+                               celltype_colname=NULL){
   # checks
   method = match.arg(method)
   stopifnot("snpid is not included in the formula. Please check input!" =
                 (stringr::str_detect(as.character(fm)[3],snpid)))
-  stopifnot("cellstate_colname is not included in the formula. Please check input!" =
-                (stringr::str_detect(as.character(fm)[3],cellstate_colname)))
+  stopifnot("celltype_colname is not included in the formula. Please check input!" =
+                (stringr::str_detect(as.character(fm)[3],celltype_colname)))
 
   # model formula
   fm <- as.character(fm)
   # separate all terms from the rightside of the formula
   fm_rs <- fm[3]
   fm_rspart <- unlist(stringr::str_split(fm_rs,pattern = " \\+ "))
-  # remove all effects related to the cellstate_colname parameter
-  fm_rspart1 <- fm_rspart[!stringr::str_detect(fm_rspart,cellstate_colname)]
+  # remove all effects related to the celltype_colname parameter
+  fm_rspart1 <- fm_rspart[!stringr::str_detect(fm_rspart,celltype_colname)]
   # remove all genotype effects
   fm_rspart2 <- fm_rspart1[!stringr::str_detect(fm_rspart1,"`")]
   # add specified snp's genotype effect
@@ -241,7 +241,7 @@ fitPAModel <- function(df,
 #' @param snpid a character object contains snpid.
 #' @param nindiv a numeric value showing the number of individuals that user wants to simulate.
 #' @param ncell a numeric value showing the number of cells per each individual that user wants to simulate.
-#' @param cellstate_colname a string scalar specifying the cell state variable in
+#' @param celltype_colname a string scalar specifying the cell state variable in
 #'     \code{df_sel}.
 #'     The default is "cell_type".
 #' @param indiv_colname a string scalar of the sample ID variable in cell covariate
@@ -259,7 +259,7 @@ simulatePADesignMatrix <- function(fit,
                                    snpid,
                                    nindiv,
                                    ncell,
-                                   cellstate_colname,
+                                   celltype_colname,
                                    indiv_colname){
     # checks
     stopifnot("nindiv_total doesn't contain three numbers of individuals for the three genotypes. Please check input!" =
@@ -323,7 +323,7 @@ simulatePADesignMatrix <- function(fit,
                                                  1:length(rand_cellindex)))
 
     # use the following line to generate mean estimates without random effect
-    colnames(df_news)[colnames(df_news)=="type"] <- cellstate_colname
+    colnames(df_news)[colnames(df_news)=="type"] <- celltype_colname
     response_new <- stats::predict(fit,type = "response",newdata=df_news,
                                    allow.new.levels = TRUE)
     # manually add random effect
@@ -355,10 +355,11 @@ simulatePADesignMatrix <- function(fit,
 #' @param refit_formula the formula used to refit the marginal full model if user wants to. Default is null.
 #' @param geneid a character object contains geneid.
 #' @param snpid a character object contains snpid.
-#' @param cellstate_colname a string scalar specifying the cell state variable in
+#' @param celltype_colname a string scalar specifying the cell state variable in
 #'     \code{marginal_list[[geneid]]$frame}.
 #'     The default is "cell_type".
-#' @param cellstate_vector a vector object specifies the cell type that will be tested
+#' @param celltype_vector a vector object specifies the cell type that will be tested
+#' @param celltype_specific_ES_vector a vector object specifies the genotype effect size (ES) for each cell type
 #' @param indiv_colname a string scalar of the sample ID variable in cell covariate
 #'     of \code{marginal_list[[geneid]]$frame}. The default is "indiv".
 #' @param method a character object specifying the method that will be analyzed for power.
@@ -388,8 +389,9 @@ powerAnalysis <- function(marginal_list,
                           refit_formula = NULL,
                           geneid = NULL,
                           snpid = NULL,
-                          cellstate_colname = "cell_type",
-                          cellstate_vector = NULL,
+                          celltype_colname = "cell_type",
+                          celltype_vector = NULL,
+                          celltype_specific_ES_vector = NULL,
                           indiv_colname = "indiv",
                           method = c("nb","poisson","gaussian","pseudoBulkLinear"),
                           nindivs = NULL,
@@ -407,10 +409,14 @@ powerAnalysis <- function(marginal_list,
                 (geneid%in%names(marginal_list)))
   stopifnot("snpid is not included in the selected gene's marginal model. Please check input!" =
                  (snpid%in%colnames(marginal_list[[geneid]]$fit$frame)))
-  stopifnot("cellstate_colname is not included in the selected gene's marginal model. Please check input!" =
-                (cellstate_colname%in%colnames(marginal_list[[geneid]]$fit$frame)))
-  stopifnot("cellstate_vector is not included in the selected gene's marginal model. Please check input!" =
-                (cellstate_vector%in%unique(marginal_list[[geneid]]$fit$frame[,cellstate_colname])))
+  stopifnot("celltype_colname is not included in the selected gene's marginal model. Please check input!" =
+                (celltype_colname%in%colnames(marginal_list[[geneid]]$fit$frame)))
+  stopifnot("celltype_vector is not included in the selected gene's marginal model. Please check input!" =
+                (celltype_vector%in%unique(marginal_list[[geneid]]$fit$frame[,celltype_colname])))
+  if(!is.null(celltype_specific_ES_vector)){
+      stopifnot("celltype_specific_ES_vector is not specified correctly with its names in the selected gene's marginal model. Please check input!" =
+                    (names(celltype_specific_ES_vector)%in%unique(marginal_list[[geneid]]$fit$frame[,celltype_colname])))
+  }
   stopifnot("indiv_colname is not included in the selected gene's marginal model. Please check input!" =
                 (indiv_colname%in%colnames(marginal_list[[geneid]]$fit$frame)))
   method = match.arg(method)
@@ -477,7 +483,7 @@ powerAnalysis <- function(marginal_list,
     }
 
     # build the formula using snpid
-    model_formula <- constructPAFormula(fm=refit_formula,method = method,snpid = snpid,cellstate_colname = cellstate_colname)
+    model_formula <- constructPAFormula(fm=refit_formula,method = method,snpid = snpid,celltype_colname = celltype_colname)
 
   }else{
     fit <- marginal_list[[geneid]]$fit
@@ -487,33 +493,59 @@ powerAnalysis <- function(marginal_list,
     model_formula <- constructPAFormula(fm = fm,
                                         method = method,
                                         snpid = snpid,
-                                        cellstate_colname = cellstate_colname)
+                                        celltype_colname = celltype_colname)
+  }
+
+  # covariates index that has with the snp term
+  snp_index <- which(stringr::str_detect(names(glmmTMB::fixef(fit)$cond),snpid))
+
+  # user-specified celltype-specifc genotype effect size
+  if(!is.null(celltype_specific_ES_vector)){
+      celltype_order <- levels(marginal_list[[geneid]]$fit$frame[,celltype_colname])
+      celltype_baseline <- celltype_order[1] # baseline effect size
+      ES_names <- names(celltype_specific_ES_vector)
+      if(celltype_baseline %in% names(celltype_specific_ES_vector)){
+          ES_baseline <- celltype_specific_ES_vector[celltype_baseline] # from user specified
+          if(length(names(celltype_specific_ES_vector)) > 1){
+              celltype_specific_ES_vector[setdiff(ES_names,celltype_baseline)] <- celltype_specific_ES_vector[setdiff(ES_names,celltype_baseline)] - ES_baseline
+          }else{
+              celltype_specific_ES_vector <- ES_baseline
+          }
+      }else{
+          ES_baseline <- fit$fit$par[snp_index[1]] # from fitted model
+          celltype_specific_ES_vector <- celltype_specific_ES_vector - ES_baseline
+      }
+
+      celltype_overlapped_ind <- match(names(celltype_specific_ES_vector),celltype_order)
+
+      # change the corresponding sizes to the given values
+      fit$fit$par[snp_index[celltype_overlapped_ind]] <- celltype_specific_ES_vector
+      fit$fit$parfull[snp_index[celltype_overlapped_ind]] <- celltype_specific_ES_vector
+      fit$sdr$par.fixed[snp_index[celltype_overlapped_ind]] <- celltype_specific_ES_vector
   }
 
   # null model
   fit0 <- fit
-  snp_index <- which(stringr::str_detect(names(glmmTMB::fixef(fit)$cond),snpid))
-
   fit0$fit$par[snp_index] <- 0 # change the corresponding sizes to zeros
   fit0$fit$parfull[snp_index] <- 0
   fit0$sdr$par.fixed[snp_index] <- 0
 
   # main
   res <- list()
-  for(type in cellstate_vector){
+  for(type in celltype_vector){
 
     #TODO: construct the PAModel based on user specified input
 
-    message(paste0(cellstate_colname,": ",type))
+    message(paste0(celltype_colname,": ",type))
 
     # collect intercept and slope of genotype effects for celltypes
-    # TODO: for other cellstate_colname order
-    ct_index <- 1:length(cellstate_vector)
+    # TODO: for other celltype_colname order
+    ct_index <- 1:length(celltype_vector)
     # d_index <- ct_index[length(ct_index)]+1
     # a_index <- d_index[length(d_index)]+1
     snp_cov <-glmmTMB::fixef(fit)$cond[snp_index]
 
-    colnames(df)[colnames(df)==cellstate_colname] <- "type"
+    colnames(df)[colnames(df)==celltype_colname] <- "type"
     if(which(levels(df$type)==type)==1){
       intercept <- as.numeric(glmmTMB::fixef(fit)$cond[1])
     }else{
@@ -521,8 +553,8 @@ powerAnalysis <- function(marginal_list,
     }
     if(which(levels(df$type)==type)==1){
       slope <- as.numeric(snp_cov[1])
-    }else if(mean(stringr::str_detect(names(snp_cov),paste0(cellstate_colname,type))) > 0){
-      slope <- sum(snp_cov[1],snp_cov[which(stringr::str_detect(names(snp_cov),paste0(cellstate_colname,type)))])
+    }else if(mean(stringr::str_detect(names(snp_cov),paste0(celltype_colname,type))) > 0){
+      slope <- sum(snp_cov[1],snp_cov[which(stringr::str_detect(names(snp_cov),paste0(celltype_colname,type)))])
     }else{
       slope <- as.numeric(snp_cov[1])
     }
@@ -577,7 +609,7 @@ powerAnalysis <- function(marginal_list,
                                           snpid = snpid,
                                           nindiv = nindiv,
                                           ncell = ncell,
-                                          cellstate_colname = cellstate_colname,
+                                          celltype_colname = celltype_colname,
                                           indiv_colname = indiv_colname)
         ######
         # H0 data
@@ -588,7 +620,7 @@ powerAnalysis <- function(marginal_list,
                                            snpid = snpid,
                                            nindiv = nindiv,
                                            ncell = ncell,
-                                           cellstate_colname = cellstate_colname,
+                                           celltype_colname = celltype_colname,
                                            indiv_colname = indiv_colname)
 
         # refit on H0 and H1 data
@@ -636,14 +668,14 @@ powerAnalysis <- function(marginal_list,
     res_tmp <- list(intercept = intercept,slope = slope,powers=powers,data=output)
     res <- c(res,list(res_tmp))
   }
-  names(res) <- cellstate_vector
+  names(res) <- celltype_vector
   return(res)
 }
 
 #' Calculate a bootstrap confidence interval for each power
 #'
 #' @param res the output of function powerAnalysis()
-#' @param cellstate_vector a vector object specifies the cell type that will be tested
+#' @param celltype_vector a vector object specifies the cell type that will be tested
 #' @param nindivs a vector of numeric values showing the numbers of individuals that user wants to simulate.
 #' @param ncells a vector of numeric values showing the numbers of cells per each individual that user wants to simulate.
 #' @param snp_number the number of SNPs for multiple testing correction.
@@ -658,7 +690,7 @@ powerAnalysis <- function(marginal_list,
 #' @examples
 #' NULL
 powerCICalculation <- function(res,
-                               cellstate_vector,
+                               celltype_vector,
                                nindivs,
                                ncells,
                                snp_number=10,
@@ -667,8 +699,8 @@ powerCICalculation <- function(res,
                                nsim=1000,
                                conf=0.05){
   # check
-  stopifnot("cellstate_vector is included in the res object. Please check input!" =
-                 (cellstate_vector %in% names(res)))
+  stopifnot("celltype_vector is included in the res object. Please check input!" =
+                 (celltype_vector %in% names(res)))
   stopifnot("nindivs input is not a vector of numeric values. Please check input!" =
                 (class(nindivs)=="numeric"))
   stopifnot("nindivs input is not a vector of integer values. Please check input!" =
@@ -687,7 +719,7 @@ powerCICalculation <- function(res,
                 (conf >=0 && conf <=1))
 
   # set.seed(111)
-  res_new <- pbapply::pblapply(cellstate_vector,function(type){
+  res_new <- pbapply::pblapply(celltype_vector,function(type){
       data <- res[[type]]$data
       intercept <- res[[type]]$intercept
       slope <- res[[type]]$slope
@@ -748,10 +780,11 @@ powerCICalculation <- function(res,
 #' @param refit_formula the formula used to refit the marginal full model if user wants to. Default is null.
 #' @param geneid a character object contains geneid.
 #' @param snpid a character object contains snpid.
-#' @param cellstate_colname a string scalar specifying the cell state variable in
+#' @param celltype_colname a string scalar specifying the cell state variable in
 #'     \code{marginal_list[[geneid]]$frame}.
 #'     The default is "cell_type".
-#' @param cellstate_vector a vector object specifies the cell type that will be tested
+#' @param celltype_vector a vector object specifies the cell type that will be tested
+#' @param celltype_specific_ES_list a list object specifies different vectors of the genotype effect size (ES) for each cell type
 #' @param indiv_colname a string scalar of the sample ID variable in cell covariate
 #'     of \code{marginal_list[[geneid]]$frame}. The default is "indiv".
 #' @param methods a vector of character objects specifying the methods that will be analyzed for power.
@@ -779,8 +812,9 @@ runPowerAnalysis <- function(marginal_list,
                              refit_formula = NULL,
                              geneid = NULL,
                              snpid = NULL,
-                             cellstate_colname = "cell_type",
-                             cellstate_vector = NULL,
+                             celltype_colname = "cell_type",
+                             celltype_vector = NULL,
+                             celltype_specific_ES_list = NULL,
                              indiv_colname = "indiv",
                              methods = NULL,
                              nindivs = NULL,
@@ -798,60 +832,123 @@ runPowerAnalysis <- function(marginal_list,
     output <- list()
     for(method in methods){
         message(paste("Performing simulations for method",method))
-        res <- powerAnalysis(marginal_list = marginal_list,
-                             marginal_model = marginal_model,
-                             refit_formula = refit_formula,
-                             geneid = geneid,
-                             snpid = snpid,
-                             cellstate_colname = cellstate_colname,
-                             cellstate_vector = cellstate_vector,
-                             indiv_colname = indiv_colname,
-                             method = method,
-                             nindivs = nindivs,
-                             ncells = ncells,
-                             nPool = nPool,
-                             nIndivPerPool = nIndivPerPool,
-                             nCellPerPool = nCellPerPool,
-                             alpha=alpha,
-                             nsims=power_nsim,
-                             ncores=ncores)
+        if(is.null(celltype_specific_ES_list)){
+            res <- powerAnalysis(marginal_list = marginal_list,
+                                 marginal_model = marginal_model,
+                                 refit_formula = refit_formula,
+                                 geneid = geneid,
+                                 snpid = snpid,
+                                 celltype_colname = celltype_colname,
+                                 celltype_vector = celltype_vector,
+                                 celltype_specific_ES_vector = NULL,
+                                 indiv_colname = indiv_colname,
+                                 method = method,
+                                 nindivs = nindivs,
+                                 ncells = ncells,
+                                 nPool = nPool,
+                                 nIndivPerPool = nIndivPerPool,
+                                 nCellPerPool = nCellPerPool,
+                                 alpha=alpha,
+                                 nsims=power_nsim,
+                                 ncores=ncores)
 
 
-        message(paste("Calculating confidence intervals for method",method))
-        res_CI <- powerCICalculation(res = res,
-                                     cellstate_vector = cellstate_vector,
+            message(paste("Calculating confidence intervals for method",method))
+            res_CI <- powerCICalculation(res = res,
+                                         celltype_vector = celltype_vector,
+                                         nindivs = nindivs,
+                                         ncells = ncells,
+                                         snp_number = snp_number,
+                                         gene_number = gene_number,
+                                         alpha = alpha,
+                                         nsim = CI_nsim,
+                                         conf = CI_conf)
+
+            power_data_CI <- res_CI[[1]]$powers
+
+            if(length(res_CI)>1){
+                for(i in 1:(length(celltype_vector)-1)){
+                    power_data_CI <- rbind(power_data_CI,res_CI[[i+1]]$powers)
+                }
+            }
+
+            power_data_CI$celltype <- c(rep(celltype_vector,each=length(res_CI[[1]]$powers[,1])))
+            power_data_CI$ncell <- factor(power_data_CI$ncell)
+
+            if(method=="nb"){
+                method_name <- "NB mixed"
+            }else if(method=="poisson"){
+                method_name <- "Poisson mixed"
+            }else if(method=="gaussian"){
+                method_name <- "Linear mixed"
+            }else if(method=="pseudoBulkLinear"){
+                method_name <- "Pseudobulk linear"
+            }else{
+                stop(paste("Cannot identify input method:",method))
+            }
+            power_data_CI$method <- method_name
+            output <- c(output,list(power_data_CI))
+        }else{
+            for(celltype_specific_ES_vector in celltype_specific_ES_list){
+                message(paste0(" Setting ",names(celltype_specific_ES_vector)," effect size:",celltype_specific_ES_vector))
+                res <- powerAnalysis(marginal_list = marginal_list,
+                                     marginal_model = marginal_model,
+                                     refit_formula = refit_formula,
+                                     geneid = geneid,
+                                     snpid = snpid,
+                                     celltype_colname = celltype_colname,
+                                     celltype_vector = celltype_vector,
+                                     celltype_specific_ES_vector = celltype_specific_ES_vector,
+                                     indiv_colname = indiv_colname,
+                                     method = method,
                                      nindivs = nindivs,
                                      ncells = ncells,
-                                     snp_number = snp_number,
-                                     gene_number = gene_number,
-                                     alpha = alpha,
-                                     nsim = CI_nsim,
-                                     conf = CI_conf)
+                                     nPool = nPool,
+                                     nIndivPerPool = nIndivPerPool,
+                                     nCellPerPool = nCellPerPool,
+                                     alpha=alpha,
+                                     nsims=power_nsim,
+                                     ncores=ncores)
 
-        power_data_CI <- res_CI[[1]]$powers
 
-        if(length(res_CI)>1){
-            for(i in 1:(length(cellstate_vector)-1)){
-                power_data_CI <- rbind(power_data_CI,res_CI[[i+1]]$powers)
+                message(paste("Calculating confidence intervals for method",method))
+                res_CI <- powerCICalculation(res = res,
+                                             celltype_vector = celltype_vector,
+                                             nindivs = nindivs,
+                                             ncells = ncells,
+                                             snp_number = snp_number,
+                                             gene_number = gene_number,
+                                             alpha = alpha,
+                                             nsim = CI_nsim,
+                                             conf = CI_conf)
+
+                power_data_CI <- res_CI[[1]]$powers
+
+                if(length(res_CI)>1){
+                    for(i in 1:(length(celltype_vector)-1)){
+                        power_data_CI <- rbind(power_data_CI,res_CI[[i+1]]$powers)
+                    }
+                }
+
+                power_data_CI$celltype <- c(rep(celltype_vector,each=length(res_CI[[1]]$powers[,1])))
+                power_data_CI$ncell <- factor(power_data_CI$ncell)
+                power_data_CI$specifiedES <- celltype_specific_ES_vector[power_data_CI$celltype]
+
+                if(method=="nb"){
+                    method_name <- "NB mixed"
+                }else if(method=="poisson"){
+                    method_name <- "Poisson mixed"
+                }else if(method=="gaussian"){
+                    method_name <- "Linear mixed"
+                }else if(method=="pseudoBulkLinear"){
+                    method_name <- "Pseudobulk linear"
+                }else{
+                    stop(paste("Cannot identify input method:",method))
+                }
+                power_data_CI$method <- method_name
+                output <- c(output,list(power_data_CI))
             }
         }
-
-        power_data_CI$celltype <- c(rep(cellstate_vector,each=length(res_CI[[1]]$powers[,1])))
-        power_data_CI$ncell <- factor(power_data_CI$ncell)
-
-        if(method=="nb"){
-            method_name <- "NB mixed"
-        }else if(method=="poisson"){
-            method_name <- "Poisson mixed"
-        }else if(method=="gaussian"){
-            method_name <- "Linear mixed"
-        }else if(method=="pseudoBulkLinear"){
-            method_name <- "Pseudobulk linear"
-        }else{
-            stop(paste("Cannot identify input method:",method))
-        }
-        power_data_CI$method <- method_name
-        output <- c(output,list(power_data_CI))
     }
 
     output <- do.call(rbind,output)
@@ -868,9 +965,10 @@ runPowerAnalysis <- function(marginal_list,
 #' Visualize the power analysis result
 #'
 #' @param power_result a data frame contains power analysis result in different parameter settings.
-#' @param cellstate_vector a vector of cell types that will be selected for visualization.
+#' @param celltype_vector a vector of cell types that will be selected for visualization.
 #' @param x_axis a character that specifies the x axis. Default is the number of individuals.
-#' @param y_axis a character that specifies the y axis. Default is the number of cells per individual.
+#' @param x_facet a character that specifies the x axis facet. Default is the cell types given in the celltype_vector.
+#' @param y_facet a character that specifies the y axis facet. Default is the number of cells per individual.
 #' @param col_group a character that specifies the color groups. Default is the eQTL model.
 #' @param geneid a character object contains geneid to be part of the plot title.
 #' @param snpid a character object contains snpid to be part of the plot title.
@@ -882,70 +980,135 @@ runPowerAnalysis <- function(marginal_list,
 #' @examples
 #' NULL
 visualizePowerResult <- function(power_result,
-                                 cellstate_vector,
+                                 celltype_vector,
                                  x_axis="nindiv",
-                                 y_axis="ncell",
+                                 x_facet="celltype",
+                                 y_facet="ncell",
                                  col_group="method",
                                  geneid,
                                  snpid){
-    # select cell types
-    power_result <- power_result[which(power_result$celltype%in%cellstate_vector),]
-    # add slope
-    power_result$celltype <- as.character(power_result$celltype)
 
-    for(i in 1:length(cellstate_vector)){
-        celltype = cellstate_vector[i]
-        power_result$celltype[which(power_result$celltype==celltype)] <- paste0(celltype,
-                                                                                " (ES:",
-                                                                                round(unique(as.numeric(power_result[which(power_result$celltype==celltype),"slope"])),3),
-                                                                                ")")
+    if(x_axis!="specifiedES"){
+        # select cell types
+        power_result <- power_result[which(power_result$celltype%in%celltype_vector),]
+        # add slope
+        power_result$celltype <- as.character(power_result$celltype)
+
+        for(i in 1:length(celltype_vector)){
+            celltype = celltype_vector[i]
+            power_result$celltype[which(power_result$celltype==celltype)] <- paste0(celltype,
+                                                                                    " (ES:",
+                                                                                    round(unique(as.numeric(power_result[which(power_result$celltype==celltype),"slope"])),3),
+                                                                                    ")")
+        }
+        power_result$celltype <- factor(power_result$celltype)
+        p <- ggplot(power_result)
+        if(x_axis=="nindiv" & x_facet=="celltype" & y_facet=="ncell" & col_group=="method"){
+            p <- p +
+                geom_point(aes(nindiv,mean,color=method,shape=method),size=1,position = position_dodge(width = 0.5))+
+                geom_line(aes(nindiv,mean,color=method,group=method),position = position_dodge(width = 0.5))+
+                #geom_text(aes(nindiv,power,label=power),nudge_x = 10,nudge_y = 0.02)+
+                geom_errorbar(aes(x=nindiv, y=mean, ymin = mean-sd,ymax=mean+sd,color=method),linewidth = 0.5,
+                              width = 0.45,alpha=0.8,position = position_dodge(width = 0.5))+
+                facet_grid(ncell~celltype,axes = "all",axis.labels = "margins")+
+                labs(x="Number of individuals",y="Power",color="EQTL model",shape="EQTL model")+
+                scale_y_continuous(
+                    sec.axis = sec_axis(~., name = "Number of cells per individual")
+                )
+        }else if(x_axis=="ncell"& x_facet=="celltype" & y_facet=="nindiv" & col_group=="method"){
+            p <- p +
+                geom_point(aes(ncell,mean,color=method,shape=method),size=1,position = position_dodge(width = 0.5))+
+                geom_line(aes(ncell,mean,color=method,group=method),position = position_dodge(width = 0.5))+
+                #geom_text(aes(nindiv,power,label=power),nudge_x = 10,nudge_y = 0.02)+
+                geom_errorbar(aes(x=ncell, y=mean, ymin = mean-sd,ymax=mean+sd,color=method),linewidth = 0.5,
+                              width = 0.45,alpha=0.8,position = position_dodge(width = 0.5))+
+                facet_grid(nindiv~celltype,axes = "all",axis.labels = "margins")+
+                labs(x="Number of cells per individual",y="Power",color="EQTL model",shape="EQTL model")+
+                scale_y_continuous(
+                    sec.axis = sec_axis(~., name = "Number of individuals")
+                )
+        }else{
+            stop("Parameter combination unavailable.")
+        }
+
+        p <- p + theme_classic()+
+            theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1))+
+            theme(
+                panel.spacing = unit(1, "lines"),
+                strip.background = element_blank(),
+                strip.placement = "outside",
+                axis.line.x = element_line(color = "black"),
+                legend.title.align = 0
+            )+geom_hline(yintercept = 0.8,colour = "red",linetype = "dashed")+
+            ggtitle(paste(geneid,"-",snpid),subtitle = "Cell type")+
+            theme(
+                plot.subtitle = element_text(hjust = 0.5),
+                axis.ticks.y.right = element_blank(),
+                axis.text.y.right = element_blank()
+            ) + ylim(c(-0.05,1.05))
     }
-    power_result$celltype <- factor(power_result$celltype)
-
-    p <- ggplot(power_result)
-    if(x_axis=="nindiv" & y_axis=="ncell" & col_group=="method"){
+    else if(x_axis=="specifiedES"){
+        message("When x_axis is specifiedES, the first cell type from the celltype_vector will be used.")
+        power_result <- power_result[which(power_result$celltype==celltype_vector[1]),]
+        power_result$specifiedES <- factor(power_result$specifiedES)
+        if(x_facet=="nindiv" &  y_facet=="ncell" & col_group=="method"){
+            p <- ggplot(power_result,aes(x = specifiedES,
+                                         y = power,
+                                         color = method,
+                                         shape = method,
+                                         group = method)) +
+                geom_line(linewidth = 0.7, position = position_dodge(width = 0.5)) +
+                geom_point(size = 2, position = position_dodge(width = 0.5)) +
+                geom_errorbar(aes(ymin = power - sd, ymax = power + sd),
+                              linewidth = 0.5,width = 0.45,alpha=0.8,position = position_dodge(width = 0.5)) +
+                geom_hline(yintercept = 0.8, colour = "red", linetype = "dashed", linewidth = 0.7) +
+                facet_grid(ncell ~ nindiv, labeller = label_both)
+        }else if(x_facet=="ncell" &  y_facet=="nindiv" & col_group=="method"){
+            p <- ggplot(power_result,aes(x = specifiedES,
+                                         y = power,
+                                         color = method,
+                                         shape = method,
+                                         group = method)) +
+                geom_line(linewidth = 0.7, position = position_dodge(width = 0.5)) +
+                geom_point(size = 2, position = position_dodge(width = 0.5)) +
+                geom_errorbar(aes(ymin = power - sd, ymax = power + sd),
+                              linewidth = 0.5,width = 0.45,alpha=0.8,position = position_dodge(width = 0.5)) +
+                geom_hline(yintercept = 0.8, colour = "red", linetype = "dashed", linewidth = 0.7) +
+                facet_grid(nindiv ~ ncell, labeller = label_both)
+        }else{
+            stop("Parameter combination unavailable.")
+        }
         p <- p +
-            geom_point(aes(nindiv,mean,color=method,shape=method),size=1,position = position_dodge(width = 0.5))+
-            geom_line(aes(nindiv,mean,color=method,group=method),position = position_dodge(width = 0.5))+
-            #geom_text(aes(nindiv,power,label=power),nudge_x = 10,nudge_y = 0.02)+
-            geom_errorbar(aes(x=nindiv, y=mean, ymin = mean-sd,ymax=mean+sd,color=method),linewidth = 0.5,
-                          width = 0.45,alpha=0.8,position = position_dodge(width = 0.5))+
-            facet_grid(ncell~celltype,axes = "all",axis.labels = "margins")+
-            labs(x="Number of individuals",y="Power",color="EQTL model",shape="EQTL model")+
             scale_y_continuous(
-                sec.axis = sec_axis(~., name = "Number of cells per individual")
+                limits = c(0, 1.3),
+                breaks = seq(0, 1, 0.25)
+            ) +
+            labs(
+                x = "Effect Size",
+                y = "Power",
+                color = "eQTL model",
+                shape = "eQTL model",
+                title = paste(geneid, "-", snpid),
+                subtitle = celltype_vector[1]
+            ) +
+            coord_cartesian(clip = "off") +
+            theme_classic(base_size = 14) +
+            theme(
+                axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+                panel.spacing = unit(1, "lines"),
+                strip.background = element_blank(),
+                strip.placement = "outside",
+                legend.title.align = 0,
+                legend.position = "bottom",
+                plot.subtitle = element_text(hjust = 0.5),
+                axis.line = element_blank(),
+                axis.line.x.bottom = element_line(color = "black", linewidth = 0.8),
+                axis.line.y.left   = element_line(color = "black", linewidth = 0.8),
+                axis.line.y.right  = element_line(color = "black", linewidth = 0.8),
+                axis.ticks.y.right = element_blank(),
+                axis.text.y.right  = element_blank()
             )
-    }else if(x_axis=="ncell" & y_axis=="nindiv" & col_group=="method"){
-        p <- p +
-            geom_point(aes(ncell,mean,color=method,shape=method),size=1,position = position_dodge(width = 0.5))+
-            geom_line(aes(ncell,mean,color=method,group=method),position = position_dodge(width = 0.5))+
-            #geom_text(aes(nindiv,power,label=power),nudge_x = 10,nudge_y = 0.02)+
-            geom_errorbar(aes(x=ncell, y=mean, ymin = mean-sd,ymax=mean+sd,color=method),linewidth = 0.5,
-                          width = 0.45,alpha=0.8,position = position_dodge(width = 0.5))+
-            facet_grid(nindiv~celltype,axes = "all",axis.labels = "margins")+
-            labs(x="Number of cells per individual",y="Power",color="EQTL model",shape="EQTL model")+
-            scale_y_continuous(
-                sec.axis = sec_axis(~., name = "Number ofindividuals")
-            )
-    }else{
-        stop("Parameter combination unavailable.")
     }
-
-    p <- p + theme_classic()+
-        theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1))+
-        theme(
-            panel.spacing = unit(1, "lines"),
-            strip.background = element_blank(),
-            strip.placement = "outside",
-            axis.line.x = element_line(color = "black"),
-            legend.title.align = 0
-        )+geom_hline(yintercept = 0.8,colour = "red",linetype = "dashed")+
-        ggtitle(paste(geneid,"-",snpid),subtitle = "Cell type")+
-        theme(
-            plot.subtitle = element_text(hjust = 0.5),
-            axis.ticks.y.right = element_blank(),
-            axis.text.y.right = element_blank()
-        )
 
     return(p)
 }
