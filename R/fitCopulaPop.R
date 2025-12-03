@@ -3,22 +3,26 @@
 
 #' Fits copula for input
 #'
-#' @param sce add later
+#' @param sce a SingleCellExperiment object.
 #' @param assay_use add later
 #' @param input_data add later
 #' @param marginal_list add later
-#' @param family_use add later
-#' @param copula add later
+#' @param family_use a string scalar to specify model fitting used.
+#' @param copula a string value to specify the type of Copula fitting to use.
+#'     Currently, only Gaussian copula is supported. The default is "gaussian".
 #' @param DT add later
 #' @param pseudo_obs add later
-#' @param epsilon add later
+#' @param epsilon a numeric value close to 0 to specify tolerance for avoiding
+#'     0 or 1 quantiles. The default value is 1e-06.
 #' @param family_set add later
 #' @param important_feature add later
-#' @param n_cores add later
-#' @param parallelization add later
+#' @param n_cores positive integer value (greater or equal to 1) to specify the
+#'     number of CPU threads used in parallelization.
+#' @param parallelization a string scalar specifying the type of parallelization
+#'     used during marginal fitting.
 #' @param BPPARAM add later
 #'
-#' @return A list
+#' @return outputs a list with following elements:
 #' @export
 #'
 #' @examples

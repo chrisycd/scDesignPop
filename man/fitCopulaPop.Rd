@@ -22,7 +22,7 @@ fitCopulaPop(
 )
 }
 \arguments{
-\item{sce}{add later}
+\item{sce}{a SingleCellExperiment object.}
 
 \item{assay_use}{add later}
 
@@ -30,28 +30,32 @@ fitCopulaPop(
 
 \item{marginal_list}{add later}
 
-\item{family_use}{add later}
+\item{family_use}{a string scalar to specify model fitting used.}
 
-\item{copula}{add later}
+\item{copula}{a string value to specify the type of Copula fitting to use.
+Currently, only Gaussian copula is supported. The default is "gaussian".}
 
 \item{DT}{add later}
 
 \item{pseudo_obs}{add later}
 
-\item{epsilon}{add later}
+\item{epsilon}{a numeric value close to 0 to specify tolerance for avoiding
+0 or 1 quantiles. The default value is 1e-06.}
 
 \item{family_set}{add later}
 
 \item{important_feature}{add later}
 
-\item{n_cores}{add later}
+\item{n_cores}{positive integer value (greater or equal to 1) to specify the
+number of CPU threads used in parallelization.}
 
-\item{parallelization}{add later}
+\item{parallelization}{a string scalar specifying the type of parallelization
+used during marginal fitting.}
 
 \item{BPPARAM}{add later}
 }
 \value{
-A list
+outputs a list with following elements:
 }
 \description{
 Fits copula for input
