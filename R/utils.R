@@ -79,3 +79,8 @@ checkVectorContain <- function(..., ignore_dups = FALSE) {
 
     return(res)
 }
+
+
+# Fix global variable notes
+utils::globalVariables(c("."))
+utils::globalVariables(c(":="))

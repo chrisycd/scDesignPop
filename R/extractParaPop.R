@@ -1,25 +1,55 @@
 # TODO: test removed_cell code chunk
-# TODO: try not using lapply for removed_cell_list and marginal_list
 
-#' Extract parameter matrix for new covariate df
+#' Extract parameter matrix for a new covariate data frame
 #'
-#' This is the main function.
+#' This is the main function for extracting parameter matrices.
 #'
-#' @param sce add later
-#' @param assay_use add later
-#' @param marginal_list add later
-#' @param n_cores add later
+#' @param sce a SingleCellExperiment object.
+#' @param assay_use a string scalar specifying the slot to use in input \code{sce}.
+#'     The default is "counts".
+#' @param marginal_list a list of named features, each with the fitted object
+#'     and other variables as output from \code{\link{fitMarginalPop}}.
+#' @param n_cores positive integer value (greater or equal to 1) to specify the
+#'     number of CPU threads used in parallelization. The default is 2.
 #' @param family_use a string scalar or vector of marginal distribution used.
-#' @param new_covariate a cell-by-feature covariate dataframe (from construct_data.R) plus corr_group.
-#' @param new_eqtl_geno_list a list of eQTL genotype dataframes for each gene (to be predicted).
-#' @param indiv_colname add later
-#' @param snp_colname add later
-#' @param loc_colname add later
-#' @param parallelization add later
-#' @param BPPARAM add later
-#' @param data a cell-by-feature covariate dataframe (from construct_data.R) plus corr_group. Used only in gamlss fits.
+#' @param new_covariate a cell-by-covariate data frame obtained in the list output from
+#'     \code{\link{constructDataPop}}. It must have a corr_group variable.
+#' @param new_eqtl_geno_list a list of eQTL genotype data frames for each gene
+#'     to be simulated.  If using same list as in \code{\link{fitMarginalPop}},
+#'     then the in those samples
+#' @param indiv_colname a string scalar of the sample ID variable in cell covariate
+#'     of \code{sce}. The default is "indiv".
+#' @param snp_colname a string scalar for the SNP variable in \code{eqtlgeno_df}
+#'     used in \code{\link{constructDataPop}}. The default is "snp_id".
+#' @param loc_colname a string scalar for the last column of eQTL annotation in
+#'     \code{eqtlgeno_df}. The default is "POS".
+#' @param parallelization a string scalar specifying the type of parallelization
+#'     used when extracting parameters. Must be one of either "bpmapply", "future.apply",
+#'     "mcmapply", or "pbmcmapply". The default value is "mcmapply".
+#' @param BPPARAM a BiocParallelParam class object (from \code{BiocParallel} R package)
+#'     that must be specified when using \code{parallelization = "bpmapply"}. Either
+#'     \code{BiocParallel::SnowParam()} or \code{BiocParallel::MulticoreParam()}
+#'     can be used to initialize, depending on the operating system. The default
+#'     is NULL, which corresponds to the \code{parallelization = "mcmapply"} default.
+#' @param future.seed a logical or integer value to specify how RNG seed is handled
+#'     when \code{parallelization = 'future.apply'} is used. See \code{future.apply::future_eapply}
+#'     documentation for more details on its usage. The default is FALSE.
+#' @param data_maxsize a positive numeric value used to set max marginal_list size
+#'     in GiB increments. Used only when \code{parallelization = "future.apply"}.
+#' @param data a cell-by-covariate data frame obtained in the list output from
+#'     \code{\link{constructDataPop}}. It must have a corr_group variable.
+#'     Used only in gamlss fits.
 #'
 #' @return a list of mean, sigma, and zero parameter cell by feature matrices:
+#' \describe{
+#'      \item{\code{mean_mat}}{a cell by feature matrix containing the conditional
+#'      mean values.}
+#'      \item{\code{sigma_mat}}{a cell by feature matrix containing the gene specific
+#'      dispersion values.}
+#'      \item{\code{zero_mat}}{a cell by feature matrix containing the gene specific
+#'      zero probability values (for zip and zinb models).}
+#' }
+#'
 #' @export
 #'
 #' @examples
@@ -27,7 +57,7 @@
 extractParaPop <- function(sce,
                            assay_use = "counts",
                            marginal_list,
-                           n_cores,
+                           n_cores = 2L,
                            family_use,
                            new_covariate,
                            new_eqtl_geno_list,
@@ -36,6 +66,8 @@ extractParaPop <- function(sce,
                            loc_colname = "POS",
                            parallelization = "mcmapply",
                            BPPARAM = NULL,
+                           future.seed = FALSE,
+                           data_maxsize = 1,
                            data) {
 
     removed_cell_list <- lapply(marginal_list, function(x) { x$removed_cell })
@@ -213,21 +245,41 @@ extractParaPop <- function(sce,
 
     if (parallelization == "bpmapply") {
         paraFunc <- BiocParallel::bpmapply
+        if (.Platform$OS.type == "unix") {
+            BPPARAM <- BiocParallel::MulticoreParam(workers = n_cores)
+        } else if (.Platform$OS.type == "windows") {
+            BPPARAM <- BiocParallel::SnowParam(workers = n_cores)
+        }
+    } else if (parallelization == "future.apply"){
+        paraFunc <- future.apply::future_mapply
     }
     if (parallelization == "pbmcmapply") {
         paraFunc <- pbmcapply::pbmcmapply
     }
 
     if (parallelization == "bpmapply") {
-        BPPARAM$workers <- n_cores
-
-        # loop thru each feature using mat_function()
+        # BPPARAM$workers <- n_cores  # old code
         mat <- suppressMessages(paraFunc(mat_function,
                                          x = seq_len(dim(sce)[1])[qc_gene_idx],
                                          y = family_use,
                                          BPPARAM = BPPARAM,
                                          SIMPLIFY = FALSE))
-    } else {  # run mcmapply or pbmcmapply
+    } else if (parallelization == "future.apply") {
+
+        old_opt <- options("future.globals.maxSize")
+        on.exit(options(old_opt), add = TRUE)
+        options(future.globals.maxSize = data_maxsize * 1000 * 1024^2)
+
+        old_plan <- future::plan()
+        on.exit(future::plan(old_plan), add = TRUE)
+        future::plan(future::multisession, workers = n_cores)
+
+        mat <- suppressMessages(paraFunc(mat_function,
+                                         x = seq_len(dim(sce)[1])[qc_gene_idx],
+                                         y = family_use,
+                                         future.seed = future.seed,
+                                         SIMPLIFY = FALSE))
+    } else {  # mcmapply or pbmcmapply
         mat <- suppressMessages(paraFunc(mat_function,
                                          x = seq_len(dim(sce)[1])[qc_gene_idx],
                                          y = family_use,
@@ -284,12 +336,10 @@ extractParaPop <- function(sce,
 #' A S3 generic function for computing model parameters for with or without new
 #'     covariate of a feature
 #'
-#' @param fit add later
-#' @param family_use add later
-#' @param new_covariate add later
-#' @param total_cells add later
-#' @param data add later
-#' @param ... Additional arguments passed to calcParaVectors S3 method functions.
+#' @inheritParams extractParaPop
+#' @param fit a fitted object in the marginal_list.
+#' @param total_cells a positive integer for the number of total cells to simulate.
+#' @param ... additional arguments passed to calcParaVectors S3 method functions.
 #'
 #' @export
 calcParaVectors <- function(fit,
@@ -386,6 +436,7 @@ calcParaVectors.glmmTMB <- function(fit,
     indiv_colname <- if(!is.null(more_args$indiv_colname)) { more_args$indiv_colname }
 
     family_use <- stats::family(fit)$family[1]
+    link_type <- stats::family(fit)$link
     if (grepl("nbinom2", family_use)) {
         family_use <- "nb"  # variance parameterization: var = mu + mu^2 / phi
     }
@@ -426,7 +477,7 @@ calcParaVectors.glmmTMB <- function(fit,
             # Note: random effects currently not simulated despite re.form = NULL
             newindiv_df <- data.frame(new_covariate[[indiv_colname]],
                                       stats::predict(fit,
-                                                     type = "link",   # on log scale
+                                                     type = "link",  # as eta (eg. log scale)
                                                      newdata = new_covariate,
                                                      allow.new.levels = TRUE,
                                                      re.form = NULL))
@@ -434,8 +485,11 @@ calcParaVectors.glmmTMB <- function(fit,
 
             newindiv_df <- dplyr::left_join(newindiv_df, indiv_rand,
                                             by = indiv_colname) %>%
-                dplyr::mutate(mean_vec = exp(!!rlang::sym("pop_condmean") +
-                                                 !!rlang::sym("sim_randeff")))
+                dplyr::mutate(
+                    linear_pred = !!rlang::sym("pop_condmean") + !!rlang::sym("sim_randeff"),
+                    mean_vec = linkFunc(linear_pred, link_type)
+                    )
+            # TODO: test link function cases for new indivs
 
             mean_vec <- dplyr::pull(newindiv_df, mean_vec)
 
@@ -532,4 +586,20 @@ calcParaVectors.gam <- function(fit,
 
     return(list(mean_vec = mean_vec,
                 theta_vec = theta_vec))
+}
+
+
+# helper function to apply link function based on link type
+linkFunc <- function(eta, link_type) {
+
+    switch(link_type,
+           "identity" = eta,
+           "log"      = base::exp(eta),
+           "logit"    = stats::plogis(eta),  # exp(eta) / (1 + exp(eta))
+           "probit"   = stats::pnorm(eta),   # \Phi^(-1)(eta)
+           "inverse"  = 1 / eta,
+           "sqrt"     = eta^2,
+           stop(sprintf("Unsupported link function!\n
+                        The link_type must be one of 'identity', 'log', 'logit', 'probit', 'inverse', or 'sqrt'.", link_type))
+    )
 }
