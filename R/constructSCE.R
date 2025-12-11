@@ -21,7 +21,7 @@
 #' @param sce_name a string scalar for the type of assay data for output SingleCellExperiment.
 #' @param indiv_colname a string scalar for the sample id colname. Must be present
 #'     in \code{cellcov_df} or \code{data_obj}. Default is 'indiv'.
-#' @param cellstate_colname a string scalar for the cell state colname. Must be present
+#' @param celltype_colname a string scalar for the cell type colname. Must be present
 #'     in \code{cellcov_df} or \code{data_obj}. Default is 'cell_type'.
 #' @param factor_colnames an optional string vector or scalar for the columns to
 #'     coerce into factor variables. Default is NULL. If provided, it must be present
@@ -44,7 +44,7 @@ constructSCE <- function(data_obj,
                          slot_name = "counts",
                          sce_name = slot_name,
                          indiv_colname = "indiv",
-                         cellstate_colname = "cell_type",
+                         celltype_colname = "cell_type",
                          factor_colnames = NULL,
                          cellcov_renames = cellcov_names) {
 
@@ -55,8 +55,8 @@ constructSCE <- function(data_obj,
     stopifnot("indiv_colname is not included in cellcov_names. Please check input!" =
                   (indiv_colname %in% cellcov_names))
 
-    stopifnot("cellstate_colname is not included in cellcov_names. Please check input!" =
-                  (cellstate_colname %in% cellcov_names))
+    stopifnot("celltype_colname is not included in cellcov_names. Please check input!" =
+                  (celltype_colname %in% cellcov_names))
 
     stopifnot("factor_colnames is not included in cellcov_names. Please check input!" =
                   (factor_colnames %in% cellcov_names))
@@ -106,8 +106,8 @@ constructSCE <- function(data_obj,
     }
 
     # checks
-    stopifnot("cellstate_colname is not found. Please check input!" =
-                  cellstate_colname %in% names(col_class))
+    stopifnot("celltype_colname is not found. Please check input!" =
+                  celltype_colname %in% names(col_class))
 
     stopifnot("indiv_colname is not found. Please check input!" =
                   indiv_colname %in% names(col_class))

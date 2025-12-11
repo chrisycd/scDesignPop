@@ -7,7 +7,7 @@
 #' @param sampid_vec sample id vector
 #' @param name string or integer scalar to identify input
 #' @param feature_colname feature variable name
-#' @param cellstate_colname cell state variable name
+#' @param celltype_colname cell type variable name
 #' @param snp_colname SNP id variable name
 #' @param loc_colname SNP position variable name
 #'
@@ -21,7 +21,7 @@ constructEqtlGeno <- function(eqtl_annot_df,
                               sampid_vec,
                               name = NULL,
                               feature_colname = "gene_name",
-                              cellstate_colname = "cell_type",
+                              celltype_colname = "cell_type",
                               snp_colname = "snp_id",
                               loc_colname = "POS") {
     # TODO: add checks and filtering for sample id in geno_df
@@ -29,7 +29,7 @@ constructEqtlGeno <- function(eqtl_annot_df,
 
     assertthat::assert_that(assertthat::has_name(eqtl_annot_df,
                                                  c(feature_colname, snp_colname,
-                                                   loc_colname, cellstate_colname)))
+                                                   loc_colname, celltype_colname)))
     assertthat::assert_that(assertthat::has_name(geno_df, snp_colname))
 
     if(is.null(name)) {
