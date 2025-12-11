@@ -23,6 +23,7 @@ Imports:
     gamlss.dist,
     ggplot2,
     glmmTMB,
+    irlba,
     magrittr,
     Matrix,
     MASS,
@@ -33,6 +34,7 @@ Imports:
     mvtnorm,
     pbapply,
     pbmcapply,
+    RhpcBLASctl,
     rlang,
     rvinecopulib,
     SeuratObject,
@@ -42,9 +44,12 @@ Imports:
     SummarizedExperiment,
     tibble,
     tidyr,
-    tidyselect
+    tidyselect,
+    uwot,
+    viridis
 URL: https://github.com/chrisycd/scDesignPop
 BugReports: https://github.com/chrisycd/scDesignPop/issues
 Depends: 
     R (>= 4.2.0)
 LazyData: false
+
