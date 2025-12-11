@@ -10,7 +10,7 @@ constructEqtlGeno(
   sampid_vec,
   name = NULL,
   feature_colname = "gene_name",
-  cellstate_colname = "cell_type",
+  celltype_colname = "cell_type",
   snp_colname = "snp_id",
   loc_colname = "POS"
 )
@@ -26,7 +26,7 @@ constructEqtlGeno(
 
 \item{feature_colname}{feature variable name}
 
-\item{cellstate_colname}{cell state variable name}
+\item{celltype_colname}{cell type variable name}
 
 \item{snp_colname}{SNP id variable name}
 

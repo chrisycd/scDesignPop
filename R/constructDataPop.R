@@ -40,8 +40,10 @@
 #' \describe{
 #'      \item{\code{count_mat}}{a cell-by-gene matrix of response values.}
 #'      \item{\code{covariate}}{a cell-by-covariate data frame used for fit marginal.}
-#'      \item{\code{new_covariate}}{an optional cell-by-covariate data frame used for prediction.}
+#'      \item{\code{new_covariate}}{an optional cell-by-covariate data frame used
+#'          in simulation.}
 #'      \item{\code{important_features}}{a string vector of gene ids.}
+#'      \item{\code{noeqtl_features}}{a string vector of gene ids that do not have eQTLs.}
 #'      \item{\code{eqtl_geno_list}}{a list of eQTL genotype dataframes for each gene
 #'          (for fit marginal).}
 #'      \item{\code{new_eqtl_geno_list}}{a optional list of eQTL genotype dataframes
