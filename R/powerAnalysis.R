@@ -962,31 +962,94 @@ runPowerAnalysis <- function(marginal_list,
 }
 
 
-#' Visualize the power analysis result
+#' Visualize power as curves across study designs
 #'
-#' @param power_result a data frame contains power analysis result in different parameter settings.
-#' @param celltype_vector a vector of cell types that will be selected for visualization.
-#' @param x_axis a character that specifies the x axis. Default is the number of individuals.
-#' @param x_facet a character that specifies the x axis facet. Default is the cell types given in the celltype_vector.
-#' @param y_facet a character that specifies the y axis facet. Default is the number of cells per individual.
-#' @param col_group a character that specifies the color groups. Default is the eQTL model.
-#' @param geneid a character object contains geneid to be part of the plot title.
-#' @param snpid a character object contains snpid to be part of the plot title.
+#' Create faceted power curves summarizing how power changes across different
+#' study design settings (e.g., numbers of individuals, numbers of cells per
+#' individual, or specified effect sizes), stratified by cell type and eQTL
+#' model.
 #'
-#' @return a ggplot object
+#' When \code{x_axis != "specifiedES"}, power is plotted against either the
+#' number of individuals or the number of cells per individual, with facets
+#' arranged by the remaining design variable and cell type. When
+#' \code{x_axis == "specifiedES"}, power is plotted as a function of specified
+#' effect sizes for a single cell type (the first element of
+#' \code{celltype_vector}), with facets arranged by the design parameters.
+#' In all cases, a horizontal dashed line at power = 0.8 is added to indicate
+#' a commonly used target threshold.
+#'
+#' @param power_result A data frame containing the power analysis results under
+#'   different design parameter settings. It is expected to include columns
+#'   such as \code{celltype}, \code{nindiv}, \code{ncell}, \code{method},
+#'   and summary statistics such as \code{mean}, \code{sd}, \code{power},
+#'   \code{slope}, and/or \code{specifiedES}, depending on the chosen
+#'   \code{x_axis}, \code{x_facet}, \code{y_facet}, and \code{col_group}
+#'   arguments.
+#' @param celltype_vector A character vector specifying the cell types to be
+#'   included in the visualization. When \code{x_axis != "specifiedES"}, curves
+#'   for all selected cell types are shown. When \code{x_axis == "specifiedES"},
+#'   only the first cell type in \code{celltype_vector} is used.
+#' @param x_axis A character string specifying which variable in
+#'   \code{power_result} is mapped to the x-axis. Supported values are
+#'   \code{"nindiv"} (number of individuals), \code{"ncell"} (number of cells
+#'   per individual), and \code{"specifiedES"} (specified effect sizes). The
+#'   default is \code{"nindiv"}.
+#' @param x_facet A character string specifying the variable used to define
+#'   columns in the facet grid. Typical choices are \code{"celltype"},
+#'   \code{"nindiv"}, or \code{"ncell"}, and only specific combinations with
+#'   \code{x_axis} and \code{y_facet} are supported (see function code for
+#'   details). The default is \code{"celltype"}.
+#' @param y_facet A character string specifying the variable used to define
+#'   rows in the facet grid. Typical choices are \code{"ncell"} or
+#'   \code{"nindiv"}, and only specific combinations with \code{x_axis} and
+#'   \code{x_facet} are supported. The default is \code{"ncell"}.
+#' @param col_group A character string specifying the variable in
+#'   \code{power_result} that defines the color (and shape) groups for the
+#'   curves. This is typically the eQTL model or analysis method, and defaults
+#'   to \code{"method"}.
+#' @param geneid A character string giving the gene identifier to be included
+#'   in the main plot title.
+#' @param snpid A character string giving the SNP identifier to be included
+#'   in the main plot title (together with \code{geneid}).
+#'
+#' @return A \code{ggplot} object representing the power curves under the
+#'   specified design settings
+#'
 #' @import ggplot2
 #' @export
 #'
 #' @examples
-#' NULL
-visualizePowerResult <- function(power_result,
-                                 celltype_vector,
-                                 x_axis="nindiv",
-                                 x_facet="celltype",
-                                 y_facet="ncell",
-                                 col_group="method",
-                                 geneid,
-                                 snpid){
+#' # Example toy data
+#' toy_df <- data.frame(
+#'   celltype = rep(c("B cell", "T cell"), each = 6),
+#'   nindiv   = rep(c(50, 100, 200), times = 4),
+#'   ncell    = rep(c(1000, 2000), each = 6),
+#'   method   = rep(c("model1", "model2"), each = 6),
+#'   mean     = runif(12, 0.3, 1),
+#'   sd       = runif(12, 0.01, 0.1),
+#'   slope    = c(rep(0.15, 6), rep(0.20, 6))
+#' )
+#'
+#' # Visualize curves for selected cell types
+#' visualizePowerCurve(
+#'   power_result   = toy_df,
+#'   celltype_vector = c("B cell","T cell"),
+#'   x_axis = "nindiv",
+#'   x_facet = "celltype",
+#'   y_facet = "ncell",
+#'   col_group = "method",
+#'   geneid = "GeneA",
+#'   snpid  = "rs123456"
+#' )
+#'
+visualizePowerCurve <- function(power_result,
+                                celltype_vector,
+                                x_axis="nindiv",
+                                x_facet="celltype",
+                                y_facet="ncell",
+                                col_group="method",
+                                geneid,
+                                snpid){
 
     if(x_axis!="specifiedES"){
         # select cell types
@@ -1108,6 +1171,154 @@ visualizePowerResult <- function(power_result,
                 axis.ticks.y.right = element_blank(),
                 axis.text.y.right  = element_blank()
             )
+    }
+
+    return(p)
+}
+
+#' Visualize power as heatmaps across study designs
+#'
+#' Create a faceted heatmap showing statistical power across combinations of
+#' numbers of individuals and numbers of cells per individual, optionally
+#' stratified by method, cell types and genes (gene-SNP pairs).
+#'
+#' @param power_result A data frame containing the power estimates
+#'   to be visualized. It must include columns for the number of individuals,
+#'   number of cells per individual, the faceting variables, and the power
+#'   values. See \code{nindiv_col}, \code{ncell_col}, \code{x_facet},
+#'   \code{y_facet}, and \code{power_col}.
+#' @param nindiv_col A character string specifying the column in
+#'   \code{power_result} that stores the number of individuals in each design
+#'   setting. This column will be mapped to the x-axis (after being converted
+#'   to a factor).
+#' @param ncell_col A character string specifying the column in
+#'   \code{power_result} that stores the number of cells per individual in each
+#'   design setting. This column will be mapped to the y-axis (after being
+#'   converted to a factor).
+#' @param x_facet A character string specifying the column in
+#'   \code{power_result} to use for the row-wise facet (the left-to-right
+#'   “strips” in \code{facet_grid}). Typically this can be the cell types or genes.
+#' @param y_facet A character string specifying the column in
+#'   \code{power_result} to use for the column-wise facet (the top-to-bottom
+#'   “strips” in \code{facet_grid}). Typically this can be the methods.
+#' @param power_col A character string specifying the column in
+#'   \code{power_result} that contains the power values.
+#' @param fill_label A character string giving the label for the fill legend
+#'   (e.g., \code{"Power"}).
+#' @param fill_limits A numeric vector of length two giving the lower and upper
+#'   limits of the fill scale (e.g., \code{c(0, 1)}). Set to \code{NULL} to let
+#'   \pkg{ggplot2} choose the limits automatically based on the data.
+#' @param facet_scales A character string passed to the \code{scales} argument
+#'   of \code{ggplot2::facet_grid}. Must be one of \code{"fixed"},
+#'   \code{"free"}, \code{"free_x"}, or \code{"free_y"}, controlling whether the
+#'   axes are shared or allowed to vary across facets.
+#' @param base_size Numeric; base font size passed to
+#'   \code{ggplot2::theme_minimal} to control overall text size in the plot.
+#'
+#' @return A \code{ggplot} object representing the faceted power heatmap.
+#'
+#' @import ggplot2
+#' @export
+#'
+#' @examples
+#' # Example toy data for power heatmap
+#' toy_df <- data.frame(
+#'   nindiv   = rep(c(50, 50, 100, 100, 200, 200), times = 4),
+#'   ncell    = rep(c(500, 1000, 500, 1000, 500, 1000), times = 4),
+#'   method   = rep(c("model1", "model2","model1", "model2"), each = 6),
+#'   celltype = rep(c("Bcell", "Tcell"), each = 12),
+#'   power    = runif(24, 0, 1)
+#' )
+#'
+#' # Visualize power heatmap
+#' visualizePowerHeatmap(
+#'   power_result = toy_df,
+#'   nindiv_col   = "nindiv",
+#'   ncell_col    = "ncell",
+#'   x_facet      = "celltype",
+#'   y_facet      = "method",
+#'   power_col    = "power"
+#' )
+#'
+visualizePowerHeatmap <- function(
+        power_result,
+        nindiv_col   = "nindiv",
+        ncell_col    = "ncell",
+        x_facet      = "celltype",
+        y_facet      = "method",
+        power_col    = "power",
+        fill_label   = "Power",
+        fill_limits  = c(0, 1),
+        facet_scales = "fixed",
+        base_size    = 6
+) {
+
+    # Basic column checks
+    needed_cols <- c(nindiv_col, ncell_col, x_facet, y_facet, power_col)
+    missing_cols <- setdiff(needed_cols, names(power_result))
+    if (length(missing_cols) > 0) {
+        stop("The following columns are missing from power_result: ",
+             paste(missing_cols, collapse = ", "))
+    }
+    if(any(duplicated(power_result[, needed_cols[1:4]]))) {
+        stop("Duplicate rows exist in power_result given the same ",
+             paste(needed_cols[1:4], collapse = ", "))
+    }
+
+    # Create standardized columns for plotting
+    power_result$nindiv <- factor(
+        power_result[[nindiv_col]],
+        levels = sort(unique(power_result[[nindiv_col]]))
+    )
+    power_result$ncell <- factor(
+        power_result[[ncell_col]],
+        levels = sort(unique(power_result[[ncell_col]]))
+    )
+    power_result$power <- power_result[[power_col]]
+
+    # Base plot
+    p <- ggplot(
+        power_result,
+        aes(x = nindiv, y = ncell, fill = power)
+    ) +
+        geom_tile(color = "white") +
+        # Optional: make the tiles square-ish
+        coord_equal() +
+        facet_grid(
+            as.formula(paste(y_facet, "~", x_facet)),
+            scales = facet_scales
+        ) +
+        labs(
+            x = "Number of individuals",
+            y = "Number of cells per individual",
+            fill = fill_label
+        ) +
+        theme_minimal(base_size = base_size) +
+        theme(
+            panel.grid = element_blank(),
+            axis.text.x = element_text(angle = 45, hjust = 1),
+            strip.background = element_blank(),
+            strip.text = element_text(face = "bold")
+        )
+
+    # Fill scale
+    if (is.null(fill_limits)) {
+        p <- p + scale_fill_gradient2(
+            low = "#f0f0f0",
+            mid = "#fdbf6f",
+            high = "#1f78b4",
+            midpoint = 0.8,
+            breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1.0)
+        )
+    } else {
+        p <- p + scale_fill_gradient2(
+            low = "#f0f0f0",
+            mid = "#fdbf6f",
+            high = "#1f78b4",
+            midpoint = 0.8,
+            limits = fill_limits,
+            breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1.0)
+        )
     }
 
     return(p)

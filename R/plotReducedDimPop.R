@@ -33,6 +33,10 @@
 #' contains both the data frame and two ggplot2 object of PCA plot and UMAP plot.
 #'
 #' @import ggplot2
+#' @importFrom RhpcBLASctl blas_set_num_threads
+#' @importFrom irlba irlba
+#' @importFrom uwot umap
+#' @importFrom viridis viridis
 #'
 #' @export
 #'

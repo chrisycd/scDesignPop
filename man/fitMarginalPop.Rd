@@ -13,7 +13,7 @@ fitMarginalPop(
   n_threads = 2L,
   loc_colname = "POS",
   snp_colname = "snp_id",
-  cellstate_colname = "cell_type",
+  celltype_colname = "cell_type",
   indiv_colname = "indiv",
   filter_snps = TRUE,
   snpvar_thres = 0,
@@ -44,7 +44,7 @@ number of CPU threads used in parallelization. The default is 2.}
 
 \item{snp_colname}{a string scalar for column name of SNP id variable.}
 
-\item{cellstate_colname}{a string scalar for column name of cell state (ie. cell type).}
+\item{celltype_colname}{a string scalar for column name of cell type.}
 
 \item{indiv_colname}{a string scalar for column name of individuals (samples).}
 

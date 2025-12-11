@@ -19,8 +19,8 @@
 #'     colData of \code{sce}.
 #' @param indiv_colname a string scalar to specify the variable in \code{sce} containing
 #'     individuals.
-#' @param cellstate_colname a string scalar to specify the variable in \code{sce} containing
-#'     cell states (ie. cell types).
+#' @param celltype_colname a string scalar to specify the variable in \code{sce} containing
+#'     cell types.
 #' @param cn_model_family a string scalar to specify the model family used for total
 #'     cell modeling. Currently only 'lognormal' from \link[MASS]{fitdistr} is supported.
 #' @param cn_meanlog a numeric scalar for the mean parameter (on log scale) of the total
@@ -54,7 +54,7 @@ simuCellProportion <- function(sce,
                                PCnum = 5L,
                                cov_colnames = NULL,
                                indiv_colname = "indiv",
-                               cellstate_colname = "cell_type",
+                               celltype_colname = "cell_type",
                                cn_model_family = "lognormal",
                                cn_meanlog = NULL,
                                cn_sdlog = NULL,
@@ -86,8 +86,8 @@ simuCellProportion <- function(sce,
     stopifnot("Input new_genoPC and new_othercov should have same individuals. Please check input!" =
                   checkVectorEqual(new_genoPC[[indiv_colname]], new_othercov[[indiv_colname]], ignore_order = FALSE))
 
-    stopifnot("Input sce does not have matching indiv_colname, cellstate_colname, or cov_colnames variables. Please check input!" =
-                  checkVectorContain(c(indiv_colname, cellstate_colname, cov_colnames), sce_colnames))
+    stopifnot("Input sce does not have matching indiv_colname, celltype_colname, or cov_colnames variables. Please check input!" =
+                  checkVectorContain(c(indiv_colname, celltype_colname, cov_colnames), sce_colnames))
 
     stopifnot("Input genoPC and new_genoPC should have same column variables. Please check input!" =
                   checkVectorEqual(colnames(genoPC), colnames(new_genoPC), ignore_order = FALSE))
@@ -97,7 +97,7 @@ simuCellProportion <- function(sce,
 
 
     # extract cell type and indiv dataframe from sce input
-    frame <- as.data.frame(SummarizedExperiment::colData(sce)[, c(cellstate_colname, indiv_colname)])
+    frame <- as.data.frame(SummarizedExperiment::colData(sce)[, c(celltype_colname, indiv_colname)])
 
     # extract population-level covariates from sce input
     orig_othercov <- unique(SummarizedExperiment::colData(sce)[, c(indiv_colname, cov_colnames), drop = FALSE])
@@ -111,7 +111,7 @@ simuCellProportion <- function(sce,
                                     cp_model_family = cp_model_family,
                                     othercov = orig_othercov,
                                     indiv_colname = indiv_colname,
-                                    cellstate_colname = cellstate_colname,
+                                    celltype_colname = celltype_colname,
                                     intercept = cp_intercept)
 
     # simulate cell prop for test data
@@ -129,7 +129,7 @@ simuCellProportion <- function(sce,
                                  rep(colnames(cp_simu), each = dim(cp_simu)[1]),
                                  "simulated")
 
-    colnames(cp_simu_df) <- c("prop", indiv_colname, cellstate_colname, "group")
+    colnames(cp_simu_df) <- c("prop", indiv_colname, celltype_colname, "group")
 
 
     # fit lognormal model on train data
@@ -157,7 +157,7 @@ simuCellProportion <- function(sce,
 
     # expand simulated cell types for each indiv by cellnum value
     simu_cov <- cp_simu_df[rep(1:nrow(cp_simu_df), cp_simu_df[["cellnum"]]), ] %>%
-        dplyr::select(c(!!rlang::sym(cellstate_colname), !!rlang::sym(indiv_colname)))
+        dplyr::select(c(!!rlang::sym(celltype_colname), !!rlang::sym(indiv_colname)))
     rownames(simu_cov) <- paste0("simcell", 1:nrow(simu_cov), "_", simu_cov[[indiv_colname]])
     # TODO: use cell index per indiv and cell type
 
@@ -182,7 +182,7 @@ fitCellPropModel <- function(frame,
                              cp_model_family,
                              othercov,
                              indiv_colname,
-                             cellstate_colname,
+                             celltype_colname,
                              intercept,
                              ...) {
 
@@ -194,7 +194,7 @@ fitCellPropModel <- function(frame,
                                        PCnum,
                                        othercov,
                                        indiv_colname,
-                                       cellstate_colname,
+                                       celltype_colname,
                                        intercept)
     X <- X[rownames(Y), ]
 
@@ -222,7 +222,7 @@ constructCellPropDesignMatrix <- function(frame,
                                           PCnum,
                                           othercov,
                                           indiv_colname,
-                                          cellstate_colname,
+                                          celltype_colname,
                                           intercept,
                                           ...) {
 
@@ -230,11 +230,11 @@ constructCellPropDesignMatrix <- function(frame,
 
     # merge with geno pcs and other covariates to create indiv by covariate design matrix
     X <- dplyr::distinct(frame, !!rlang::sym(indiv_colname),
-                         !!rlang::sym(cellstate_colname), .keep_all = FALSE) %>%
+                         !!rlang::sym(celltype_colname), .keep_all = FALSE) %>%
         dplyr::left_join(genoPC[, 1:(1 + PCnum)], by = indiv_colname) %>%
         # TODO: remove hard-coding by 1
         dplyr::left_join(othercov, by = indiv_colname) %>%
-        dplyr::select(-!!rlang::sym(cellstate_colname)) %>%
+        dplyr::select(-!!rlang::sym(celltype_colname)) %>%
         dplyr::distinct(indiv, .keep_all = TRUE) %>%
         tibble::column_to_rownames(var = indiv_colname)
 
@@ -287,12 +287,12 @@ fitCellTotalModel <- function(frame,
 #'
 #' @param col_data a data frame with two columns: individual ids with
 #' column name \code{indiv_colname}, and cell types with column
-#' name \code{cellstate_colname}.
+#' name \code{celltype_colname}.
 #' @param title a string scalar specifiying the title of the output barplot.
 #' @param color_vec a named vector of color hex codes named by the ordered
 #' cell type names. If NULL, the cell types contained in \code{col_data} will
 #' be ordered by alphabetical order with R default color schemes.
-#' @param cellstate_colname a string scalar to specify the cell type variable
+#' @param celltype_colname a string scalar to specify the cell type variable
 #' in \code{col_data}
 #' @param indiv_colname a string scalar to specify the individual id variable
 #' in \code{col_data}.
@@ -310,7 +310,7 @@ fitCellTotalModel <- function(frame,
 #' @examples
 #' NULL
 plotCellProp <- function(col_data, title = NULL, color_vec = NULL,
-                         cellstate_colname = "cell_type",
+                         celltype_colname = "cell_type",
                          indiv_colname = "indiv",
                          width = 1, linewidth = 0.01){
 
@@ -318,7 +318,7 @@ plotCellProp <- function(col_data, title = NULL, color_vec = NULL,
     meta <- as.data.frame(col_data) %>%
         # ensure column names match what you said:
         dplyr::rename(Individual = rlang::sym(indiv_colname),
-                      CellType   = rlang::sym(cellstate_colname)) %>%
+                      CellType   = rlang::sym(celltype_colname)) %>%
         # if you want to keep the cell barcodes, you can do:
         tibble::rownames_to_column(var = "cell_barcode") %>%
         dplyr::select(cell_barcode, Individual, CellType)

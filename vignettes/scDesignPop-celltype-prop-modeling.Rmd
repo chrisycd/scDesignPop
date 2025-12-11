@@ -50,30 +50,32 @@ scDesignPop provide modeling of the cell type proportions for generating new cel
 Here, we load the `example_sce` data with both the genotype PCs of the training `example_sce` data and those of the new simulated individuals.
 
 ```{r}
+library(SingleCellExperiment)
 library(scDesignPop)
 data("example_sce")
-data("example_genoPCs")
-othercov_new <- dplyr::select(genopc_new, indiv)
+data("example_genopc_train")
+data("example_genopc_new")
+othercov_new <- dplyr::select(example_genopc_new, indiv)
 
-head(genopc_train)
-head(genopc_new)
+head(example_genopc_train)
+head(example_genopc_new)
 ```
 
 ## Celltype proportion modeling
 
-We model the cell type proportions with a Multinomial model using genotype PCs as covariates. We also model the total cell number per individuals with a log-normal distribution. Here, `indiv_colname` is used to specify the shared column name for individual ids in both the `colData(example_sce)` and `genopc_train`. We use `cellstate_colname` to specify the column name for the cell states or cell types in `colData(example_sce)`.
+We model the cell type proportions with a Multinomial model using genotype PCs as covariates. We also model the total cell number per individuals with a log-normal distribution. Here, `indiv_colname` is used to specify the shared column name for individual ids in both the `colData(example_sce)` and `genopc_train`. We use `celltype_colname` to specify the column name for the cell states or cell types in `colData(example_sce)`.
 
 ```{r}
 set.seed(123)
 simu_cellprop_list <- scDesignPop::simuCellProportion(
   sce = example_sce,
-  genoPC = genopc_train,
-  new_genoPC = genopc_new,
+  genoPC = example_genopc_train,
+  new_genoPC = example_genopc_new,
   new_othercov = othercov_new,
   PCnum = 30L,
   cov_colnames = NULL,
   indiv_colname = "indiv",
-  cellstate_colname = "cell_type",
+  celltype_colname = "cell_type",
   cn_model_family = "lognormal",    # cell number model
   cp_model_family = "MN",  # cell proportion model
   cp_intercept = TRUE
@@ -93,6 +95,7 @@ head(simu_cellprop_list[["simu_cov"]])
 By specifying the colors for each cell type, we can visualize the cell type proportion structure between the original data and simulated data after ordering individuals with the cell number of the first cell type. If no colors are specified for cell types, the function will still plot the data using the R default colors and ordering individuals based on the cell number of the first cell type after factorizing the cell types of the given data. 
 
 ```{r}
+library(cowplot)
 color_vec <- c(
   "cd4nc"   = "#5E3C99",
   "bmem"    = "#FFEDA0",
@@ -104,14 +107,14 @@ color_vec <- c(
 p1 <- scDesignPop::plotCellProp(colData(example_sce), 
                    title = "Original 40 individuals",
                    color_vec = color_vec, 
-                   cellstate_colname = "cell_type",
+                   celltype_colname = "cell_type",
                    indiv_colname = "indiv",
                    width = 1, linewidth = 0.02)
 
 p2 <- scDesignPop::plotCellProp(simu_cellprop_list[["simu_cov"]], 
                    title = "Simulated 982 individuals",
                    color_vec = color_vec, 
-                   cellstate_colname = "cell_type",
+                   celltype_colname = "cell_type",
                    indiv_colname = "indiv",
                    width = 1, linewidth = 0.01)
 

@@ -16,7 +16,7 @@
 #'     number of CPU threads used in parallelization. The default is 2.
 #' @param loc_colname a string scalar for column name of SNP position variable.
 #' @param snp_colname a string scalar for column name of SNP id variable.
-#' @param cellstate_colname a string scalar for column name of cell state (ie. cell type).
+#' @param celltype_colname a string scalar for column name of cell type.
 #' @param indiv_colname a string scalar for column name of individuals (samples).
 #' @param filter_snps a logical scalar for whether to filter out SNP covariates
 #'     with either low-variance or with only 1 distinct genotype (ie. all 1's)
@@ -56,7 +56,7 @@ fitMarginalPop <- function(data_list,
                            n_threads = 2L,
                            loc_colname = "POS",
                            snp_colname = "snp_id",
-                           cellstate_colname = "cell_type",
+                           celltype_colname = "cell_type",
                            indiv_colname = "indiv",
                            filter_snps = TRUE,
                            snpvar_thres = 0,
@@ -68,12 +68,12 @@ fitMarginalPop <- function(data_list,
     assertthat::assert_that(assertthat::has_name(data_list[["covariate"]],
                                                  c(interact_colnames,
                                                    indiv_colname,
-                                                   cellstate_colname)))
+                                                   celltype_colname)))
 
     assertthat::assert_that(assertthat::has_name(data_list[["new_covariate"]],
                                                  c(interact_colnames,
                                                    indiv_colname,
-                                                   cellstate_colname)))
+                                                   celltype_colname)))
 
     if(is.null(data_list[["eqtl_geno_list"]])) {
         has_eqtl <- FALSE
@@ -106,8 +106,8 @@ fitMarginalPop <- function(data_list,
         eqtl_colnames <- lapply(data_list[["eqtl_geno_list"]], function(x) colnames(x)) %>%
             Reduce(intersect, .)
 
-        stopifnot("loc_colname, snp_colname, or cellstate_colname is missing in eqtl_geno_list. Please check input!" =
-                      checkVectorContain(c(loc_colname, snp_colname, cellstate_colname), eqtl_colnames))
+        stopifnot("loc_colname, snp_colname, or celltype_colname is missing in eqtl_geno_list. Please check input!" =
+                      checkVectorContain(c(loc_colname, snp_colname, celltype_colname), eqtl_colnames))
     }
 
 
@@ -132,7 +132,7 @@ fitMarginalPop <- function(data_list,
                          model_family = model_family,
                          loc_colname = loc_colname,
                          snp_colname = snp_colname,
-                         cellstate_colname = cellstate_colname,
+                         celltype_colname = celltype_colname,
                          indiv_colname = indiv_colname,
                          filter_snps = filter_snps,
                          snpvar_thres = snpvar_thres,
@@ -161,7 +161,7 @@ fitMarginalPop <- function(data_list,
                          model_family = model_family,
                          loc_colname = loc_colname,
                          snp_colname = snp_colname,
-                         cellstate_colname = cellstate_colname,
+                         celltype_colname = celltype_colname,
                          indiv_colname = indiv_colname,
                          filter_snps = filter_snps,
                          snpvar_thres = snpvar_thres,
@@ -216,7 +216,7 @@ fitModel <- function(feature_name,
                      interact_colnames = NULL,
                      loc_colname = "POS",
                      snp_colname = "snp_id",
-                     cellstate_colname = "cell_type",
+                     celltype_colname = "cell_type",
                      indiv_colname = "indiv",
                      filter_snps = TRUE,
                      snpvar_thres = 0,
@@ -233,11 +233,11 @@ fitModel <- function(feature_name,
     # checks
     if(has_eqtl) {
         assertthat::assert_that(assertthat::has_name(eqtlgeno_df,
-                                                     c(loc_colname, snp_colname, cellstate_colname)))
+                                                     c(loc_colname, snp_colname, celltype_colname)))
     }
 
     assertthat::assert_that(assertthat::has_name(cellcov_df,
-                                                 c(interact_colnames, indiv_colname, cellstate_colname)))
+                                                 c(interact_colnames, indiv_colname, celltype_colname)))
 
     stopifnot("response_vec must be either numeric or factor. Please check input!" =
                   (class(response_vec) == "numeric" || class(response_vec) == "factor"))

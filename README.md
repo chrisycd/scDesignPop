@@ -46,6 +46,10 @@ For tutorials, please check the [website](https://chrisycd.github.io/scDesignPop
 
 -   [Model population-scale scRNA-seq data](https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop.html)
 
+-   [Model linear dynamic eQTL effects in continuous cell states](https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop-dynamic-eQTL.html)
+
+-   [Model Nonlinear dynamic eQTL effects in continuous cell states](https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop-dynamic-eQTL-NL.html)
+
 -   [Model cell type proportions for new individuals](https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop-celltype-prop-modeling.html)
 
 -   [Modify eQTL effect for eGenes / non-eGenes](https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop-modify-eQTL-effects.html)
