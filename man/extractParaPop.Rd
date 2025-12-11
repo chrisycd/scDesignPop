@@ -2,13 +2,13 @@
 % Please edit documentation in R/extractParaPop.R
 \name{extractParaPop}
 \alias{extractParaPop}
-\title{Extract parameter matrix for new covariate df}
+\title{Extract parameter matrix for a new covariate data frame}
 \usage{
 extractParaPop(
   sce,
   assay_use = "counts",
   marginal_list,
-  n_cores,
+  n_cores = 2L,
   family_use,
   new_covariate,
   new_eqtl_geno_list,
@@ -17,41 +17,75 @@ extractParaPop(
   loc_colname = "POS",
   parallelization = "mcmapply",
   BPPARAM = NULL,
+  future.seed = FALSE,
+  data_maxsize = 1,
   data
 )
 }
 \arguments{
-\item{sce}{add later}
+\item{sce}{a SingleCellExperiment object.}
 
-\item{assay_use}{add later}
+\item{assay_use}{a string scalar specifying the slot to use in input \code{sce}.
+The default is "counts".}
 
-\item{marginal_list}{add later}
+\item{marginal_list}{a list of named features, each with the fitted object
+and other variables as output from \code{\link{fitMarginalPop}}.}
 
-\item{n_cores}{add later}
+\item{n_cores}{positive integer value (greater or equal to 1) to specify the
+number of CPU threads used in parallelization. The default is 2.}
 
 \item{family_use}{a string scalar or vector of marginal distribution used.}
 
-\item{new_covariate}{a cell-by-feature covariate dataframe (from construct_data.R) plus corr_group.}
+\item{new_covariate}{a cell-by-covariate data frame obtained in the list output from
+\code{\link{constructDataPop}}. It must have a corr_group variable.}
 
-\item{new_eqtl_geno_list}{a list of eQTL genotype dataframes for each gene (to be predicted).}
+\item{new_eqtl_geno_list}{a list of eQTL genotype data frames for each gene
+to be simulated.  If using same list as in \code{\link{fitMarginalPop}},
+then the in those samples}
 
-\item{indiv_colname}{add later}
+\item{indiv_colname}{a string scalar of the sample ID variable in cell covariate
+of \code{sce}. The default is "indiv".}
 
-\item{snp_colname}{add later}
+\item{snp_colname}{a string scalar for the SNP variable in \code{eqtlgeno_df}
+used in \code{\link{constructDataPop}}. The default is "snp_id".}
 
-\item{loc_colname}{add later}
+\item{loc_colname}{a string scalar for the last column of eQTL annotation in
+\code{eqtlgeno_df}. The default is "POS".}
 
-\item{parallelization}{add later}
+\item{parallelization}{a string scalar specifying the type of parallelization
+used when extracting parameters. Must be one of either "bpmapply", "future.apply",
+"mcmapply", or "pbmcmapply". The default value is "mcmapply".}
 
-\item{BPPARAM}{add later}
+\item{BPPARAM}{a BiocParallelParam class object (from \code{BiocParallel} R package)
+that must be specified when using \code{parallelization = "bpmapply"}. Either
+\code{BiocParallel::SnowParam()} or \code{BiocParallel::MulticoreParam()}
+can be used to initialize, depending on the operating system. The default
+is NULL, which corresponds to the \code{parallelization = "mcmapply"} default.}
 
-\item{data}{a cell-by-feature covariate dataframe (from construct_data.R) plus corr_group. Used only in gamlss fits.}
+\item{future.seed}{a logical or integer value to specify how RNG seed is handled
+when \code{parallelization = 'future.apply'} is used. See \code{future.apply::future_eapply}
+documentation for more details on its usage. The default is FALSE.}
+
+\item{data_maxsize}{a positive numeric value used to set max marginal_list size
+in GiB increments. Used only when \code{parallelization = "future.apply"}.}
+
+\item{data}{a cell-by-covariate data frame obtained in the list output from
+\code{\link{constructDataPop}}. It must have a corr_group variable.
+Used only in gamlss fits.}
 }
 \value{
 a list of mean, sigma, and zero parameter cell by feature matrices:
+\describe{
+\item{\code{mean_mat}}{a cell by feature matrix containing the conditional
+mean values.}
+\item{\code{sigma_mat}}{a cell by feature matrix containing the gene specific
+dispersion values.}
+\item{\code{zero_mat}}{a cell by feature matrix containing the gene specific
+zero probability values (for zip and zinb models).}
+}
 }
 \description{
-This is the main function.
+This is the main function for extracting parameter matrices.
 }
 \examples{
 NULL

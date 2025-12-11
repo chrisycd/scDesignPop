@@ -10,51 +10,89 @@ fitCopulaPop(
   input_data,
   marginal_list,
   family_use,
-  copula = "gaussian",
+  copula = c("gaussian", "vine"),
   DT = TRUE,
   pseudo_obs = FALSE,
   epsilon = 1e-06,
   family_set = c("gaussian", "indep"),
   important_feature = "all",
-  n_cores,
+  n_cores = 2L,
   parallelization = "mcmapply",
-  BPPARAM = NULL
+  BPPARAM = NULL,
+  future.seed = FALSE,
+  data_maxsize = 1,
+  ...
 )
 }
 \arguments{
-\item{sce}{add later}
+\item{sce}{a SingleCellExperiment object.}
 
-\item{assay_use}{add later}
+\item{assay_use}{a string scalar specifying the slot to use in input \code{sce}.
+The default is "counts".}
 
-\item{input_data}{add later}
+\item{input_data}{a cell-by-covariate data frame obtained in the list output from
+\code{\link{constructDataPop}}. It must have a corr_group variable.}
 
-\item{marginal_list}{add later}
+\item{marginal_list}{a list of named features, each with the fitted object
+and other variables as output from \code{\link{fitMarginalPop}}.}
 
-\item{family_use}{add later}
+\item{family_use}{a string scalar to specify model fitting used.}
 
-\item{copula}{add later}
+\item{copula}{a string value to specify the type of Copula fitting to use.
+Currently, only Gaussian copula is supported. The default is "gaussian".}
 
-\item{DT}{add later}
+\item{DT}{a logic value to perform the distributional transformation. The default
+is \code{TRUE}.}
 
-\item{pseudo_obs}{add later}
+\item{pseudo_obs}{a logic value. If TRUE, use the empirical quantiles instead
+of theoretical quantiles for fitting copula. The default is FALSE.
+(not currently implemented)}
 
-\item{epsilon}{add later}
+\item{epsilon}{a numeric value close to 0 to specify tolerance for avoiding
+0 or 1 quantiles. The default value is 1e-06.}
 
-\item{family_set}{add later}
+\item{family_set}{a string or a string vector of the bivariate copula families.
+Default is c("gaussian", "indep").}
 
-\item{important_feature}{add later}
+\item{important_feature}{a string vector of genes.}
 
-\item{n_cores}{add later}
+\item{n_cores}{positive integer value (greater or equal to 1) to specify the
+number of CPU threads used in parallelization. The default is 2.}
 
-\item{parallelization}{add later}
+\item{parallelization}{a string value specifying the type of parallelization
+used during copula fitting. Must be one of either "bpmapply", "future.apply",
+"mcmapply", or "pbmcmapply". The default value is "mcmapply".}
 
-\item{BPPARAM}{add later}
+\item{BPPARAM}{a BiocParallelParam class object (from \code{BiocParallel} R package)
+that must be specified when using \code{parallelization = 'bpmapply'}. Either
+\code{BiocParallel::SnowParam()} or \code{BiocParallel::MulticoreParam()}
+can be used to initialize, depending on the operating system. The default
+is NULL, which corresponds to the \code{parallelization = "mcmapply"} default.}
+
+\item{future.seed}{a logical or integer value to specify how RNG seed is handled
+when \code{parallelization = 'future.apply'} is used. See \code{future.apply::future_eapply}
+documentation for more details on its usage. The default is FALSE.}
+
+\item{data_maxsize}{a positive numeric value used to set max marginal_list size
+in GiB increments. Used only when \code{parallelization = "future.apply"}.}
+
+\item{...}{additional arguments passed to internal functions.}
 }
 \value{
-A list
+outputs a list with following elements:
+\describe{
+\item{\code{model_aic}}{total model AIC value.}
+\item{\code{model_bic}}{total model BIC value.}
+\item{\code{copula_list}}{a list of fitted copulas for each \code{corr_group}.}
+\item{\code{important_features}}{a string vector of genes.}
+\item{\code{na_marginal_aic}}{a named string vector of genes that did not
+have AIC in the marginal models.}
+\item{\code{na_marginal_bic}}{a named string vector of genes that did not
+have BIC in the marginal models.}
+}
 }
 \description{
-Fits copula for input
+This is the main function for fitting a copula.
 }
 \examples{
 NULL

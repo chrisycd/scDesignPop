@@ -1,24 +1,59 @@
 # TODO: missing convert_u function
-# TODO: fix NA/Inf issue with AIC/BIC for copula and marginal DONE?
 
 #' Fits copula for input
 #'
-#' @param sce add later
-#' @param assay_use add later
-#' @param input_data add later
-#' @param marginal_list add later
-#' @param family_use add later
-#' @param copula add later
-#' @param DT add later
-#' @param pseudo_obs add later
-#' @param epsilon add later
-#' @param family_set add later
-#' @param important_feature add later
-#' @param n_cores add later
-#' @param parallelization add later
-#' @param BPPARAM add later
+#' This is the main function for fitting a copula.
 #'
-#' @return A list
+#' @param sce a SingleCellExperiment object.
+#' @param assay_use a string scalar specifying the slot to use in input \code{sce}.
+#'     The default is "counts".
+#' @param input_data a cell-by-covariate data frame obtained in the list output from
+#'     \code{\link{constructDataPop}}. It must have a corr_group variable.
+#' @param marginal_list a list of named features, each with the fitted object
+#'     and other variables as output from \code{\link{fitMarginalPop}}.
+#' @param family_use a string scalar to specify model fitting used.
+#' @param copula a string value to specify the type of Copula fitting to use.
+#'     Currently, only Gaussian copula is supported. The default is "gaussian".
+#' @param DT a logic value to perform the distributional transformation. The default
+#'     is \code{TRUE}.
+#' @param pseudo_obs a logic value. If TRUE, use the empirical quantiles instead
+#'     of theoretical quantiles for fitting copula. The default is FALSE.
+#'     (not currently implemented)
+#' @param epsilon a numeric value close to 0 to specify tolerance for avoiding
+#'     0 or 1 quantiles. The default value is 1e-06.
+#' @param family_set a string or a string vector of the bivariate copula families.
+#'     Default is c("gaussian", "indep").
+#' @param important_feature a string vector of genes.
+#' @param n_cores positive integer value (greater or equal to 1) to specify the
+#'     number of CPU threads used in parallelization. The default is 2.
+#' @param parallelization a string value specifying the type of parallelization
+#'     used during copula fitting. Must be one of either "bpmapply", "future.apply",
+#'     "mcmapply", or "pbmcmapply". The default value is "mcmapply".
+#' @param BPPARAM a BiocParallelParam class object (from \code{BiocParallel} R package)
+#'     that must be specified when using \code{parallelization = 'bpmapply'}. Either
+#'     \code{BiocParallel::SnowParam()} or \code{BiocParallel::MulticoreParam()}
+#'     can be used to initialize, depending on the operating system. The default
+#'     is NULL, which corresponds to the \code{parallelization = "mcmapply"} default.
+#' @param future.seed a logical or integer value to specify how RNG seed is handled
+#'     when \code{parallelization = 'future.apply'} is used. See \code{future.apply::future_eapply}
+#'     documentation for more details on its usage. The default is FALSE.
+#' @param data_maxsize a positive numeric value used to set max marginal_list size
+#'     in GiB increments. Used only when \code{parallelization = "future.apply"}.
+#' @param ... additional arguments passed to internal functions.
+#'
+#' @return outputs a list with following elements:
+#' \describe{
+#'      \item{\code{model_aic}}{total model AIC value.}
+#'      \item{\code{model_bic}}{total model BIC value.}
+#'      \item{\code{copula_list}}{a list of fitted copulas for each \code{corr_group}.}
+#'      \item{\code{important_features}}{a string vector of genes.}
+#'      \item{\code{na_marginal_aic}}{a named string vector of genes that did not
+#'          have AIC in the marginal models.}
+#'      \item{\code{na_marginal_bic}}{a named string vector of genes that did not
+#'          have BIC in the marginal models.}
+#' }
+#'
+#' @import glmmTMB
 #' @export
 #'
 #' @examples
@@ -30,16 +65,21 @@ fitCopulaPop <- function(sce,
                          # new_covariate = NULL,  # removed in scDesign3 v0.99.7
                          marginal_list,
                          family_use,
-                         copula = "gaussian",
+                         copula = c("gaussian", "vine"),
                          DT = TRUE,  # distributional transformation
                          pseudo_obs = FALSE,
                          epsilon = 1e-06,  # tolerance for avoiding 0 or 1 quantiles
                          family_set = c("gaussian", "indep"),
                          important_feature = "all",
-                         n_cores,
+                         n_cores = 2L,
                          parallelization = "mcmapply",
-                         BPPARAM = NULL) {
+                         BPPARAM = NULL,
+                         future.seed = FALSE,
+                         data_maxsize = 1,
+                         ...) {
 
+    copula <- match.arg(copula)
+    more_args <- list(...)
 
     if(important_feature == "all") {
         important_feature <- rep(TRUE, dim(sce)[1])
@@ -71,7 +111,10 @@ fitCopulaPop <- function(sce,
                                 n_cores = n_cores,
                                 family_use = family_use,
                                 epsilon = epsilon,
-                                parallelization = parallelization)
+                                parallelization = parallelization,
+                                BPPARAM = BPPARAM,  # added in scDesign3 v0.99.7
+                                future.seed = future.seed,
+                                data_maxsize = data_maxsize)
         message("Converting End")
 
     } else {  # not implemented
@@ -134,7 +177,7 @@ fitCopulaPop <- function(sce,
                                                 ind,
                                                 n_cores,
                                                 important_feature) {
-        # iterate thru each corr_group and .... ?
+        # compute covariance matrix for each corr_group
 
         message(paste0("Copula group ", x, " starts"))
         curr_index <- which(corr_group[, 1] == x)
@@ -207,8 +250,12 @@ fitCopulaPop <- function(sce,
     important_feature = important_feature)  # end of newmvn.list <- lapply()
 
     # compute AIC/BIC
-    marginal.aic <- aggregateMarginalAIC(marginals[qc_gene_idx], type = "AIC")
-    marginal.bic <- aggregateMarginalAIC(marginals[qc_gene_idx], type = "BIC")
+    marginal.aic <- aggregateMarginalAIC(model_list = marginals,
+                                         indx_vec = qc_gene_idx,
+                                         type = "AIC")
+    marginal.bic <- aggregateMarginalAIC(model_list = marginals,
+                                         indx_vec = qc_gene_idx,
+                                         type = "BIC")
 
     copula.aic <- sum(sapply(newmvn.list, function(x) x$model_aic))
     # marginal.aic <- sum(sapply(marginals[qc_gene_idx], stats::AIC))
@@ -248,8 +295,12 @@ convert_n_pop <- function(sce,
                           family_use,
                           n_cores,
                           parallelization,
-                          BPPARAM) {   # Note: BPPARAM option added in scDesign v0.99.7
+                          BPPARAM,   # Note: BPPARAM option added in scDesign v0.99.7
+                          future.seed,
+                          data_maxsize = 1,
+                          ...) {
 
+    more_args <- list(...)
 
     ## Extract gene-by-cell count matrix
     # count_mat <- t(as.matrix(SummarizedExperiment::assay(sce, assay_use)))  # old code
@@ -307,7 +358,7 @@ convert_n_pop <- function(sce,
                 theta_vec <- rep(theta, length(mean_vec))
 
             } else {
-                stop("Distribution of glmmTMB must be one of gaussian, poisson or nb!")
+                stop("Distribution of glmmTMB must be one of gaussian, poisson, binomial or nb!")
             }
 
         } else {  # if input is from mgcv
@@ -459,19 +510,41 @@ convert_n_pop <- function(sce,
 
     if (parallelization == "bpmapply") {
         paraFunc <- BiocParallel::bpmapply
+        if (.Platform$OS.type == "unix") {
+            BPPARAM <- BiocParallel::MulticoreParam(workers = n_cores)
+        } else if (.Platform$OS.type == "windows") {
+            BPPARAM <- BiocParallel::SnowParam(workers = n_cores)
+        }
+    } else if (parallelization == "future.apply"){
+        paraFunc <- future.apply::future_mapply
     }
     if (parallelization == "pbmcmapply") {
         paraFunc <- pbmcapply::pbmcmapply
     }
 
     if (parallelization == "bpmapply") {
-        BPPARAM$workers <- n_cores
+        # BPPARAM$workers <- n_cores  # old code
         mat <- paraFunc(mat_function,
                         x = seq_len(dim(sce)[1]),
                         y = family_use,
                         SIMPLIFY = TRUE,
                         BPPARAM = BPPARAM)
-    } else {
+    } else if (parallelization == "future.apply") {
+
+        old_opt <- options("future.globals.maxSize")
+        on.exit(options(old_opt), add = TRUE)
+        options(future.globals.maxSize = data_maxsize * 1000 * 1024^2)
+
+        old_plan <- future::plan()
+        on.exit(future::plan(old_plan), add = TRUE)
+        future::plan(future::multisession, workers = n_cores)
+
+        mat <- paraFunc(mat_function,
+                        x = seq_len(dim(sce)[1]),
+                        y = family_use,
+                        future.seed = future.seed,
+                        SIMPLIFY = TRUE)
+    } else {  # mcmapply or pbmcmapply
         mat <- paraFunc(mat_function,
                         x = seq_len(dim(sce)[1]),
                         y = family_use,
@@ -532,6 +605,7 @@ cal_cor <- function(norm.mat,
 }
 
 
+# TODO: Try fix issue when cor.mat is not pos. definite and dmvnorm() returns -Inf
 ## Calculate Gaussian copula AIC
 cal_aic <- function(norm.mat,
                     cor.mat,

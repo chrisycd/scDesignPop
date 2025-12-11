@@ -34,10 +34,11 @@ random effects (if any) but without SNP genotypes or SNP genotype interaction ef
 have first-order interaction with SNP genotypes.}
 
 \item{parallelization}{a string scalar specifying the type of parallelization
-used during marginal fitting.}
+used during marginal fitting. Must be one of either "future.apply",
+or "pbmcmapply". The default value is "pbmcmapply".}
 
 \item{n_threads}{positive integer value (greater or equal to 1) to specify the
-number of CPU threads used in parallelization.}
+number of CPU threads used in parallelization. The default is 2.}
 
 \item{loc_colname}{a string scalar for column name of SNP position variable.}
 
@@ -61,7 +62,7 @@ main effects in the model would be permitted. Results in error if
 \code{force_formula = FALSE} and \code{length(geno_interact_names) > 0}.}
 
 \item{data_maxsize}{a positive numeric value used to set max data_list size
-in GiB unit. Used only when \code{parallelization = 'future'}.}
+in GiB increments. Used only when \code{parallelization = "future.apply"}.}
 
 \item{keep_cellnames}{a logical scalar for whether to keep cell barcode names.
 If \code{keep_cellnames = TRUE}, the memory will be larger. The default is FALSE.}

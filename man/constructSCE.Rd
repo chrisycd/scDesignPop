@@ -15,7 +15,7 @@ constructSCE(
   slot_name = "counts",
   sce_name = slot_name,
   indiv_colname = "indiv",
-  cellstate_colname = "cell_type",
+  celltype_colname = "cell_type",
   factor_colnames = NULL,
   cellcov_renames = cellcov_names
 )
@@ -52,7 +52,7 @@ SingleCellExperiment object.}
 \item{indiv_colname}{a string scalar for the sample id colname. Must be present
 in \code{cellcov_df} or \code{data_obj}. Default is 'indiv'.}
 
-\item{cellstate_colname}{a string scalar for the cell state colname. Must be present
+\item{celltype_colname}{a string scalar for the cell type colname. Must be present
 in \code{cellcov_df} or \code{data_obj}. Default is 'cell_type'.}
 
 \item{factor_colnames}{an optional string vector or scalar for the columns to

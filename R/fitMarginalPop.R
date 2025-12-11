@@ -10,9 +10,10 @@
 #' @param interact_colnames a string scalar or vector for the variable names that
 #'     have first-order interaction with SNP genotypes.
 #' @param parallelization a string scalar specifying the type of parallelization
-#'     used during marginal fitting.
+#'     used during marginal fitting. Must be one of either "future.apply",
+#'     or "pbmcmapply". The default value is "pbmcmapply".
 #' @param n_threads positive integer value (greater or equal to 1) to specify the
-#'     number of CPU threads used in parallelization.
+#'     number of CPU threads used in parallelization. The default is 2.
 #' @param loc_colname a string scalar for column name of SNP position variable.
 #' @param snp_colname a string scalar for column name of SNP id variable.
 #' @param celltype_colname a string scalar for column name of cell type.
@@ -28,7 +29,7 @@
 #'     main effects in the model would be permitted. Results in error if
 #'     \code{force_formula = FALSE} and \code{length(geno_interact_names) > 0}.
 #' @param data_maxsize a positive numeric value used to set max data_list size
-#'     in GiB unit. Used only when \code{parallelization = 'future'}.
+#'     in GiB increments. Used only when \code{parallelization = "future.apply"}.
 #' @param keep_cellnames a logical scalar for whether to keep cell barcode names.
 #'     If \code{keep_cellnames = TRUE}, the memory will be larger. The default is FALSE.
 #'
@@ -139,9 +140,13 @@ fitMarginalPop <- function(data_list,
                 }, mc.cores = n_threads)
 
     } else if(parallelization == "future.apply") {
-        options(future.globals.maxSize = data_maxsize * 1000 * 1024^2)  # set max size for data_list
-        # TODO: use withr::local_options() or base::on.exit() to restore default options after finishing
 
+        old_opt <- options("future.globals.maxSize")
+        on.exit(options(old_opt), add = TRUE)
+        options(future.globals.maxSize = data_maxsize * 1000 * 1024^2)  # set max size for data_list
+
+        old_plan <- future::plan()
+        on.exit(future::plan(old_plan), add = TRUE)
         future::plan(future::multisession, workers = n_threads)
 
         marginal_list <- future.apply::future_lapply(
@@ -278,14 +283,19 @@ fitModel <- function(feature_name,
                                                   data = res_list[["dmat_df"]],
                                                   family = stats::poisson,
                                                   ziformula = ~0)
-                        # TODO: test this model
                     } else if(model_family == "gaussian") {  # LMM
                         model <- glmmTMB::glmmTMB(formula = model_formula,
                                                   data = res_list[["dmat_df"]],
                                                   family = stats::gaussian,
                                                   ziformula = ~0)
+                    } else if(model_family == "binomial") {
+                        model <- glmmTMB::glmmTMB(formula = model_formula,
+                                                  data = res_list[["dmat_df"]],
+                                                  family = stats::binomial,
+                                                  ziformula = ~0)
                     } else {
-                        stop("model_family option is not valid. Must be either 'nb', 'poisson', or 'gaussian'.")
+                        stop("The model_family option is not valid.\n
+                             Must be one of 'nb', 'poisson', 'gaussian', or 'binomial'.")
                     }
 
                     # Note: use ziformula = ~1 for zero-inflation
