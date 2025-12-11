@@ -12,7 +12,7 @@ simuCellProportion(
   PCnum = 5L,
   cov_colnames = NULL,
   indiv_colname = "indiv",
-  cellstate_colname = "cell_type",
+  celltype_colname = "cell_type",
   cn_model_family = "lognormal",
   cn_meanlog = NULL,
   cn_sdlog = NULL,
@@ -44,8 +44,8 @@ colData of \code{sce}.}
 \item{indiv_colname}{a string scalar to specify the variable in \code{sce} containing
 individuals.}
 
-\item{cellstate_colname}{a string scalar to specify the variable in \code{sce} containing
-cell states (ie. cell types).}
+\item{celltype_colname}{a string scalar to specify the variable in \code{sce} containing
+cell types.}
 
 \item{cn_model_family}{a string scalar to specify the model family used for total
 cell modeling. Currently only 'lognormal' from \link[MASS]{fitdistr} is supported.}

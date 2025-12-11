@@ -63,7 +63,7 @@ head(example_genopc_new)
 
 ## Celltype proportion modeling
 
-We model the cell type proportions with a Multinomial model using genotype PCs as covariates. We also model the total cell number per individuals with a log-normal distribution. Here, `indiv_colname` is used to specify the shared column name for individual ids in both the `colData(example_sce)` and `genopc_train`. We use `cellstate_colname` to specify the column name for the cell states or cell types in `colData(example_sce)`.
+We model the cell type proportions with a Multinomial model using genotype PCs as covariates. We also model the total cell number per individuals with a log-normal distribution. Here, `indiv_colname` is used to specify the shared column name for individual ids in both the `colData(example_sce)` and `genopc_train`. We use `celltype_colname` to specify the column name for the cell states or cell types in `colData(example_sce)`.
 
 ```{r}
 set.seed(123)
@@ -75,7 +75,7 @@ simu_cellprop_list <- scDesignPop::simuCellProportion(
   PCnum = 30L,
   cov_colnames = NULL,
   indiv_colname = "indiv",
-  cellstate_colname = "cell_type",
+  celltype_colname = "cell_type",
   cn_model_family = "lognormal",    # cell number model
   cp_model_family = "MN",  # cell proportion model
   cp_intercept = TRUE
@@ -107,14 +107,14 @@ color_vec <- c(
 p1 <- scDesignPop::plotCellProp(colData(example_sce), 
                    title = "Original 40 individuals",
                    color_vec = color_vec, 
-                   cellstate_colname = "cell_type",
+                   celltype_colname = "cell_type",
                    indiv_colname = "indiv",
                    width = 1, linewidth = 0.02)
 
 p2 <- scDesignPop::plotCellProp(simu_cellprop_list[["simu_cov"]], 
                    title = "Simulated 982 individuals",
                    color_vec = color_vec, 
-                   cellstate_colname = "cell_type",
+                   celltype_colname = "cell_type",
                    indiv_colname = "indiv",
                    width = 1, linewidth = 0.01)
 

@@ -56,7 +56,7 @@ modifyMarginalModels <- function(marginal_list,
                                  mean_baseline_only = FALSE,
                                  eqtl_baseline_only = FALSE,
                                  disp_scaling = "linear",
-                                 cellstate_colname = "cell_type",
+                                 celltype_colname = "cell_type",
                                  snp_colname = "snp_id",
                                  verbose = TRUE,
                                  debug = FALSE,
@@ -105,7 +105,7 @@ modifyMarginalModels <- function(marginal_list,
                         eqtl_baseline = eqtl_baseline_val,
                         mean_baseline_only = mean_baseline_only[idx],
                         eqtl_baseline_only = eqtl_baseline_only[idx],
-                        cellstate_colname = cellstate_colname,
+                        celltype_colname = celltype_colname,
                         snp_colname = snp_colname,
                         verbose = verbose,
                         debug = debug,
@@ -180,7 +180,7 @@ modifyMarginalModels <- function(marginal_list,
 #'     certain parametric models. Current options are either \code{"linear"},
 #'     \code{"quadratic"}, or \code{"none"}. (NOTE: currently only applicable to
 #'     the negative binomial model.)
-#' @param cellstate_colname A string for cell state variable name.
+#' @param celltype_colname A string for cell type variable name.
 #' @param snp_colname A string for SNP id variable name.
 #' @param verbose A logical value for whether to output messages related to
 #'     modified parameters. Default is \code{TRUE}.
@@ -208,7 +208,7 @@ modifyModelPara <- function(model_obj,
                             mean_baseline_only = FALSE,
                             eqtl_baseline_only = FALSE,
                             disp_scaling = "linear",
-                            cellstate_colname = "cell_type",
+                            celltype_colname = "cell_type",
                             snp_colname = "snp_id",
                             verbose = TRUE,
                             debug = FALSE,
@@ -263,7 +263,7 @@ modifyModelPara <- function(model_obj,
 
         # classify each term of model
         coef <- tibble::rownames_to_column(coef, "term") %>%
-            dplyr::mutate(term = stringr::str_remove(term, cellstate_colname),
+            dplyr::mutate(term = stringr::str_remove(term, celltype_colname),
                           celltype = stringr::str_detect(term, celltype),
                           snp = stringr::str_detect(term, snps),
                           interaction = stringr::str_detect(term, interact_char),

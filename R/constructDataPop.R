@@ -14,17 +14,20 @@
 #'     The default is NULL.
 #' @param sampid_vec an optional string vector to filter for sample ids.
 #'     The default is NULL.
-#' @param ct_copula a logical scalar for whether to fit the copula by cell state
-#'     variable specified by \code{cellstate_colname} option. The default is TRUE.
-#' @param ct_continuous a logical scalar for whether cell state variable specified
-#'     by \code{cellstate_colname} option is continuous. The default is FALSE.
-#' @param n_quantiles an integer value used for how many quantiles of continuous
+#' @param copula_variable a string scalar specifying the column name in cell
+#'     covariate of \code{sce} object for which to fit the copula by. If NULL, then
+#'     copula will be fitted for all cells. if it's the same as celltype_colname,
+#'     then copula will be fitted per cell type, while if it's the same as
+#'     time_colname, copula will be fitted per time quantile.
+#' @param n_quantiles an integer value used for how many time quantiles of continuous
 #'     cell states will be assigned for copula fitting. The default is 10.
 #' @param slot_name a string scalar specifying the slot to use in input \code{sce}.
 #'     The default is "counts".
 #' @param snp_model a string scalar specifying the type of SNP model used. Options
 #'     are either "single" for single-SNP, or "multi" for multi-SNP.
-#' @param cellstate_colname a string scalar specifying the cell state variable in
+#' @param time_colname a string scalar specifying the time/pseudotime variable in
+#'     the cell covariate of \code{sce} object.
+#' @param celltype_colname a string scalar specifying the cell type variable in
 #'     \code{eqtlgeno_df} and cell covariate of \code{sce} object.
 #'     The default is "cell_type".
 #' @param feature_colname a string scalar specifying the feature variable (ie. genes)
@@ -63,12 +66,12 @@ constructDataPop <- function(sce,
                              new_covariate = NULL,
                              overlap_features = NULL,
                              sampid_vec = NULL,
-                             ct_copula = TRUE,
-                             ct_continuous = FALSE,
+                             copula_variable = celltype_colname,
                              n_quantiles = 10,
                              slot_name = "counts",
                              snp_model = c("single", "multi"),
-                             cellstate_colname = "cell_type",
+                             time_colname = NULL,
+                             celltype_colname = "cell_type",
                              feature_colname = "gene_id",
                              snp_colname = "snp_id",
                              loc_colname = "POS",
@@ -104,13 +107,13 @@ constructDataPop <- function(sce,
     # checks
     if(has_eqtl) {
         assertthat::assert_that(assertthat::has_name(eqtlgeno_df,
-                                                     c(cellstate_colname, feature_colname,
+                                                     c(celltype_colname, feature_colname,
                                                        snp_colname, chrom_colname, loc_colname)))
     }
 
     if(has_newindiv && !is.null(new_eqtlgeno_df)) {
         assertthat::assert_that(assertthat::has_name(new_eqtlgeno_df,
-                                                     c(cellstate_colname, feature_colname,
+                                                     c(celltype_colname, feature_colname,
                                                        snp_colname, chrom_colname, loc_colname)))
     }
 
@@ -310,7 +313,7 @@ constructDataPop <- function(sce,
             ref_eqtl_tmp <- eqtl_geno_list[[g]]
 
             eqtl_tmp <- new_eqtlgeno_df[which(new_eqtlgeno_df[[feature_colname]] == g), ] %>%
-                dplyr::filter(!!rlang::sym(cellstate_colname) %in% ref_eqtl_tmp[[cellstate_colname]],
+                dplyr::filter(!!rlang::sym(celltype_colname) %in% ref_eqtl_tmp[[celltype_colname]],
                               !!rlang::sym(snp_colname) %in% ref_eqtl_tmp[[snp_colname]])
 
             return(eqtl_tmp)
@@ -351,12 +354,12 @@ constructDataPop <- function(sce,
 
     # add corr group for cell type copula
     covariate_df <- covariate_df %>%
-        { if(ct_copula) dplyr::mutate(., corr_group = as.integer(!!rlang::sym(cellstate_colname)))
+        { if(copula_variable==celltype_colname) dplyr::mutate(., corr_group = as.integer(!!rlang::sym(celltype_colname)))
             else dplyr::mutate(., corr_group = 1L) }
 
     if(!is.null(new_covariate)) {
         new_covariate <- new_covariate %>%
-            { if(ct_copula) dplyr::mutate(., corr_group = as.integer(!!rlang::sym(cellstate_colname)))
+            { if(copula_variable==celltype_colname) dplyr::mutate(., corr_group = as.integer(!!rlang::sym(celltype_colname)))
                 else dplyr::mutate(., corr_group = 1L) }
     }
 
@@ -370,16 +373,18 @@ constructDataPop <- function(sce,
                       "filtered_gene" = filtered_gene)
 
     # adjust corr_group if it's for continuous cell states
-    if(ct_continuous) {
-        data_list[["covariate"]] <- create_quantile_index(df = data_list[["covariate"]],
-                                                          col_x = "slingPseudotime_1",
-                                                          col_y = "corr_group",
-                                                          n_quantiles = n_quantiles)
-        data_list[["new_covariate"]] <- create_quantile_index(df = data_list[["new_covariate"]],
-                                                              col_x = "slingPseudotime_1",
-                                                              col_y = "corr_group",
-                                                              n_quantiles = n_quantiles)
-    } # TODO: add implementations for the multiple lineages cases
+    if(!is.null(time_colname)){
+        if(copula_variable==time_colname) {
+            data_list[["covariate"]] <- createQuantileIndex(df = data_list[["covariate"]],
+                                                            col_x = time_colname,
+                                                            col_y = "corr_group",
+                                                            n_quantiles = n_quantiles)
+            data_list[["new_covariate"]] <- createQuantileIndex(df = data_list[["new_covariate"]],
+                                                                col_x = time_colname,
+                                                                col_y = "corr_group",
+                                                                n_quantiles = n_quantiles)
+        } # TODO: add implementations for the multiple lineages cases
+    }
 
     return(data_list)
 }
@@ -441,7 +446,7 @@ pruneSnp <- function(geno_mat, ld_threshold = 0.9) {
     return(to_keep)
 }
 
-create_quantile_index <- function(df, col_x, col_y, n_quantiles = 10) {
+createQuantileIndex <- function(df, col_x, col_y, n_quantiles = 10) {
     # FUN: create quantiles in output column based on input cell state column
     # df : covariate matrix
     # col_x : the name of the cell state column

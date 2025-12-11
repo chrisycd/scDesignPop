@@ -17,7 +17,7 @@ modifyModelPara(
   mean_baseline_only = FALSE,
   eqtl_baseline_only = FALSE,
   disp_scaling = "linear",
-  cellstate_colname = "cell_type",
+  celltype_colname = "cell_type",
   snp_colname = "snp_id",
   verbose = TRUE,
   debug = FALSE,
@@ -78,7 +78,7 @@ certain parametric models. Current options are either \code{"linear"},
 \code{"quadratic"}, or \code{"none"}. (NOTE: currently only applicable to
 the negative binomial model.)}
 
-\item{cellstate_colname}{A string for cell state variable name.}
+\item{celltype_colname}{A string for cell type variable name.}
 
 \item{snp_colname}{A string for SNP id variable name.}
 

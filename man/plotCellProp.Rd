@@ -8,7 +8,7 @@ plotCellProp(
   col_data,
   title = NULL,
   color_vec = NULL,
-  cellstate_colname = "cell_type",
+  celltype_colname = "cell_type",
   indiv_colname = "indiv",
   width = 1,
   linewidth = 0.01
@@ -17,7 +17,7 @@ plotCellProp(
 \arguments{
 \item{col_data}{a data frame with two columns: individual ids with
 column name \code{indiv_colname}, and cell types with column
-name \code{cellstate_colname}.}
+name \code{celltype_colname}.}
 
 \item{title}{a string scalar specifiying the title of the output barplot.}
 
@@ -25,7 +25,7 @@ name \code{cellstate_colname}.}
 cell type names. If NULL, the cell types contained in \code{col_data} will
 be ordered by alphabetical order with R default color schemes.}
 
-\item{cellstate_colname}{a string scalar to specify the cell type variable
+\item{celltype_colname}{a string scalar to specify the cell type variable
 in \code{col_data}}
 
 \item{indiv_colname}{a string scalar to specify the individual id variable

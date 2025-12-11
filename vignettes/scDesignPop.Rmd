@@ -44,6 +44,7 @@ tools::R_user_dir("scDesignPop", which="cache")
 library(scDesignPop)
 library(SingleCellExperiment)
 library(SummarizedExperiment)
+library(ggplot2)
 theme_set(theme_bw())
 ```
 
@@ -67,10 +68,10 @@ data_list <- constructDataPop(
     new_covariate = as.data.frame(colData(example_sce)),
     overlap_features = NULL,
     sampid_vec = NULL,
-    ct_copula = TRUE,
+    copula_variable = "cell_type",
     slot_name = "counts",
     snp_model = "single",
-    cellstate_colname = "cell_type",
+    celltype_colname = "cell_type",
     feature_colname = "gene_id",
     snp_colname = "snp_id",
     loc_colname = "POS",
@@ -96,7 +97,7 @@ marginal_list <- fitMarginalPop(
     n_threads = 20L,
     loc_colname = "POS",
     snp_colname = "snp_id",
-    cellstate_colname = "cell_type",
+    celltype_colname = "cell_type",
     indiv_colname = "indiv",
     filter_snps = TRUE,
     snpvar_thres = 0,
