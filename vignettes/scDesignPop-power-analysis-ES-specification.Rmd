@@ -19,7 +19,7 @@ output:
 date: "`r doc_date()`"
 package: "`r pkg_ver('scDesignPop')`"
 vignette: >
-  %\VignetteIndexEntry{scDesignPop-poweranalysisD-vignette}
+  %\VignetteIndexEntry{scDesignPop-poweranalysis-ES-vignette}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}  
 ---
@@ -63,9 +63,9 @@ Given fitted marginal model, scDesignPop can perform simulation-based power anal
 specific gene-SNP pair across selected cell types using the `runPowerAnalysis`
 function. Based on the previous naming of covariates, we specify the fitted snpid as `"1:153337943"`, the name of the column for fixed cell state effect and random individual effect as `"cell_type"` and `"indiv"` in the input parameters. To check these namings, we can call the covariate data frame using `marginal_list_sel[["ENSG00000163221"]]$fit$frame`. The selected cell types for testing are specified in cellstate_vector and have to be consistent with the covariate data frame.
 
-Particarly, parameters `snp_number` and `gene_number` are used to account for multiple testing correction with Bonferroni correction. Parameter `methods` is used to specify the marginal eQTL model from `c("nb", "poisson", "gaussian", "pseudoBulkLinear")`. Parameter `nindivs` and `ncells` are used to specify the number of individuals and number of cells per individual, from which we can analyze the performance of power analysis and find the optimal setting.
+Particarly, parameters `snp_number` and `gene_number` are used to account for multiple testing correction with Bonferroni correction. Parameter `methods` is used to specify the marginal eQTL model from `c("nb", "poisson", "gaussian", "pseudoBulkLinear")`. Parameter `nindivs` and `ncells` are used to specify the number of individuals and number of cells per individual, from which we can analyze the performance of power analysis and find the optimal setting. Here, we set `power_nsim = 1000` to increase the number of simulations so we can calculate power with a higher resolution.
 
-Here, users can specify different eQTL effect sizes in each cell type using the input parameter `celltype_specific_ES_list` as follows, where each element of the list represents one scenario allowing eQTL effect sizes in multiple cell types can be specified at the same time. (bmem cell type is also included but without user specification)
+Specifically, users can specify different eQTL effect sizes in each cell type using the input parameter `celltype_specific_ES_list` as follows, where each element of the list represents one scenario allowing eQTL effect sizes in multiple cell types can be specified at the same time. (bmem cell type is also included but without user specification)
 
 ```{r}
 set.seed(123)
@@ -94,28 +94,28 @@ power_data <- runPowerAnalysis(marginal_list = marginal_list_sel,
 
 ## Visualization of power results
 
-The power analysis results can be visualized using the `visualizePowerResult` function. The cell type names in the `cellstate_vector` must be included in the above power analysis.
+The power analysis results can be visualized using the `visualizePowerCurve` function. The cell type names in the `cellstate_vector` must be included in the above power analysis.
 
 ```{r}
-visualizePowerResult(power_result = power_data,
-                     celltype_vector = c("monoc"),
-                     x_axis = "specifiedES",
-                     x_facet="nindiv",
-                     y_facet = "ncell",
-                     col_group = "method",
-                     geneid = "ENSG00000163221",
-                     snpid = "1:153337943")
+visualizePowerCurve(power_result = power_data,
+                    celltype_vector = c("monoc"),
+                    x_axis = "specifiedES",
+                    x_facet="nindiv",
+                    y_facet = "ncell",
+                    col_group = "method",
+                    geneid = "ENSG00000163221",
+                    snpid = "1:153337943")
 ```
 
 By swaping the x and y axis, we can show the result in a different way.
 
 ```{r}
-visualizePowerResult(power_result = power_data,
-                     celltype_vector = c("monoc"),
-                     x_axis = "specifiedES",
-                     x_facet="ncell",
-                     y_facet = "nindiv",
-                     col_group = "method",
-                     geneid = "ENSG00000163221",
-                     snpid = "1:153337943")
+visualizePowerCurve(power_result = power_data,
+                    celltype_vector = c("monoc"),
+                    x_axis = "specifiedES",
+                    x_facet="ncell",
+                    y_facet = "nindiv",
+                    col_group = "method",
+                    geneid = "ENSG00000163221",
+                    snpid = "1:153337943")
 ```

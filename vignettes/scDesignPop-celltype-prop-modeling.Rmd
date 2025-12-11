@@ -50,13 +50,15 @@ scDesignPop provide modeling of the cell type proportions for generating new cel
 Here, we load the `example_sce` data with both the genotype PCs of the training `example_sce` data and those of the new simulated individuals.
 
 ```{r}
+library(SingleCellExperiment)
 library(scDesignPop)
 data("example_sce")
-data("example_genoPCs")
-othercov_new <- dplyr::select(genopc_new, indiv)
+data("example_genopc_train")
+data("example_genopc_new")
+othercov_new <- dplyr::select(example_genopc_new, indiv)
 
-head(genopc_train)
-head(genopc_new)
+head(example_genopc_train)
+head(example_genopc_new)
 ```
 
 ## Celltype proportion modeling
@@ -67,8 +69,8 @@ We model the cell type proportions with a Multinomial model using genotype PCs a
 set.seed(123)
 simu_cellprop_list <- scDesignPop::simuCellProportion(
   sce = example_sce,
-  genoPC = genopc_train,
-  new_genoPC = genopc_new,
+  genoPC = example_genopc_train,
+  new_genoPC = example_genopc_new,
   new_othercov = othercov_new,
   PCnum = 30L,
   cov_colnames = NULL,
@@ -93,6 +95,7 @@ head(simu_cellprop_list[["simu_cov"]])
 By specifying the colors for each cell type, we can visualize the cell type proportion structure between the original data and simulated data after ordering individuals with the cell number of the first cell type. If no colors are specified for cell types, the function will still plot the data using the R default colors and ordering individuals based on the cell number of the first cell type after factorizing the cell types of the given data. 
 
 ```{r}
+library(cowplot)
 color_vec <- c(
   "cd4nc"   = "#5E3C99",
   "bmem"    = "#FFEDA0",

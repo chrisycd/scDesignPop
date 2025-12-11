@@ -12,6 +12,8 @@ constructDataPop(
   overlap_features = NULL,
   sampid_vec = NULL,
   ct_copula = TRUE,
+  ct_continuous = FALSE,
+  n_quantiles = 10,
   slot_name = "counts",
   snp_model = c("single", "multi"),
   cellstate_colname = "cell_type",
@@ -42,6 +44,12 @@ The default is NULL.}
 
 \item{ct_copula}{a logical scalar for whether to fit the copula by cell state
 variable specified by \code{cellstate_colname} option. The default is TRUE.}
+
+\item{ct_continuous}{a logical scalar for whether cell state variable specified
+by \code{cellstate_colname} option is continuous. The default is FALSE.}
+
+\item{n_quantiles}{an integer value used for how many quantiles of continuous
+cell states will be assigned for copula fitting. The default is 10.}
 
 \item{slot_name}{a string scalar specifying the slot to use in input \code{sce}.
 The default is "counts".}

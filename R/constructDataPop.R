@@ -16,6 +16,10 @@
 #'     The default is NULL.
 #' @param ct_copula a logical scalar for whether to fit the copula by cell state
 #'     variable specified by \code{cellstate_colname} option. The default is TRUE.
+#' @param ct_continuous a logical scalar for whether cell state variable specified
+#'     by \code{cellstate_colname} option is continuous. The default is FALSE.
+#' @param n_quantiles an integer value used for how many quantiles of continuous
+#'     cell states will be assigned for copula fitting. The default is 10.
 #' @param slot_name a string scalar specifying the slot to use in input \code{sce}.
 #'     The default is "counts".
 #' @param snp_model a string scalar specifying the type of SNP model used. Options
@@ -60,6 +64,8 @@ constructDataPop <- function(sce,
                              overlap_features = NULL,
                              sampid_vec = NULL,
                              ct_copula = TRUE,
+                             ct_continuous = FALSE,
+                             n_quantiles = 10,
                              slot_name = "counts",
                              snp_model = c("single", "multi"),
                              cellstate_colname = "cell_type",
@@ -363,6 +369,18 @@ constructDataPop <- function(sce,
                       "new_eqtl_geno_list" = new_eqtl_geno_list,
                       "filtered_gene" = filtered_gene)
 
+    # adjust corr_group if it's for continuous cell states
+    if(ct_continuous) {
+        data_list[["covariate"]] <- create_quantile_index(df = data_list[["covariate"]],
+                                                          col_x = "slingPseudotime_1",
+                                                          col_y = "corr_group",
+                                                          n_quantiles = n_quantiles)
+        data_list[["new_covariate"]] <- create_quantile_index(df = data_list[["new_covariate"]],
+                                                              col_x = "slingPseudotime_1",
+                                                              col_y = "corr_group",
+                                                              n_quantiles = n_quantiles)
+    } # TODO: add implementations for the multiple lineages cases
+
     return(data_list)
 }
 
@@ -421,4 +439,30 @@ pruneSnp <- function(geno_mat, ld_threshold = 0.9) {
     }
 
     return(to_keep)
+}
+
+create_quantile_index <- function(df, col_x, col_y, n_quantiles = 10) {
+    # FUN: create quantiles in output column based on input cell state column
+    # df : covariate matrix
+    # col_x : the name of the cell state column
+    # col_y : the name of the output column
+    # n_quantiles : the number of quantiles
+
+    # Ensure the columns exist
+    if (!all(c(col_x, col_y) %in% names(df))) {
+        stop("Column names provided do not exist in the data frame.")
+    }
+
+    # Extract the quantile boundaries of col_x
+    qcuts <- quantile(df[[col_x]], probs = seq(0, 1, length.out = n_quantiles + 1), na.rm = TRUE)
+
+    # Assign quantile index based on col_x
+    df[,col_y] <- cut(
+        df[[col_x]],
+        breaks = qcuts,
+        include.lowest = TRUE,
+        labels = FALSE
+    )
+
+    return(df)
 }

@@ -1,5 +1,5 @@
 ---
-title: "scDesignPop Quickstart"
+title: "Model nonlinear dynamic eQTL effects in continuous cell states"
 author: 
   - name: Chris Dong
     affiliation:
@@ -19,7 +19,7 @@ output:
 date: "`r doc_date()`"
 package: "`r pkg_ver('scDesignPop')`"
 vignette: >
-  %\VignetteIndexEntry{scDesignPop-quickstart-vignette}
+  %\VignetteIndexEntry{scDesignPop-modelNLDynamicEQTL-vignette}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}  
 ---
@@ -44,30 +44,33 @@ tools::R_user_dir("scDesignPop", which="cache")
 library(scDesignPop)
 library(SingleCellExperiment)
 library(SummarizedExperiment)
+library(scater)
 theme_set(theme_bw())
 ```
 
-## Introduction
-scDesignPop is a simulator for population-scale single-cell RNA-sequencing (scRNA-seq) data. For more information, please check the Articles on our website: (https://chrisycd.github.io/scDesignPop/docs/index.html).
-
 ## Step 1: construct a data list
 
-To run scDesignPop, a list of data is required as input. This is done using the `constructDataPop` function. A `SingleCellExperiment` object and an `eqtlgeno` dataframe are the two main inputs needed. The `eqtlgeno` dataframe consists of eQTL annotations (it must have cell state, gene, SNP, chromosome, and position columns at a minimum), and genotypes across individuals (columns) for every SNP (rows). The structure of an example `eqtlgeno` dataframe is given below.
+scDesignPop can also be extended to other eQTL effects. Here we show how scDesignPop can also model nonlinear dynamic eQTL effects in continuous cell states to mimick the real data better.
+To run scDesignPop, a list of data is required as input. This is done using the `constructDataPop` function. A `SingleCellExperiment` object and an `eqtlgeno` dataframe are the two main inputs needed. The `eqtlgeno` dataframe consists of eQTL annotations (it must have cell state, gene, SNP, chromosome, and position columns at a minimum), and genotypes across individuals (columns) for every SNP (rows). The structure of an example `eqtlgeno` dataframe is given below. Here, we use a subset of the B cells from OneK1K cohort as example.
 
 
 ```{r}
-data("example_sce")
-data("example_eqtlgeno")
+data("example_sce_Bcell")
+data("example_eqtlgeno_Bcell")
+col_Bcell <- colData(example_sce_Bcell)
+colData(example_sce_Bcell)$slingPseudotime_1_sq <- col_Bcell$slingPseudotime_1^2
 ```
 
 ```{r}
 data_list <- constructDataPop(
-    sce = example_sce,
-    eqtlgeno_df = example_eqtlgeno,
-    new_covariate = as.data.frame(colData(example_sce)),
+    sce = example_sce_Bcell,
+    eqtlgeno_df = example_eqtlgeno_Bcell,
+    new_covariate = as.data.frame(colData(example_sce_Bcell)),
     overlap_features = NULL,
     sampid_vec = NULL,
     ct_copula = TRUE,
+    ct_continuous = TRUE,
+    n_quantiles = 10,
     slot_name = "counts",
     snp_model = "single",
     cellstate_colname = "cell_type",
@@ -89,9 +92,9 @@ Here we use a Negative Binominal as the parametric model using `"nb"`.
 ```{r}
 marginal_list <- fitMarginalPop(
     data_list = data_list,
-    mean_formula = "(1|indiv) + cell_type",
+    mean_formula = "(1|indiv) + slingPseudotime_1 + slingPseudotime_1_sq",
     model_family = "nb",
-    interact_colnames = "cell_type",
+    interact_colnames = c("slingPseudotime_1", "slingPseudotime_1_sq"),
     parallelization = "pbmcapply",
     n_threads = 20L,
     loc_colname = "POS",
@@ -114,7 +117,7 @@ function.
 set.seed(123, kind = "L'Ecuyer-CMRG")
 
 copula_fit <- fitCopulaPop(
-    sce = example_sce,
+    sce = example_sce_Bcell,
     assay_use = "counts",
     input_data = data_list[["new_covariate"]],
     marginal_list = marginal_list,
@@ -134,7 +137,7 @@ parameters using the `extractParaPop` function.
 
 ```{r}
 para_new <- extractParaPop(
-    sce = example_sce,
+    sce = example_sce_Bcell,
     assay_use = "counts",
     marginal_list = marginal_list,
     n_cores = 2L,
@@ -155,7 +158,7 @@ The fifth step is to simulate counts using the `simuNewPop` function.
 set.seed(123)
 
 newcount_mat <- simuNewPop(
-    sce = example_sce,
+    sce = example_sce_Bcell,
     mean_mat = para_new[["mean_mat"]],
     sigma_mat = para_new[["sigma_mat"]],
     zero_mat = para_new[["zero_mat"]],
@@ -178,30 +181,55 @@ After simulating the data, we can create a `SingleCellExperiment` object
 as follows.
 
 ```{r}
-simu_sce <- SingleCellExperiment(list(counts = newcount_mat), 
-                                 colData = data_list[["new_covariate"]])
-names(assays(simu_sce)) <- "counts"
+simu_sce_Bcell <- SingleCellExperiment(list(counts = newcount_mat), 
+                                       colData = data_list[["new_covariate"]])
+names(assays(simu_sce_Bcell)) <- "counts"
 
 # save gene meta data
-rowData(simu_sce) <- rowData(example_sce)
+rowData(simu_sce_Bcell) <- rowData(example_sce_Bcell)
 ```
 
-## Step 7: visualize using UMAP
+## Step 7: visualize using PHATE
 
 The simulated data can be visualized using a UMAP plot as follows.
 
 ```{r}
-logcounts(simu_sce) <- log1p(counts(simu_sce))
-set.seed(123)
-compare_figure <- scDesignPop::plotReducedDimPop(
-    ref_sce = example_sce,
-    sce_list = list(simu_sce), 
-    name_vec = c("Reference", "scDesignPop"),
-    assay_use = "logcounts", 
-    if_plot = TRUE, 
-    color_by = "cell_type", point_size = 1,
-    n_pc = 30)
-plot(compare_figure$p_umap)
+library(ggplot2)
+library(phateR)
+
+# run PHATE for reference data
+ph <- phate(t(counts(example_sce_Bcell)))
+reducedDims(example_sce_Bcell) <- SimpleList(PHATE = ph$embedding)
+
+# run PHATE for simulated data
+ph_simu <- phate(t(counts(simu_sce_Bcell)))
+reducedDims(simu_sce_Bcell) <- SimpleList(PHATE = ph_simu$embedding)
+
+# visualize
+p <- ggplot(reducedDim(example_sce_Bcell), 
+            aes(PHATE1, PHATE2, color = example_sce_Bcell$slingPseudotime_1)) +
+  ggrastr::rasterise(
+    geom_point(size = 0.5),
+    dpi = 300
+  ) +
+  labs(color = "Pseudotime") +
+  theme_classic() +
+  theme(plot.title = element_text(hjust = 0.5)) + 
+    ggtitle("Reference")
+
+p_simu <- ggplot(reducedDim(simu_sce_Bcell), 
+                 aes(PHATE1, PHATE2, 
+                     color = colData(simu_sce_Bcell)$slingPseudotime_1)) +
+  ggrastr::rasterise(
+    geom_point(size = 0.5),
+    dpi = 300
+  ) +
+  labs(color = "Pseudotime") +
+  theme_classic() +
+  theme(plot.title = element_text(hjust = 0.5)) + 
+    ggtitle("scDesignPop (Nonlinear Dynamic eQTL)")
+
+patchwork::wrap_plots(p, p_simu, ncol = 2)
 ```
 
 ## Session information
