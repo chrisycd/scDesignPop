@@ -20,3 +20,4 @@ pkg.R
 # produced vignettes
 vignettes/*.html
 vignettes/*.pdf
+inst/doc

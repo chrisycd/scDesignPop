@@ -47,9 +47,12 @@ Imports:
     tidyselect,
     uwot,
     viridis
+Suggests: 
+    knitr,
+    rmarkdown
 URL: https://github.com/chrisycd/scDesignPop
 BugReports: https://github.com/chrisycd/scDesignPop/issues
 Depends: 
     R (>= 4.2.0)
 LazyData: false
-
+VignetteBuilder: knitr
