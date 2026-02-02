@@ -55,7 +55,7 @@ modifyMarginalModels <- function(marginal_list,
                                  eqtl_baseline = NULL,
                                  mean_baseline_only = FALSE,
                                  eqtl_baseline_only = FALSE,
-                                 disp_scaling = "linear",
+                                 disp_scaling = FALSE,
                                  celltype_colname = "cell_type",
                                  snp_colname = "snp_id",
                                  verbose = TRUE,
@@ -105,6 +105,7 @@ modifyMarginalModels <- function(marginal_list,
                         eqtl_baseline = eqtl_baseline_val,
                         mean_baseline_only = mean_baseline_only[idx],
                         eqtl_baseline_only = eqtl_baseline_only[idx],
+                        disp_scaling = disp_scaling,
                         celltype_colname = celltype_colname,
                         snp_colname = snp_colname,
                         verbose = verbose,
@@ -176,10 +177,11 @@ modifyMarginalModels <- function(marginal_list,
 #'     linear prediction) at genotype 1 \eqn{\mu_{1}}. Default is \code{FALSE}.
 #' @param eqtl_baseline_only A logical value to force the eQTL slope between
 #'     genotype 1 and 0 (\eqn{\mu_{1}} - \eqn{\mu_{0}}). Default is \code{FALSE}.
-#' @param disp_scaling A string value to specify the dispersion-mean scaling for
+#' @param disp_scaling A string or logical value to specify the dispersion-mean scaling for
 #'     certain parametric models. Current options are either \code{"linear"},
-#'     \code{"quadratic"}, or \code{"none"}. (NOTE: currently only applicable to
-#'     the negative binomial model.)
+#'     \code{"quadratic"}, or \code{NULL}. If FALSE, the dispersion parameter is
+#'     not changed. The default is FALSE. (NOTE: currently only applicable to the
+#'     negative binomial model.)
 #' @param celltype_colname A string for cell type variable name.
 #' @param snp_colname A string for SNP id variable name.
 #' @param verbose A logical value for whether to output messages related to
@@ -188,7 +190,11 @@ modifyMarginalModels <- function(marginal_list,
 #'     for debugging purposes. Default is \code{FALSE}.
 #' @param log_tol A numeric value used as tolerance in log computation. Default
 #'     value is \eqn{1e-4}.
-#' @param ... Additional options.
+#' @param ... Additional options used. Currently supported:
+#'     \describe{
+#'         \item{\code{mod_scale}}{A string to specify on what scale the modified response will
+#'     be on.  The two options are 'response' or 'link'. The default is 'response'.}
+#'     }
 #'
 #' @return A list of dataframe of coefficients, model objects, and optional outputs
 #'     if debugging is enabled.
@@ -207,7 +213,8 @@ modifyModelPara <- function(model_obj,
                             eqtl_baseline = NULL,
                             mean_baseline_only = FALSE,
                             eqtl_baseline_only = FALSE,
-                            disp_scaling = "linear",
+                            disp_scaling = FALSE,
+                            # mod_scale = "response",
                             celltype_colname = "cell_type",
                             snp_colname = "snp_id",
                             verbose = TRUE,
@@ -219,25 +226,24 @@ modifyModelPara <- function(model_obj,
 
     opt_args <- list(...)
 
+    mod_scale <- if(!is.null(opt_args$mod_scale)) { opt_args$mod_scale }
 
     # extract model object, link function type, and snps
     snps <- eqtlgeno[[snp_colname]]
 
     mod_orig <- model_obj
 
-    # extract model family and disp. parameter
+    if(!methods::is(mod_orig, "glmmTMB")) {  ###
+        stop(sprintf("Please ensure model object is glmmTMB."))
+    }
+
+    # extract model family, disp. parameter, and link function
     family_use <- stats::family(mod_orig)$family[1]
     phi_orig <- glmmTMB::sigma(mod_orig)
+    link_func <- stats::family(mod_orig)$link  ###
 
     if(grepl("nbinom2", family_use)) {
         family_use <- "nb"
-    }
-
-
-    if(methods::is(mod_orig, "glmmTMB")) {
-        link_func <- mod_orig[["modelInfo"]][["family"]][["link"]]
-    } else {
-        stop(sprintf("Please ensure model object is glmmTMB."))
     }
 
     if(stringr::str_detect(snps, ":")) {
@@ -257,56 +263,57 @@ modifyModelPara <- function(model_obj,
     }
 
 
-    if(link_func == "log") {
+    # extract coefficients and classify each term
+    coef <- as.data.frame(summary(mod_orig)[["coefficients"]][["cond"]])
 
-        coef <- as.data.frame(summary(mod_orig)[["coefficients"]][["cond"]])
+    coef <- tibble::rownames_to_column(coef, "term") %>%
+        dplyr::mutate(term = stringr::str_remove(term, celltype_colname),
+                      celltype = stringr::str_detect(term, celltype),
+                      snp = stringr::str_detect(term, snps),
+                      interaction = stringr::str_detect(term, interact_char),
+                      intercept = stringr::str_detect(term, "Intercept"))
 
-        # classify each term of model
-        coef <- tibble::rownames_to_column(coef, "term") %>%
-            dplyr::mutate(term = stringr::str_remove(term, celltype_colname),
-                          celltype = stringr::str_detect(term, celltype),
-                          snp = stringr::str_detect(term, snps),
-                          interaction = stringr::str_detect(term, interact_char),
-                          intercept = stringr::str_detect(term, "Intercept"))
+    # check
+    stopifnot("Please make sure cell type is not the baseline cell type used in contrast." =
+                  (celltype %in% coef$term))
 
-        # check
-        stopifnot("Please make sure cell type is not the baseline cell type used in contrast." =
-                      (celltype %in% coef$term))
+    # get parameter values and indices
+    intcpt_val <- coef[coef$intercept == 1, "Estimate"]
+    intcpt_idx <- which(coef[["Estimate"]] == intcpt_val)
 
-        # get parameter values and indices
-        intcpt_val <- coef[coef$intercept == 1, "Estimate"]
-        intcpt_idx <- which(coef[["Estimate"]] == intcpt_val)
+    ct_val <- coef[coef$celltype == 1 & coef$snp == 0 & coef$interaction == 0, "Estimate"]
+    ct_idx <- which(coef[["Estimate"]] == ct_val)
 
-        ct_val <- coef[coef$celltype == 1 & coef$snp == 0 & coef$interaction == 0, "Estimate"]
-        ct_idx <- which(coef[["Estimate"]] == ct_val)
+    snp_val <- coef[coef$celltype == 0 & coef$snp == 1 & coef$interaction == 0, "Estimate"]
+    snp_idx <- which(coef[["Estimate"]] == snp_val)
 
-        snp_val <- coef[coef$celltype == 0 & coef$snp == 1 & coef$interaction == 0, "Estimate"]
-        snp_idx <- which(coef[["Estimate"]] == snp_val)
+    int_val <- coef[coef$celltype == 1 & coef$snp == 1 & coef$interaction == 1, "Estimate"]
+    int_idx <- which(coef[["Estimate"]] == int_val)
 
-        int_val <- coef[coef$celltype == 1 & coef$snp == 1 & coef$interaction == 1, "Estimate"]
-        int_idx <- which(coef[["Estimate"]] == int_val)
+    # initialize parameter vector for cell type
+    paravec <- c(intcpt_val, ct_val, snp_val, int_val)
+    names(paravec) <- c("intcpt", "ct", "snp", "int")
 
-        # initialize parameter vector for cell type
-        paravec <- c(intcpt_val, ct_val, snp_val, int_val)
-        names(paravec) <- c("intcpt", "ct", "snp", "int")
+    paravec_new <- paravec
 
-        paravec_new <- paravec
+    # design matrix with intercept, SNP, and covariates
+    design_mat <- matrix(1L, nrow = 3L, ncol = 4L,
+                         dimnames = list(c("geno0", "geno1", "geno2"),
+                                         c("intcpt", "ct", "snp", "int"))
+    )
+    design_mat["geno0", 3:4] <- 0L
+    design_mat["geno1", 3:4] <- 1L
+    design_mat["geno2", 3:4] <- 2L
 
-        # design matrix with intercept, SNP, and covariates
-        design_mat <- matrix(1L, nrow = 3L, ncol = 4L,
-                             dimnames = list(c("geno0", "geno1", "geno2"),
-                                             c("intcpt", "ct", "snp", "int"))
-                             )
-        design_mat["geno0", 3:4] <- 0L
-        design_mat["geno1", 3:4] <- 1L
-        design_mat["geno2", 3:4] <- 2L
+    # compute linear predictors at 3 genos
+    predvec <- as.vector(design_mat %*% paravec)
+    names(predvec) <- c("geno0", "geno1", "geno2")
 
-        # compute linear predictors at 3 genos
-        predvec <- as.vector(design_mat %*% paravec)
-        names(predvec) <- c("geno0", "geno1", "geno2")
 
-        # compute nominal eqtl slope and means
-        meanvec <- exp(predvec)  # conditional mean on exp scale
+    if(mod_scale == "response") {  ###
+
+        # compute nominal eqtl slope and conditional means on response scale
+        meanvec <- invLinkFunc(predvec, link_type = link_func)  ###
         eqtl <- meanvec["geno1"] - meanvec["geno0"]
         eqtl_sign <- sign(eqtl)
 
@@ -327,7 +334,7 @@ modifyModelPara <- function(model_obj,
             }
 
             # solve for celltype main effect
-            paravec_new["ct"] <- log(mean1_new) - paravec["intcpt"]
+            paravec_new["ct"] <- linkFunc(mean1_new, link_func) - paravec["intcpt"]   ###
 
             # solve for celltype snp interaction effect
             paravec_new["int"] <- -paravec["snp"]
@@ -372,10 +379,10 @@ modifyModelPara <- function(model_obj,
                                          log_tol,
                                          mean1_new - eqtl_new)
 
-            paravec_new["ct"] <- log(mean1eqtl_new_diff) - paravec["intcpt"]
+            paravec_new["ct"] <- linkFunc(mean1eqtl_new_diff, link_func) - paravec["intcpt"]   ###
 
             # solve for celltype snp interaction effect
-            paravec_new["int"] <- log(mean1_new) - paravec["intcpt"] -
+            paravec_new["int"] <- linkFunc(mean1_new, link_func) - paravec["intcpt"] -  ###
                                     paravec_new["ct"] - paravec["snp"]
 
         }
@@ -384,7 +391,7 @@ modifyModelPara <- function(model_obj,
         predvec_new <- as.vector(design_mat %*% paravec_new)
         names(predvec_new) <- c("geno0", "geno1", "geno2")
 
-        meanvec_new <- exp(predvec_new)
+        meanvec_new <- invLinkFunc(predvec_new, link_type = link_func)  ###
 
         # update new parameters
         coef_new <- coef
@@ -400,32 +407,6 @@ modifyModelPara <- function(model_obj,
         mod_new[["fit"]][["par"]][int_idx] <- paravec_new["int"]
         mod_new[["fit"]][["parfull"]][int_idx] <- paravec_new["int"]
 
-        # update disp. parameter in model
-        phi_new <- phi_orig
-
-        if(!is.null(phi_orig) && disp_scaling == "linear") {
-
-            if(family_use == "nb") {
-
-                # linear scale to mu^2 / phi
-                phi_new <- meanvec_new[["geno1"]] * phi_orig / meanvec[["geno1"]]
-
-                mod_new[["fit"]][["par"]][["betad"]] <- log(phi_new)
-                mod_new[["fit"]][["parfull"]]["betad"] <- log(phi_new)
-            }
-        } else if(!is.null(phi_orig) && disp_scaling == "quadratic") {
-
-            if(family_use == "nb") {
-
-                # linear scale to mu^2 / phi
-                phi_new <- meanvec_new[["geno1"]]^2 * phi_orig / meanvec[["geno1"]]^2
-
-                mod_new[["fit"]][["par"]][["betad"]] <- log(phi_new)
-                mod_new[["fit"]][["parfull"]]["betad"] <- log(phi_new)
-            }
-        } else if(!is.null(phi_orig) && disp_scaling == "none") {
-            NULL
-        }
 
         # output messages
         if(verbose) {
@@ -445,14 +426,165 @@ modifyModelPara <- function(model_obj,
             message(sprintf("eQTL slope between geno 1 and 0: %.5f ===> new value: %.5f",
                             meanvec["geno1"] - meanvec["geno0"],
                             meanvec_new["geno1"] - meanvec_new["geno0"]))
-            if(!is.null(phi_new)) {
-                message(sprintf("Phi parameter: %.5f ===> new value: %.5f\n",
-                                phi_orig, phi_new))
-            }
         }
+
+    } else if(mod_scale == "link") {   ###
+
+        # compute per-allele eqtl effect and conditional mean on link scale
+        delta <- paravec["snp"] + paravec["int"]
+        delta_sign <- sign(delta)
+
+        link_mu1 <- paravec["intcpt"] + paravec["ct"] + delta
+        link_mu1_sign <- sign(link_mu1)
+
+        if(neg_ctrl) {
+
+            # modify eQTL effect on link scale
+            delta_new <- 0
+
+            # modify link-scale mean at geno 1
+            link_mu1_new <- link_mu1 + linkFunc(2^mean_log2fc, link_type = link_func)
+
+            if(!is.null(mean_baseline)) {
+                mean_baseline <- mean_baseline + linkFunc(2^mean_log2fc, link_type = link_func)
+                if(mean_baseline_only) {
+                    link_mu1_new <- mean_baseline
+                } else {
+                    link_mu1_new <- ifelse(link_mu1_new < mean_baseline, mean_baseline, link_mu1_new)
+                }
+            }
+
+            # solve for celltype snp interaction term
+            paravec_new["int"] <- -paravec["snp"]
+
+            # solve for celltype main effect
+            paravec_new["ct"] <- link_mu1_new - paravec["intcpt"]
+
+        } else {
+
+            # modify per-allele eqtl effect on link scale
+            delta_new <- abs(delta) * 2^eqtl_log2fc
+            # delta_new <- abs(delta) + linkFunc(2^eqtl_log2fc, link_type = link_func)
+
+            if(eqtl_reverse) {
+                delta_new <- -delta_sign * delta_new
+            } else {
+                delta_new <- delta_sign * delta_new
+            }
+
+            # check if use eqtl baseline
+            if(!is.null(eqtl_baseline)) {
+                eqtl_baseline <- ifelse(eqtl_reverse,
+                                        -eqtl_baseline, eqtl_baseline) * 2^eqtl_log2fc
+                if(eqtl_baseline_only) {
+                    delta_new <- ifelse(delta_sign >= 0, 1, -1) * eqtl_baseline
+                } else {
+                    delta_new <- ifelse(delta_new < eqtl_baseline,
+                                        ifelse(delta_sign >= 0, 1, -1) * eqtl_baseline,
+                                        delta_new)
+                }
+            }
+
+            # modify link-scale mean at geno 1
+            link_mu1_new <- link_mu1 * (2^mean_log2fc)
+            # link_mu1_new <- link_mu1 + linkFunc(2^mean_log2fc, link_type = link_func)
+
+
+            if(!is.null(mean_baseline)) {
+                mean_baseline <- mean_baseline * 2^mean_log2fc
+                if(mean_baseline_only) {
+                    link_mu1_new <- mean_baseline
+                } else {
+                    link_mu1_new <- ifelse(link_mu1_new < mean_baseline, mean_baseline, link_mu1_new)
+                }
+            }
+
+            # solve for celltype snp interaction term
+            paravec_new["int"] <- delta_new - paravec["snp"]
+
+            # solve for celltype main effect
+            paravec_new["ct"] <- link_mu1_new - paravec["intcpt"] - paravec["snp"] - paravec_new["int"]
+
+        }
+
+
+        # update predictions
+        predvec_new <- as.vector(design_mat %*% paravec_new)
+        names(predvec_new) <- c("geno0", "geno1", "geno2")
+
+        meanvec <- invLinkFunc(predvec, link_type = link_func)
+        meanvec_new <- invLinkFunc(predvec_new, link_type = link_func)
+
+        # update new parameters
+        coef_new <- coef
+        coef_new[ct_idx,  "Estimate"] <- paravec_new["ct"]
+        coef_new[int_idx, "Estimate"] <- paravec_new["int"]
+
+        mod_new <- mod_orig
+
+        # update parameters in model object
+        mod_new[["fit"]][["par"]][ct_idx]      <- paravec_new["ct"]
+        mod_new[["fit"]][["parfull"]][ct_idx]  <- paravec_new["ct"]
+
+        mod_new[["fit"]][["par"]][int_idx]     <- paravec_new["int"]
+        mod_new[["fit"]][["parfull"]][int_idx] <- paravec_new["int"]
+
+        # output messages
+        if(verbose) {
+            message(sprintf("Per-allele link-scale eQTL effect: %.5f ===> %.5f",
+                            delta, delta_new))
+            message(sprintf("celltype effect: %.5f ===> new value: %.5f",
+                            paravec["ct"], paravec_new["ct"]))
+            message(sprintf("interaction effect: %.5f ===> new value: %.5f",
+                            paravec["int"], paravec_new["int"]))
+            if(neg_ctrl) {
+                message(sprintf("<< Setting conditional means to be negative controls (no eQTL effect) >>"))
+            }
+            message(sprintf("conditional means at geno 0,1,2: %.5f, %.5f, %.5f ===> %.5f, %.5f, %.5f",
+                            meanvec["geno0"], meanvec["geno1"], meanvec["geno2"],
+                            meanvec_new["geno0"], meanvec_new["geno1"], meanvec_new["geno2"]))
+
+            if(eqtl_reverse) {
+                message(sprintf("<< Setting the eQTL slope in reverse direction >>"))
+            }
+            message(sprintf("eQTL slope between geno 1 and 0: %.5f ===> new value: %.5f",
+                            meanvec["geno1"] - meanvec["geno0"],
+                            meanvec_new["geno1"] - meanvec_new["geno0"]))
+        }
+
     } else {
-        stop(sprintf("Please check link function is log."))
+        stop(sprintf("Please check mod_scale option is either 'response' or 'link'."))
     }
+
+    # update disp. parameter in model
+    phi_new <- phi_orig
+
+    if(!is.null(phi_orig) && disp_scaling == "linear") {
+
+        if(family_use == "nb") {
+
+            # linear scale to mu1^2 / phi
+            phi_new <- meanvec_new[["geno1"]] * phi_orig / meanvec[["geno1"]]
+
+            mod_new[["fit"]][["par"]][["betad"]] <- log(phi_new)
+            mod_new[["fit"]][["parfull"]]["betad"] <- log(phi_new)
+        }
+    } else if(!is.null(phi_orig) && disp_scaling == "quadratic") {
+
+        if(family_use == "nb") {
+
+            # linear scale to mu1^2 / phi
+            phi_new <- meanvec_new[["geno1"]]^2 * phi_orig / meanvec[["geno1"]]^2
+
+            mod_new[["fit"]][["par"]][["betad"]] <- log(phi_new)
+            mod_new[["fit"]][["parfull"]]["betad"] <- log(phi_new)
+        }
+    } else if(!is.null(phi_orig) && !disp_scaling) {  ###
+        NULL
+    }
+
+    message(sprintf("Phi parameter: %.5f ===> new value: %.5f\n",
+                    phi_orig, phi_new))
 
     if(debug) {
         return(list("coef_new" = coef_new,
@@ -473,4 +605,20 @@ modifyModelPara <- function(model_obj,
                     "mod_new" = mod_new
                     ))
     }
+}
+
+
+# helper function to apply link function
+linkFunc <- function(mu, link_type) {
+
+    switch(link_type,
+           "identity" = mu,
+           "log"      = base::log(mu),
+           "logit"    = stats::qlogis(mu),  # log(\mu / (1 - \mu))
+           "probit"   = stats::qnorm(mu),   # \Phi^{-1}(\mu)
+           "inverse"  = 1 / mu,
+           "sqrt"     = base::sqrt(mu),
+           stop(sprintf("Unsupported link function!\n
+                        The link_type must be one of 'identity', 'log', 'logit', 'probit', 'inverse', or 'sqrt'.", link_type))
+    )
 }

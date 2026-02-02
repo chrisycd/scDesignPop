@@ -17,7 +17,7 @@ modifyMarginalModels(
   eqtl_baseline = NULL,
   mean_baseline_only = FALSE,
   eqtl_baseline_only = FALSE,
-  disp_scaling = "linear",
+  disp_scaling = FALSE,
   celltype_colname = "cell_type",
   snp_colname = "snp_id",
   verbose = TRUE,
@@ -75,10 +75,11 @@ linear prediction) at genotype 1 \eqn{\mu_{1}}. Default is \code{FALSE}.}
 \item{eqtl_baseline_only}{A logical scalar or vector to force the eQTL slope between
 genotype 1 and 0 (\eqn{\mu_{1}} - \eqn{\mu_{0}}). Default is \code{FALSE}.}
 
-\item{disp_scaling}{A string value to specify the dispersion-mean scaling for
+\item{disp_scaling}{A string or logical value to specify the dispersion-mean scaling for
 certain parametric models. Current options are either \code{"linear"},
-\code{"quadratic"}, or \code{"none"}. (NOTE: currently only applicable to
-the negative binomial model.)}
+\code{"quadratic"}, or \code{NULL}. If FALSE, the dispersion parameter is
+not changed. The default is FALSE. (NOTE: currently only applicable to the
+negative binomial model.)}
 
 \item{celltype_colname}{A string for cell type variable name.}
 
@@ -90,7 +91,11 @@ modified parameters. Default is \code{TRUE}.}
 \item{debug}{A logical for whether to output a \code{mod_list} list in addition
 to \code{marginal_list}.}
 
-\item{...}{Additional options.}
+\item{...}{Additional options used. Currently supported:
+\describe{
+\item{\code{mod_scale}}{A string to specify on what scale the modified response will
+be on.  The two options are 'response' or 'link'. The default is 'response'.}
+}}
 }
 \value{
 A list of marginal models similar to \code{marginal_list} input.

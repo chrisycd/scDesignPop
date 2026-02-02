@@ -487,7 +487,7 @@ calcParaVectors.glmmTMB <- function(fit,
                                             by = indiv_colname) %>%
                 dplyr::mutate(
                     linear_pred = !!rlang::sym("pop_condmean") + !!rlang::sym("sim_randeff"),
-                    mean_vec = linkFunc(linear_pred, link_type)
+                    mean_vec = invLinkFunc(linear_pred, link_type)
                     )
             # TODO: test link function cases for new indivs
 
@@ -589,14 +589,14 @@ calcParaVectors.gam <- function(fit,
 }
 
 
-# helper function to apply link function based on link type
-linkFunc <- function(eta, link_type) {
+# helper function to undo link function
+invLinkFunc <- function(eta, link_type) {
 
     switch(link_type,
            "identity" = eta,
            "log"      = base::exp(eta),
            "logit"    = stats::plogis(eta),  # exp(eta) / (1 + exp(eta))
-           "probit"   = stats::pnorm(eta),   # \Phi^(-1)(eta)
+           "probit"   = stats::pnorm(eta),   # \Phi(eta)
            "inverse"  = 1 / eta,
            "sqrt"     = eta^2,
            stop(sprintf("Unsupported link function!\n

@@ -1,6 +1,6 @@
 Package: scDesignPop
 Title: Simulator for population-scale single-cell expression RNA-sequencing data
-Version: 0.0.0.9008
+Version: 0.0.0.9009
 Authors@R: 
     c(person("Chris", "Y. Dong", , "chris.dong@ucla.edu", role = c("aut", "cre"),
            comment = c(ORCID = "0009-0006-2282-0394")),
@@ -48,6 +48,7 @@ Imports:
     uwot,
     viridis
 Suggests: 
+    BiocStyle,
     knitr,
     rmarkdown
 URL: https://github.com/chrisycd/scDesignPop
