@@ -371,7 +371,24 @@ simulatePADesignMatrix <- function(fit,
 #' @param nCellPerPool a vector of numeric values showing how many cells are sequenced in one pool.
 #' @param alpha the p value threshold for rejecting the H0 hypothesis.
 #' @param nsims number of simulations for calculating the power. This parameter will affect the resolution of the power value.
-#' @param ncores number of CPU cores user wants to use.
+#' @param ncores a positive integer value (greater or equal to 1) to specify the
+#'     number of CPU cores used in parallelization. The default is 2.
+#' @param parallelization a string scalar specifying the parallelization backend
+#'     used when simulating data. Must be one of "parallel", "future.apply",
+#'     "biocparallel", or "pbmcapply". The default value is "pbmcapply". See details.
+#' @param BPPARAM a BiocParallelParam class object (from \code{BiocParallel} R package)
+#'     that must be specified when using \code{parallelization = "biocparallel"}. Either
+#'     \code{BiocParallel::SnowParam()} or \code{BiocParallel::MulticoreParam()}
+#'     can be used to initialize, depending on the operating system. BPPARAM is
+#'     not used in other parallelization options. The default is NULL.
+#' @param future.seed a logical or an integer (of length one or seven), or a list
+#'     of length(X) with pre-generated random seeds that can be specified when using
+#'     \code{parallelization = "future.apply"}. See \code{future.apply::future_eapply}
+#'     documentation for more details on its usage. future.seed is not used in
+#'     other parallelization options. The default is FALSE.
+#' @param data_maxsize a positive numeric value used to set max marginal_list size
+#'     in GiB increments. Used only when \code{parallelization = "future.apply"}.
+#'     The default is 1.
 #'
 #' @return a list of named features, each containing a list with the following items:
 #' \describe{
@@ -399,9 +416,17 @@ powerAnalysis <- function(marginal_list,
                           nPool = NULL,
                           nIndivPerPool = NULL,
                           nCellPerPool = NULL,
-                          alpha=0.05,
-                          nsims=100,
-                          ncores=1){
+                          alpha = 0.05,
+                          nsims = 100,
+                          ncores = 2L,
+                          parallelization = c("pbmcapply", "future.apply",
+                                              "parallel", "biocparallel"),
+                          BPPARAM = NULL,
+                          future.seed = FALSE,
+                          data_maxsize = 1) {
+
+  parallelization <- match.arg(parallelization)
+
   # checks
   stopifnot("marginal_model is not available. Please check input!" =
                  (marginal_model %in% c("nb","poisson","gaussian")))
@@ -596,10 +621,24 @@ powerAnalysis <- function(marginal_list,
         nindiv_total[index] <- nindiv_total[index] + 1
       }
 
-      # Calculation
-      message("Computing the statistical power...")
-      result <- unlist(pbmcapply::pbmclapply(1:nsims,function(x){
+      # set up parallelization
+      paraFunc <- parallel::mclapply
 
+      if (parallelization == "biocparallel") {
+        paraFunc <- BiocParallel::bplapply
+        if (.Platform$OS.type == "unix") {
+          BPPARAM <- BiocParallel::MulticoreParam(workers = ncores)
+        } else if (.Platform$OS.type == "windows") {
+          BPPARAM <- BiocParallel::SnowParam(workers = ncores)
+        }
+      } else if (parallelization == "future.apply"){
+        paraFunc <- future.apply::future_lapply
+      } else if (parallelization == "pbmcapply") {
+        paraFunc <- pbmcapply::pbmclapply
+      }
+
+      # compute power function
+      powerFunc <- function(x){
         # allow more than 100 individuals
         # H1 data
         df_news <- simulatePADesignMatrix(fit = fit,
@@ -639,7 +678,35 @@ powerAnalysis <- function(marginal_list,
                             indiv_colname = indiv_colname)
 
         return(c(as.numeric(stat1),as.numeric(stat0)))
-      },mc.cores = ncores))
+      }
+
+
+      # Calculation
+      message("Computing the statistical power...")
+
+      if (parallelization == "biocparallel") {
+        result <- unlist(paraFunc(X = 1:nsims,
+                                  FUN = powerFunc,
+                                  BPPARAM = BPPARAM))
+      } else if (parallelization == "future.apply") {
+
+        old_opt <- options("future.globals.maxSize")
+        on.exit(options(old_opt), add = TRUE)
+        options(future.globals.maxSize = data_maxsize * 1000 * 1024^2)  # set max size for data_list
+
+        old_plan <- future::plan()
+        on.exit(future::plan(old_plan), add = TRUE)
+        future::plan(future::multisession, workers = ncores)
+
+        result <- unlist(paraFunc(X = 1:nsims,
+                                  FUN = powerFunc,
+                                  future.seed = future.seed))
+      } else {  # parallel or pbmcapply
+        result <- unlist(paraFunc(X = 1:nsims,
+                                  FUN = powerFunc,
+                                  mc.cores = ncores))
+
+      }
 
       stat1s <- result[seq(1,length(result),2)]
       stat0s <- result[seq(2,length(result),2)]
@@ -775,32 +842,22 @@ powerCICalculation <- function(res,
 
 #' The wrapper function for power analysis
 #'
-#' @param marginal_list the output of function fitMarginalPop().
-#' @param marginal_model a character showing the model types of the full marginal model.
-#' @param refit_formula the formula used to refit the marginal full model if user wants to. Default is null.
-#' @param geneid a character object contains geneid.
-#' @param snpid a character object contains snpid.
-#' @param celltype_colname a string scalar specifying the cell state variable in
-#'     \code{marginal_list[[geneid]]$frame}.
-#'     The default is "cell_type".
-#' @param celltype_vector a vector object specifies the cell type that will be tested
+#' ## Parallelization options
+#' If "parallel" is used then \code{mclapply} is called from the \code{parallel} package; if
+#' "biocparallel" is used, then \code{bplapply} is called from the \code{BiocParallel} package; if
+#' "future.apply" is used, then \code{future_lapply} is called from the \code{future.apply} package;
+#' if "pbmcapply" is used, then \code{pbmclapply} is called from the \code{pbmcapply} package.
+#'
 #' @param celltype_specific_ES_list a list object specifies different vectors of the genotype effect size (ES) for each cell type
-#' @param indiv_colname a string scalar of the sample ID variable in cell covariate
-#'     of \code{marginal_list[[geneid]]$frame}. The default is "indiv".
 #' @param methods a vector of character objects specifying the methods that will be analyzed for power.
 #' (Options: nb,poisson,gaussian,pseudoBulkLinear).
-#' @param nindivs a vector of numeric values showing the numbers of individuals that user wants to simulate.
-#' @param ncells a vector of numeric values showing the numbers of cells per each individual that user wants to simulate.
-#' @param nPool a vector of numeric values showing how many pools of sequencing has been performed.
-#' @param nIndivPerPool a numerical value showing how many individuals are sequenced in one pool.
-#' @param nCellPerPool a vector of numeric values showing how many cells are sequenced in one pool.
-#' @param alpha the p value threshold for rejecting the H0 hypothesis.
 #' @param power_nsim a number of simulations for calculating the power. This parameter will affect the resolution of the power value.
 #' @param snp_number the number of SNPs for multiple testing correction.
 #' @param gene_number the number of genes for multiple testing correction.
 #' @param CI_nsim number of simulations for calculating the Bootstrap CI.
 #' @param CI_conf Bootstrap CI interval.
-#' @param ncores number of CPU cores user wants to use.
+#'
+#' @inheritParams powerAnalysis
 #'
 #' @return a data frame contains power analysis result in different parameter settings.
 #' @export
@@ -822,13 +879,21 @@ runPowerAnalysis <- function(marginal_list,
                              nPool = NULL,
                              nIndivPerPool = NULL,
                              nCellPerPool = NULL,
-                             alpha=0.05,
-                             power_nsim=100,
+                             alpha = 0.05,
+                             power_nsim = 100,
                              snp_number = 10,
                              gene_number = 800,
-                             CI_nsim=1000,
-                             CI_conf=0.05,
-                             ncores=1){
+                             CI_nsim = 1000,
+                             CI_conf = 0.05,
+                             ncores = 2L,
+                             parallelization = c("pbmcapply", "future.apply",
+                                                 "parallel", "biocparallel"),
+                             BPPARAM = NULL,
+                             future.seed = FALSE,
+                             data_maxsize = 1) {
+
+    parallelization <- match.arg(parallelization)
+
     output <- list()
     for(method in methods){
         message(paste("Performing simulations for method",method))
@@ -848,9 +913,13 @@ runPowerAnalysis <- function(marginal_list,
                                  nPool = nPool,
                                  nIndivPerPool = nIndivPerPool,
                                  nCellPerPool = nCellPerPool,
-                                 alpha=alpha,
-                                 nsims=power_nsim,
-                                 ncores=ncores)
+                                 alpha = alpha,
+                                 nsims = power_nsim,
+                                 ncores = ncores,
+                                 parallelization = parallelization,
+                                 BPPARAM = BPPARAM,
+                                 future.seed = future.seed,
+                                 data_maxsize = data_maxsize)
 
 
             message(paste("Calculating confidence intervals for method",method))
@@ -906,9 +975,13 @@ runPowerAnalysis <- function(marginal_list,
                                      nPool = nPool,
                                      nIndivPerPool = nIndivPerPool,
                                      nCellPerPool = nCellPerPool,
-                                     alpha=alpha,
-                                     nsims=power_nsim,
-                                     ncores=ncores)
+                                     alpha = alpha,
+                                     nsims = power_nsim,
+                                     ncores = ncores,
+                                     parallelization = parallelization,
+                                     BPPARAM = BPPARAM,
+                                     future.seed = future.seed,
+                                     data_maxsize = data_maxsize)
 
 
                 message(paste("Calculating confidence intervals for method",method))

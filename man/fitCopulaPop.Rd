@@ -17,7 +17,7 @@ fitCopulaPop(
   family_set = c("gaussian", "indep"),
   important_feature = "all",
   n_cores = 2L,
-  parallelization = "mcmapply",
+  parallelization = c("pbmcapply", "future.apply", "parallel", "biocparallel"),
   BPPARAM = NULL,
   future.seed = FALSE,
   data_maxsize = 1,
@@ -57,24 +57,27 @@ Default is c("gaussian", "indep").}
 \item{important_feature}{a string vector of genes.}
 
 \item{n_cores}{positive integer value (greater or equal to 1) to specify the
-number of CPU threads used in parallelization. The default is 2.}
+number of CPU cores used in parallelization. The default is 2.}
 
-\item{parallelization}{a string value specifying the type of parallelization
-used during copula fitting. Must be one of either "bpmapply", "future.apply",
-"mcmapply", or "pbmcmapply". The default value is "mcmapply".}
+\item{parallelization}{a string value specifying the parallelization backend
+used during copula fitting. Must be one of "parallel", "future.apply",
+"biocparallel", or "pbmcapply". The default value is "parallel". See details.}
 
 \item{BPPARAM}{a BiocParallelParam class object (from \code{BiocParallel} R package)
-that must be specified when using \code{parallelization = 'bpmapply'}. Either
+that must be specified when using \code{parallelization = "biocparallel"}. Either
 \code{BiocParallel::SnowParam()} or \code{BiocParallel::MulticoreParam()}
-can be used to initialize, depending on the operating system. The default
-is NULL, which corresponds to the \code{parallelization = "mcmapply"} default.}
+can be used to initialize, depending on the operating system. BPPARAM is
+not used in other parallelization options. The default is NULL.}
 
-\item{future.seed}{a logical or integer value to specify how RNG seed is handled
-when \code{parallelization = 'future.apply'} is used. See \code{future.apply::future_eapply}
-documentation for more details on its usage. The default is FALSE.}
+\item{future.seed}{a logical or an integer (of length one or seven), or a list
+of length(X) with pre-generated random seeds that can be specified when using
+\code{parallelization = "future.apply"}. See \code{future.apply::future_eapply}
+documentation for more details on its usage. future.seed is not used in
+other parallelization options. The default is FALSE.}
 
 \item{data_maxsize}{a positive numeric value used to set max marginal_list size
-in GiB increments. Used only when \code{parallelization = "future.apply"}.}
+in GiB increments. Used only when \code{parallelization = "future.apply"}.
+The default is 1.}
 
 \item{...}{additional arguments passed to internal functions.}
 }
@@ -93,6 +96,15 @@ have BIC in the marginal models.}
 }
 \description{
 This is the main function for fitting a copula.
+}
+\details{
+\subsection{Parallelization options}{
+
+If "parallel" is used then \code{mcmapply} is called from the \code{parallel} package; if
+"biocparallel" is used, then \code{bpmapply} is called from the \code{BiocParallel} package; if
+"future.apply" is used, then \code{future_mapply} is called from the \code{future.apply} package;
+if "pbmcapply" is used, then \code{pbmcmapply} is called from the \code{pbmcapply} package.
+}
 }
 \examples{
 NULL

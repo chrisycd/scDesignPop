@@ -9,8 +9,8 @@ fitMarginalPop(
   mean_formula,
   model_family = "nb",
   interact_colnames = NULL,
-  parallelization = "pbmcapply",
-  n_threads = 2L,
+  parallelization = c("pbmcapply", "future.apply", "parallel", "biocparallel"),
+  n_cores = 2L,
   loc_colname = "POS",
   snp_colname = "snp_id",
   celltype_colname = "cell_type",
@@ -18,8 +18,11 @@ fitMarginalPop(
   filter_snps = TRUE,
   snpvar_thres = 0,
   force_formula = FALSE,
+  keep_cellnames = FALSE,
+  BPPARAM = NULL,
+  future.seed = FALSE,
   data_maxsize = 1,
-  keep_cellnames = FALSE
+  ...
 )
 }
 \arguments{
@@ -33,12 +36,12 @@ random effects (if any) but without SNP genotypes or SNP genotype interaction ef
 \item{interact_colnames}{a string scalar or vector for the variable names that
 have first-order interaction with SNP genotypes.}
 
-\item{parallelization}{a string scalar specifying the type of parallelization
-used during marginal fitting. Must be one of either "future.apply",
-or "pbmcmapply". The default value is "pbmcmapply".}
+\item{parallelization}{a string scalar specifying the parallelization backend
+used during marginal fitting. Must be one of either "parallel", "future.apply",
+"biocparallel", or "pbmcapply". The default value is "pbmcapply". See details.}
 
-\item{n_threads}{positive integer value (greater or equal to 1) to specify the
-number of CPU threads used in parallelization. The default is 2.}
+\item{n_cores}{positive integer value (greater or equal to 1) to specify the
+number of CPU cores used in parallelization. The default is 2.}
 
 \item{loc_colname}{a string scalar for column name of SNP position variable.}
 
@@ -61,11 +64,26 @@ If \code{force_formula = TRUE}, interaction terms whose covariates are not
 main effects in the model would be permitted. Results in error if
 \code{force_formula = FALSE} and \code{length(geno_interact_names) > 0}.}
 
-\item{data_maxsize}{a positive numeric value used to set max data_list size
-in GiB increments. Used only when \code{parallelization = "future.apply"}.}
-
 \item{keep_cellnames}{a logical scalar for whether to keep cell barcode names.
 If \code{keep_cellnames = TRUE}, the memory will be larger. The default is FALSE.}
+
+\item{BPPARAM}{a BiocParallelParam class object (from \code{BiocParallel} R package)
+that must be specified when using \code{parallelization = "biocparallel"}. Either
+\code{BiocParallel::SnowParam()} or \code{BiocParallel::MulticoreParam()}
+can be used to initialize, depending on the operating system. BPPARAM is
+not used in other parallelization options. The default is NULL.}
+
+\item{future.seed}{a logical or an integer (of length one or seven), or a list
+of length(X) with pre-generated random seeds that can be specified when using
+\code{parallelization = "future.apply"}. See \code{future.apply::future_eapply}
+documentation for more details on its usage. future.seed is not used in
+other parallelization options. The default is FALSE.}
+
+\item{data_maxsize}{a positive numeric value used to set max data_list size
+in GiB increments. Used only when \code{parallelization = "future.apply"}.
+The default is 1.}
+
+\item{...}{additional arguments passed to internal functions.}
 }
 \value{
 a list of named features, each containing a list with the following items:
@@ -82,6 +100,15 @@ removed due to low-variance (NOT currently implemented).}
 }
 \description{
 Fits a specified parametric model using various input parameters.
+}
+\details{
+\subsection{Parallelization options}{
+
+If "parallel" is used then \code{mclapply} is called from the \code{parallel} package;
+if "biocparallel" is used, then \code{bplapply} is called from the \code{BiocParallel} package;
+if "future.apply" is used, then \code{future_lapply} is called from the \code{future.apply} package;
+if "pbmcapply" is used, then \code{pbmclapply} is called from the \code{pbmcapply} package.
+}
 }
 \examples{
 NULL
