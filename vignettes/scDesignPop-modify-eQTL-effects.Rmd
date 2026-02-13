@@ -39,16 +39,29 @@ knitr::opts_chunk$set(
 tools::R_user_dir("scDesignPop", which="cache")
 ```
 
-## Step 1: construct a data list
+## Introduction
 
-To run scDesignPop, a list of data is required as input. This is done using the `constructDataPop` function. A `SingleCellExperiment` object and an `eqtlgeno` dataframe are the two main inputs needed. The `eqtlgeno` dataframe consists of eQTL annotations (it must have cell state, gene, SNP, chromosome, and position columns at a minimum), and genotypes across individuals (columns) for every SNP (rows). The structure of an example `eqtlgeno` dataframe is given below.
+scDesignPop enables user-specified modification of eQTL effect sizes, allowing systematic benchmarking of various eQTL mapping methods with different ground truth.
+
+## Library and data preparation
+
+Here, we use an example SingleCellExperiment object `example_sce` with 1000 genes and 7811 cells and an example eQTL genotype dataframe `example_eqtlgeno` to demonstrate the tutorial. These two objects contains the gene expression and SNP genotypes of 40 anonymized individuals while the eQTL genotype dataframe provides 2826 putative cell-type-specific eQTLs.
 
 ```{r}
 library(scDesignPop)
+library(SingleCellExperiment)
+library(SummarizedExperiment)
+library(ggplot2)
+
 data("example_sce")
 data("example_eqtlgeno")
 ```
 
+## Model fitting
+
+### Step 1: construct a data list
+
+To run scDesignPop, a list of data is required as input. This is done using the `constructDataPop` function. A `SingleCellExperiment` object and an `eqtlgeno` dataframe are the two main inputs needed. The `eqtlgeno` dataframe consists of eQTL annotations (it must have cell state, gene, SNP, chromosome, and position columns at a minimum), and genotypes across individuals (columns) for every SNP (rows). The structure of an example `eqtlgeno` dataframe is given below.
 
 ```{r}
 data_list <- constructDataPop(
@@ -59,7 +72,7 @@ data_list <- constructDataPop(
     sampid_vec = NULL,
     copula_variable = "cell_type",
     slot_name = "counts",
-    snp_model = "single",
+    snp_mode = "single",
     celltype_colname = "cell_type",
     feature_colname = "gene_id",
     snp_colname = "snp_id",
@@ -70,26 +83,52 @@ data_list <- constructDataPop(
     )
 ```
 
-## Step 2: modify eQTL effects
+### Step 2: fit marginal model
+
+Next, a marginal model is specified to fit each gene using the
+`fitMarginalPop` function.  
+Here we use a Negative Binominal as the parametric model using `"nb"`, and we specify `mean_formula = "(1|indiv) + cell_type`. 
 
 ```{r}
-data("marginal_list_sel")
+marginal_list_sel <- fitMarginalPop(
+    data_list = data_list,
+    mean_formula = "(1|indiv) + cell_type",
+    model_family = "nb",
+    interact_colnames = "cell_type",
+    parallelization = "pbmcapply",
+    n_threads = 20L,
+    loc_colname = "POS",
+    snp_colname = "snp_id",
+    celltype_colname = "cell_type",
+    indiv_colname = "indiv",
+    filter_snps = TRUE,
+    snpvar_thres = 0,
+    force_formula = FALSE,
+    data_maxsize = 1
+    )
+```
+
+## Modifying eQTL effects
+
+To modify the eQTL effects fitted, we use the `modifyMarginalModels` function.
+```{r}
 marginal_mod <- scDesignPop::modifyMarginalModels(
   marginal_list = marginal_list_sel["ENSG00000163221"],
   eqtlgeno_list = data_list[["eqtl_geno_list"]],
   features = "ENSG00000163221",
   celltype = "cd4nc",
-  mean_log2fc = -1,
+  mean_log2fc = 0,
   eqtl_log2fc = 2,
   neg_ctrl = TRUE,
-  mean_baseline = 0.0214,   # 0.114
-  eqtl_baseline = 0.0023,  # 0.0023
+  mean_baseline = NULL,
+  eqtl_baseline = NULL,
   mean_baseline_only = FALSE,
   eqtl_baseline_only = FALSE,
   disp_scaling = "linear",
   celltype_colname = "cell_type",
   snp_colname = "snp_id",
   verbose = TRUE,
-  debug = TRUE)
+  debug = TRUE,
+  mod_scale = "link")
 ```
 

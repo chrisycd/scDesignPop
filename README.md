@@ -58,8 +58,6 @@ For tutorials, please check the [website](https://chrisycd.github.io/scDesignPop
 
 -   [Modify eQTL effect for eGenes / non-eGenes](https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop-modify-eQTL-effects.html)
     
--   [Power analysis based on a fitted scDesignPop marginal model](https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop-power-analysis-fitted.html)
-
 -   [Power analysis for selected genes](https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop-power-analysis-selected.html)
 
 -   [Power analysis based on user specified eQTL effect sizes](https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop-power-analysis-ES-specification.html)

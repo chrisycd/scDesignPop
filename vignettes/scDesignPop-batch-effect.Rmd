@@ -1,5 +1,5 @@
 ---
-title: "scDesignPop Quickstart"
+title: "Modeling batch effect in population-scale scRNA-seq data"
 author: 
   - name: Chris Dong
     affiliation:
@@ -19,7 +19,7 @@ output:
 date: "`r doc_date()`"
 package: "`r pkg_ver('scDesignPop')`"
 vignette: >
-  %\VignetteIndexEntry{scDesignPop-quickstart-vignette}
+  %\VignetteIndexEntry{scDesignPop-batch-effect}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}  
 ---
@@ -49,7 +49,7 @@ theme_set(theme_bw())
 ```
 
 ## Introduction
-scDesignPop is a simulator for population-scale single-cell RNA-sequencing (scRNA-seq) data. For more information, please check the Articles on our website: (https://chrisycd.github.io/scDesignPop/docs/index.html).
+scDesignPop can model population-scale scRNA-seq data with batch covariates and enables simulation of datasets under user-specified batch effects, including scenarios in which batch effects are added or removed.
 
 ## Library and data preparation
 
@@ -63,21 +63,18 @@ library(ggplot2)
 
 data("example_sce")
 data("example_eqtlgeno")
-
-example_sce
-head(example_eqtlgeno[,1:8])
-dim(example_eqtlgeno)
 ```
 
-## Modeling and simulation
+The `example_sce` object also includes a pseudo-batch covariate, where batch labels are randomly assigned to the 40 individuals at the individual level and applied to all cells belonging to each individual.
+```{r}
+colData(example_sce)
+```
+
+## Fitting batch effects
 
 ### Step 1: construct a data list
 
-To run scDesignPop, a list of data is required as input. This is done using the `constructDataPop` function. A `SingleCellExperiment` object and an `eqtlgeno` dataframe are the two main inputs needed. The `eqtlgeno` dataframe consists of eQTL annotations (it must have cell state, gene, SNP, chromosome, and position columns at a minimum), and genotypes across individuals (columns) for every SNP (rows). The structure of an example `eqtlgeno` dataframe is also given below.
-
-```{r}
-head(example_eqtlgeno)
-```
+To run scDesignPop, a list of data is required as input. This is done using the `constructDataPop` function. A `SingleCellExperiment` object and an `eqtlgeno` dataframe are the two main inputs needed. The `eqtlgeno` dataframe consists of eQTL annotations (it must have cell state, gene, SNP, chromosome, and position columns at a minimum), and genotypes across individuals (columns) for every SNP (rows). The structure of an example `eqtlgeno` dataframe is given below.
 
 ```{r}
 data_list <- constructDataPop(
@@ -103,12 +100,12 @@ data_list <- constructDataPop(
 
 Next, a marginal model is specified to fit each gene using the
 `fitMarginalPop` function.  
-Here we use a Negative Binominal as the parametric model using `"nb"`.
+Here we use a Negative Binominal as the parametric model using `"nb"`. Since we want to include the batch effect modeling, we specify `mean_formula = "(1|indiv) + cell_type + batch`. Here, we use pseudo-batches to show how scDesignPop can model and alter the batch effects.
 
 ```{r}
 marginal_list <- fitMarginalPop(
     data_list = data_list,
-    mean_formula = "(1|indiv) + cell_type",
+    mean_formula = "(1|indiv) + cell_type + batch",
     model_family = "nb",
     interact_colnames = "cell_type",
     parallelization = "pbmcapply",
@@ -205,20 +202,95 @@ names(assays(simu_sce)) <- "counts"
 rowData(simu_sce) <- rowData(example_sce)
 ```
 
+## Set new batch effects
+
+### Step 1: set new batch effect sizes in marginal models
+
+Check the rank of the batch effect sizes in the marginal distributions. Here, we take the gene `ENSG00000023902` as example since every gene are fitted using the same formula.
+```{r}
+marginal_list$ENSG00000023902$fit
+```
+
+After the ranks of the batch effects are obtained, set a new value to the gene marginal models and check the summary report again.
+```{r}
+marginal_list_diff <- lapply(marginal_list, function(x) {
+  val <- rnorm(1, mean = 10, sd = 2) # set zero for batch effect removal
+  x$fit$fit$par[5] <- val
+  x$fit$fit$parfull[5] <- val
+  x$fit$sdr$par.fixed[5] <- val
+  x
+})
+
+marginal_list_diff$ENSG00000023902$fit
+```
+
+### Step 2: re-extract the parameters
+```{r}
+para_new_diff <- extractParaPop(
+    sce = example_sce,
+    assay_use = "counts",
+    marginal_list = marginal_list_diff,
+    n_cores = 2L,
+    family_use = "nb",
+    indiv_colname = "indiv",
+    new_covariate = data_list[["new_covariate"]],
+    new_eqtl_geno_list = data_list[["eqtl_geno_list"]],
+    data = data_list[["covariate"]],
+    parallelization = "pbmcmapply"
+    )
+```
+
+### Step 3: simulate counts with batch effects
+```{r}
+set.seed(123)
+
+newcount_mat_diff <- simuNewPop(
+    sce = example_sce,
+    mean_mat = para_new_diff[["mean_mat"]],
+    sigma_mat = para_new_diff[["sigma_mat"]],
+    zero_mat = para_new_diff[["zero_mat"]],
+    quantile_mat = NULL,
+    copula_list = copula_fit[["copula_list"]],
+    n_cores = 2L,
+    family_use = "nb",
+    nonnegative = TRUE,
+    input_data = data_list[["covariate"]],
+    new_covariate = data_list[["new_covariate"]],
+    important_feature = copula_fit[["important_feature"]],
+    filtered_gene = data_list[["filtered_gene"]],
+    parallelization = "pbmcmapply"
+    )
+```
+
+### Step 4: create SingleCellExperiment object using simulated data
+
+After simulating the data, we can create a `SingleCellExperiment` object
+as follows.
+
+```{r}
+simu_sce_diff <- SingleCellExperiment(list(counts = newcount_mat_diff), 
+                                 colData = data_list[["new_covariate"]])
+names(assays(simu_sce_diff)) <- "counts"
+
+# save gene meta data
+rowData(simu_sce_diff) <- rowData(example_sce)
+```
+
 ## Visualization
 
 The simulated data can be visualized using a UMAP plot as follows.
 
 ```{r}
 logcounts(simu_sce) <- log1p(counts(simu_sce))
+logcounts(simu_sce_diff) <- log1p(counts(simu_sce_diff))
 set.seed(123)
 compare_figure <- scDesignPop::plotReducedDimPop(
     ref_sce = example_sce,
-    sce_list = list(simu_sce), 
-    name_vec = c("Reference", "scDesignPop"),
+    sce_list = list(simu_sce, simu_sce_diff), 
+    name_vec = c("Reference", "w/o batch effects", "w/ batch effects"),
     assay_use = "logcounts", 
     if_plot = TRUE, 
-    color_by = "cell_type", point_size = 1,
+    color_by = "batch", point_size = 0.1,
     n_pc = 30)
 plot(compare_figure$p_umap)
 ```

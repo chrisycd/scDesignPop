@@ -48,18 +48,33 @@ library(scater)
 theme_set(theme_bw())
 ```
 
-## Step 1: construct a data list
+## Introduction
 
 scDesignPop can also be extended to other eQTL effects. Here we show how scDesignPop can also model nonlinear dynamic eQTL effects in continuous cell states to mimick the real data better.
-To run scDesignPop, a list of data is required as input. This is done using the `constructDataPop` function. A `SingleCellExperiment` object and an `eqtlgeno` dataframe are the two main inputs needed. The `eqtlgeno` dataframe consists of eQTL annotations (it must have cell state, gene, SNP, chromosome, and position columns at a minimum), and genotypes across individuals (columns) for every SNP (rows). The structure of an example `eqtlgeno` dataframe is given below. Here, we use a subset of the B cells from OneK1K cohort as example.
+
+## Library and data preparation
+
+Here, we use a subset of the B cells from OneK1K cohort as example. We load an example SingleCellExperiment object `example_sce` with 817 genes and 3726 cells and an example eQTL genotype dataframe `example_eqtlgeno` to demonstrate the main tutorial. These two objects contains the gene expression and SNP genotypes of 100 anonymized individuals while the eQTL genotype dataframe provides 2406 putative cell-type-specific eQTLs. For non linear dynamic eQTL modeling, we prepare a squared pseudotim column `slingPseudotime_1_sq`.
 
 
 ```{r}
+library(scDesignPop)
+library(SingleCellExperiment)
+library(SummarizedExperiment)
+library(scater)
+
 data("example_sce_Bcell")
 data("example_eqtlgeno_Bcell")
 col_Bcell <- colData(example_sce_Bcell)
 colData(example_sce_Bcell)$slingPseudotime_1_sq <- col_Bcell$slingPseudotime_1^2
+head(colData(example_sce_Bcell))
 ```
+
+## Modeling and simulation
+
+### Step 1: construct a data list
+
+To run scDesignPop, a list of data is required as input. This is done using the `constructDataPop` function. A `SingleCellExperiment` object and an `eqtlgeno` dataframe are the two main inputs needed. The `eqtlgeno` dataframe consists of eQTL annotations (it must have cell state, gene, SNP, chromosome, and position columns at a minimum), and genotypes across individuals (columns) for every SNP (rows). The structure of an example `eqtlgeno` dataframe is given below. 
 
 ```{r}
 data_list <- constructDataPop(
@@ -71,7 +86,7 @@ data_list <- constructDataPop(
     copula_variable = "slingPseudotime_1",
     n_quantiles = 10,
     slot_name = "counts",
-    snp_model = "single",
+    snp_mode = "single",
     time_colname = "slingPseudotime_1",
     celltype_colname = "cell_type",
     feature_colname = "gene_id",
@@ -83,7 +98,7 @@ data_list <- constructDataPop(
     )
 ```
 
-## Step 2: fit marginal model
+### Step 2: fit marginal model
 
 Next, a marginal model is specified to fit each gene using the
 `fitMarginalPop` function.  
@@ -108,7 +123,7 @@ marginal_list <- fitMarginalPop(
     )
 ```
 
-## Step 3: fit a Gaussian copula
+### Step 3: fit a Gaussian copula
 
 The third step is to fit a Gaussian copula using the `fitCopulaPop`
 function.
@@ -130,7 +145,7 @@ copula_fit <- fitCopulaPop(
 RNGkind("Mersenne-Twister")  # reset
 ```
 
-## Step 4: extract parameters
+### Step 4: extract parameters
 
 The fourth step is to compute the mean, sigma, and zero probability
 parameters using the `extractParaPop` function.
@@ -150,7 +165,7 @@ para_new <- extractParaPop(
     )
 ```
 
-## Step 5: simulate counts
+### Step 5: simulate counts
 
 The fifth step is to simulate counts using the `simuNewPop` function.
 
@@ -175,7 +190,7 @@ newcount_mat <- simuNewPop(
     )
 ```
 
-## Step 6: create SingleCellExperiment object using simulated data
+### Step 6: create SingleCellExperiment object using simulated data
 
 After simulating the data, we can create a `SingleCellExperiment` object
 as follows.
@@ -189,9 +204,9 @@ names(assays(simu_sce_Bcell)) <- "counts"
 rowData(simu_sce_Bcell) <- rowData(example_sce_Bcell)
 ```
 
-## Step 7: visualize using PHATE
+## Visualization using PHATE
 
-The simulated data can be visualized using a UMAP plot as follows.
+The simulated data can be visualized using PHATE dimensions.
 
 ```{r}
 library(ggplot2)

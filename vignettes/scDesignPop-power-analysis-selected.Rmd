@@ -42,16 +42,17 @@ tools::R_user_dir("scDesignPop", which="cache")
 
 ## Introduction
 
-scDesignPop provides power analysis tools at cell-type-specific level. The tutorial here is about how to conduct the power analysis for selected genes using the expression count data.
+scDesignPop provides power analysis tools at cell-type-specific level. The tutorial here provides two options to perform power analyis using scDesignPop: 1) first fit the marginal models for selected genes and then conduct power analysis or 2) conduct the power analysis directly on the previous marginal models if users have already done synthetic dataset generation. For the second option, users can skip the Library and data preparation and Fitting the marginal model sections.
 
 ## Library and data preparation
 
-Given raw count data, scDesignPop can also perform simulation-based power analysis for a
+Given raw count data, scDesignPop can perform simulation-based power analysis for a
 specific gene-SNP pair across cell types from the expression count data. A list of data is required as input. This is done using the `constructDataPop` function. A `SingleCellExperiment` object and an `eqtlgeno` dataframe are the two main inputs needed. The `eqtlgeno` dataframe consists of eQTL annotations (it must have cell state, gene, SNP, chromosome, and position columns at a minimum), and genotypes across individuals (columns) for every SNP (rows). The structure of an example `eqtlgeno` dataframe is given below.
 
 ```{r}
 library(scDesignPop)
 library(SingleCellExperiment)
+
 data("example_sce")
 data("example_eqtlgeno")
 example_sce_sel <- example_sce[c("ENSG00000163221","ENSG00000135218"),]
@@ -68,7 +69,7 @@ data_list_sel <- constructDataPop(
     sampid_vec = NULL,
     copula_variable = "cell_type",
     slot_name = "counts",
-    snp_model = "single",
+    snp_mode = "single",
     celltype_colname = "cell_type",
     feature_colname = "gene_id",
     snp_colname = "snp_id",
@@ -111,6 +112,11 @@ specific gene-SNP pair across selected cell types using the `runPowerAnalysis`
 function. Based on the previous naming of covariates, we specify the fitted snpid as `"1:153337943"`, the name of the column for fixed cell state effect and random individual effect as `"cell_type"` and `"indiv"` in the input parameters. To check these namings, we can call the covariate data frame using `marginal_list_sel[["ENSG00000163221"]]$fit$frame`. The selected cell types for testing are specified in cellstate_vector and have to be consistent with the covariate data frame.
 
 Particarly, parameters `snp_number` and `gene_number` are used to account for multiple testing correction with Bonferroni correction. Parameter `methods` is used to specify the marginal eQTL model from `c("nb", "poisson", "gaussian", "pseudoBulkLinear")`. Parameter `nindivs` and `ncells` are used to specify the number of individuals and number of cells per individual, from which we can analyze the performance of power analysis and find the optimal setting. Here, we set `power_nsim = 1000` to increase the number of simulations so we can calculate power with a higher resolution. Using `power_nsim = 100` in default or smaller values can reduce the computation time cost.
+
+```{r}
+summary(marginal_list_sel[["ENSG00000163221"]]$fit)
+```
+
 
 ```{r}
 set.seed(123)

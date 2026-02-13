@@ -1,5 +1,5 @@
 ---
-title: "scDesignPop Quickstart"
+title: "Modeling trans-eQTL effect using public data"
 author: 
   - name: Chris Dong
     affiliation:
@@ -19,7 +19,7 @@ output:
 date: "`r doc_date()`"
 package: "`r pkg_ver('scDesignPop')`"
 vignette: >
-  %\VignetteIndexEntry{scDesignPop-quickstart-vignette}
+  %\VignetteIndexEntry{scDesignPop-trans-eqtl}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}  
 ---
@@ -49,40 +49,72 @@ theme_set(theme_bw())
 ```
 
 ## Introduction
-scDesignPop is a simulator for population-scale single-cell RNA-sequencing (scRNA-seq) data. For more information, please check the Articles on our website: (https://chrisycd.github.io/scDesignPop/docs/index.html).
+scDesignPop supports user-defined eQTL pairs, making it straightforward to extend the framework to trans-eQTL studies with known ground truth.
 
 ## Library and data preparation
 
-Here, we use an example SingleCellExperiment object `example_sce` with 1000 genes and 7811 cells and an example eQTL genotype dataframe `example_eqtlgeno` to demonstrate the main tutorial. These two objects contains the gene expression and SNP genotypes of 40 anonymized individuals while the eQTL genotype dataframe provides 2826 putative cell-type-specific eQTLs.
+### prepare the eQTL genotype dataframe as input
+
+Here, we take the trans-eQTL list from eQTLGen phase 1 (https://www.eqtlgen.org/trans-eqtls.html) as an example to show the scDesignPop's flexibility in eQTL ground truth settings. The download link of the trans-eQTL list is https://download.gcc.rug.nl/downloads/eqtlgen/trans-eqtl/2018-09-04-trans-eQTLsFDR0.05-CohortInfoRemoved-BonferroniAdded.txt.gz. 
+
+```{bash}
+wget https://download.gcc.rug.nl/downloads/eqtlgen/trans-eqtl/2018-09-04-trans-eQTLsFDR0.05-CohortInfoRemoved-BonferroniAdded.txt.gz
+```
+
+
+Then, we reformat this trans-eQTL list into the required eQTL dataframe as follows,
 
 ```{r}
 library(scDesignPop)
 library(SingleCellExperiment)
 library(SummarizedExperiment)
 library(ggplot2)
+library(data.table)
 
-data("example_sce")
-data("example_eqtlgeno")
-
-example_sce
-head(example_eqtlgeno[,1:8])
-dim(example_eqtlgeno)
+transeqtl <- fread("2018-09-04-trans-eQTLsFDR0.05-CohortInfoRemoved-BonferroniAdded.txt.gz")
+transeqtl <- transeqtl[,c("Gene","SNP","SNPChr","SNPPos")]
+transeqtl <- cbind("bin", transeqtl)
+colnames(transeqtl) <- c("cell_type","gene_id","snp_id","CHR","POS")
+transeqtl <- transeqtl[!duplicated(transeqtl$gene_id), ]
+transeqtl$snp_id <- paste(transeqtl$CHR,transeqtl$POS,sep = ":")
 ```
+
+Since the genotype data are not provided and are often under restricted access, here we extract the SNPs that we have genotype data in the `example_eqtlgeno`
+
+```{r}
+data("example_eqtlgeno")
+transeqtl <- transeqtl[which(transeqtl$snp_id%in%example_eqtlgeno$snp_id),]
+
+geno_cols <- grep("^SAMP", names(example_eqtlgeno), value = TRUE)
+geno_by_snp <- example_eqtlgeno[!duplicated(example_eqtlgeno$snp_id), 
+                                c("snp_id", geno_cols)]
+idx <- match(transeqtl$snp_id, geno_by_snp$snp_id)
+trans_eqtlgeno <- cbind(
+  transeqtl,
+  geno_by_snp[idx, geno_cols, drop = FALSE]
+)
+trans_eqtlgeno
+```
+
 
 ## Modeling and simulation
 
 ### Step 1: construct a data list
 
-To run scDesignPop, a list of data is required as input. This is done using the `constructDataPop` function. A `SingleCellExperiment` object and an `eqtlgeno` dataframe are the two main inputs needed. The `eqtlgeno` dataframe consists of eQTL annotations (it must have cell state, gene, SNP, chromosome, and position columns at a minimum), and genotypes across individuals (columns) for every SNP (rows). The structure of an example `eqtlgeno` dataframe is also given below.
+To run scDesignPop, a list of data is required as input. This is done using the `constructDataPop` function. A `SingleCellExperiment` object and an `eqtlgeno` dataframe are the two main inputs needed. The `eqtlgeno` dataframe consists of eQTL annotations (it must have cell state, gene, SNP, chromosome, and position columns at a minimum), and genotypes across individuals (columns) for every SNP (rows). Here, we use `example_sce` to filter for overlapped genes in `trans_eqtlgeno' object created
+
 
 ```{r}
-head(example_eqtlgeno)
+data("example_sce")
+overlap_genes <- intersect(rownames(example_sce),trans_eqtlgeno$gene_id)
+trans_eqtlgeno <- trans_eqtlgeno[which(trans_eqtlgeno$gene_id%in%overlap_genes),]
+example_sce <- example_sce[which(rownames(example_sce)%in%overlap_genes),]
 ```
 
 ```{r}
 data_list <- constructDataPop(
     sce = example_sce,
-    eqtlgeno_df = example_eqtlgeno,
+    eqtlgeno_df = trans_eqtlgeno,
     new_covariate = as.data.frame(colData(example_sce)),
     overlap_features = NULL,
     sampid_vec = NULL,
@@ -201,26 +233,8 @@ simu_sce <- SingleCellExperiment(list(counts = newcount_mat),
                                  colData = data_list[["new_covariate"]])
 names(assays(simu_sce)) <- "counts"
 
-# save gene meta data
 rowData(simu_sce) <- rowData(example_sce)
-```
-
-## Visualization
-
-The simulated data can be visualized using a UMAP plot as follows.
-
-```{r}
-logcounts(simu_sce) <- log1p(counts(simu_sce))
-set.seed(123)
-compare_figure <- scDesignPop::plotReducedDimPop(
-    ref_sce = example_sce,
-    sce_list = list(simu_sce), 
-    name_vec = c("Reference", "scDesignPop"),
-    assay_use = "logcounts", 
-    if_plot = TRUE, 
-    color_by = "cell_type", point_size = 1,
-    n_pc = 30)
-plot(compare_figure$p_umap)
+simu_sce
 ```
 
 ## Session information

@@ -42,19 +42,68 @@ tools::R_user_dir("scDesignPop", which="cache")
 
 ## Introduction
 
-scDesignPop provides power analysis tools at cell-type-specific level. Since fitted marginal models can be obtained by users already for generating synthetic datasets, the tutorial here is about how to conduct the power analysis on the basis of the marginal model files.
+scDesignPop provides power analysis tools at cell-type-specific level. Users can specify cell-type-specific eQTL effect sizes to check hypothetical scenarios and how power curve will change based on eQTL effect size specifications.
 
 ## Library and data preparation
 
-Here, we load the pre-saved `marginal_list` object to obtain the fitted marginal model of gene ENSG00000163221 (S100A12) for simplicity.
+For data preparation, a list of data is required as input. This is done using the `constructDataPop` function. A `SingleCellExperiment` object and an `eqtlgeno` dataframe are the two main inputs needed. The `eqtlgeno` dataframe consists of eQTL annotations (it must have cell state, gene, SNP, chromosome, and position columns at a minimum), and genotypes across individuals (columns) for every SNP (rows). The structure of an example `eqtlgeno` dataframe is given below.
 
 ```{r}
 library(scDesignPop)
 library(SingleCellExperiment)
 
-data("marginal_list_sel")
-summary(marginal_list_sel$ENSG00000163221$fit)
+data("example_sce")
+data("example_eqtlgeno")
+example_sce_sel <- example_sce[c("ENSG00000163221","ENSG00000135218"),]
+example_eqtlgeno_sel <- example_eqtlgeno[
+    which(example_eqtlgeno$gene_id%in%c("ENSG00000163221","ENSG00000135218")),]
 ```
+
+```{r}
+data_list_sel <- constructDataPop(
+    sce = example_sce_sel,
+    eqtlgeno_df = example_eqtlgeno_sel,
+    new_covariate = as.data.frame(colData(example_sce_sel)),
+    overlap_features = NULL,
+    sampid_vec = NULL,
+    copula_variable = "cell_type",
+    slot_name = "counts",
+    snp_mode = "single",
+    celltype_colname = "cell_type",
+    feature_colname = "gene_id",
+    snp_colname = "snp_id",
+    loc_colname = "POS",
+    chrom_colname = "CHR",
+    indiv_colname = "indiv",
+    prune_thres = 0.9
+    )
+```
+
+## Fitting the marginal model
+
+Next, a marginal model is specified to fit each gene using the
+`fitMarginalPop` function.  
+Here we use a Negative Binominal as the parametric model using `"nb"`.
+
+```{r}
+marginal_list_sel <- fitMarginalPop(
+    data_list = data_list_sel,
+    mean_formula = "(1|indiv) + cell_type",
+    model_family = "nb",
+    interact_colnames = "cell_type",
+    parallelization = "pbmcapply",
+    n_threads = 1L,
+    loc_colname = "POS",
+    snp_colname = "snp_id",
+    celltype_colname = "cell_type",
+    indiv_colname = "indiv",
+    filter_snps = TRUE,
+    snpvar_thres = 0,
+    force_formula = FALSE,
+    data_maxsize = 1
+    )
+```
+
 
 
 ## Performing power analysis with user specified eQTL effect size at cell-type level
