@@ -1358,7 +1358,7 @@ visualizePowerHeatmap <- function(
         # Optional: make the tiles square-ish
         coord_equal() +
         facet_grid(
-            as.formula(paste(y_facet, "~", x_facet)),
+            stats::as.formula(paste(y_facet, "~", x_facet)),
             scales = facet_scales
         ) +
         labs(
