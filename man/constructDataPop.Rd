@@ -14,7 +14,7 @@ constructDataPop(
   copula_variable = celltype_colname,
   n_quantiles = 10,
   slot_name = "counts",
-  snp_model = c("single", "multi"),
+  snp_mode = c("single", "multi"),
   time_colname = NULL,
   celltype_colname = "cell_type",
   feature_colname = "gene_id",
@@ -22,7 +22,8 @@ constructDataPop(
   loc_colname = "POS",
   chrom_colname = "CHR",
   indiv_colname = "indiv",
-  prune_thres = 0.9
+  prune_thres = 0.9,
+  ...
 )
 }
 \arguments{
@@ -54,8 +55,10 @@ cell states will be assigned for copula fitting. The default is 10.}
 \item{slot_name}{a string scalar specifying the slot to use in input \code{sce}.
 The default is "counts".}
 
-\item{snp_model}{a string scalar specifying the type of SNP model used. Options
-are either "single" for single-SNP, or "multi" for multi-SNP.}
+\item{snp_mode}{a string scalar specifying the type of SNP mode used in the marginal
+models. Options are either "single" for single-SNP mode, or "multi" for
+multi-SNP mode. If multi-SNP mode is used, each gene will have one or more
+SNPs in the model upon SNP pruning. The default is "single".}
 
 \item{time_colname}{a string scalar specifying the time/pseudotime variable in
 the cell covariate of \code{sce} object.}
@@ -81,6 +84,8 @@ of \code{sce}. The default is "indiv".}
 
 \item{prune_thres}{a numerical value between 0 and 1 used to threshold the pairwise
 correlations of eQTLs' genotypes for each feature. The default value is 0.9.}
+
+\item{...}{additional arguments passed to internal functions.}
 }
 \value{
 outputs a list with following elements:

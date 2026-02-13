@@ -23,8 +23,10 @@
 #'     cell states will be assigned for copula fitting. The default is 10.
 #' @param slot_name a string scalar specifying the slot to use in input \code{sce}.
 #'     The default is "counts".
-#' @param snp_model a string scalar specifying the type of SNP model used. Options
-#'     are either "single" for single-SNP, or "multi" for multi-SNP.
+#' @param snp_mode a string scalar specifying the type of SNP mode used in the marginal
+#'     models. Options are either "single" for single-SNP mode, or "multi" for
+#'     multi-SNP mode. If multi-SNP mode is used, each gene will have one or more
+#'     SNPs in the model upon SNP pruning. The default is "single".
 #' @param time_colname a string scalar specifying the time/pseudotime variable in
 #'     the cell covariate of \code{sce} object.
 #' @param celltype_colname a string scalar specifying the cell type variable in
@@ -42,6 +44,7 @@
 #'     of \code{sce}. The default is "indiv".
 #' @param prune_thres a numerical value between 0 and 1 used to threshold the pairwise
 #'     correlations of eQTLs' genotypes for each feature. The default value is 0.9.
+#' @param ... additional arguments passed to internal functions.
 #'
 #' @return outputs a list with following elements:
 #' \describe{
@@ -71,7 +74,7 @@ constructDataPop <- function(sce,
                              copula_variable = celltype_colname,
                              n_quantiles = 10,
                              slot_name = "counts",
-                             snp_model = c("single", "multi"),
+                             snp_mode = c("single", "multi"),
                              time_colname = NULL,
                              celltype_colname = "cell_type",
                              feature_colname = "gene_id",
@@ -79,9 +82,15 @@ constructDataPop <- function(sce,
                              loc_colname = "POS",
                              chrom_colname = "CHR",
                              indiv_colname = "indiv",
-                             prune_thres = 0.9) {
+                             prune_thres = 0.9,
+                             ...) {
 
-    snp_model <- match.arg(snp_model)
+    more_args <- list(...)
+
+    # backward compat.
+    if(!is.null(more_args[["snp_model"]])) { snp_mode <- more_args[["snp_model"]] }
+
+    snp_mode <- match.arg(snp_mode)
 
     ## check for new indivs and eqtls
     if(is.null(eqtlgeno_df)) {  # TRUE or TRUE; TRUE or FALSE
@@ -267,7 +276,7 @@ constructDataPop <- function(sce,
 
             geno_tmp <- eqtl_tmp[, firstcol_indx:lastcol_indx]
 
-            if(snp_model == "single") {  # single SNP model
+            if(snp_mode == "single") {  # single SNP mode
 
                 # choose highest variance across indiv
                 var_tmp <- geno_tmp %>%
@@ -283,7 +292,7 @@ constructDataPop <- function(sce,
                 # assign(g, eqtl_tmp[max_var_indx, ])
                 # TODO: add feature name to output list
 
-            } else if(snp_model == "multi") {  # multi-SNP model
+            } else if(snp_mode == "multi") {  # multi-SNP mode
 
                 # prune SNPs then extract dataframe per gene
                 snp_indx <- geno_tmp %>%
@@ -296,7 +305,7 @@ constructDataPop <- function(sce,
                 return(eqtl_tmp)
 
             } else {
-                stop("Option for snp_model must be either 'single' or 'multi'!")
+                stop("Option for snp_mode must be either 'single' or 'multi'!")
             }
 
         })
@@ -407,7 +416,6 @@ calculateSnpLD <- function(geno_mat) {
 }
 
 
-
 pruneSnp <- function(geno_mat, ld_threshold = 0.9) {
     # FUN : greedily prunes SNPs and outputs row indices for SNPs to keep
     # geno_mat : snp by sample matrix with additive genotype
@@ -461,10 +469,12 @@ createQuantileIndex <- function(df, col_x, col_y, n_quantiles = 10) {
     }
 
     # Extract the quantile boundaries of col_x
-    qcuts <- quantile(df[[col_x]], probs = seq(0, 1, length.out = n_quantiles + 1), na.rm = TRUE)
+    qcuts <- stats::quantile(df[[col_x]],
+                             probs = seq(0, 1, length.out = n_quantiles + 1),
+                             na.rm = TRUE)
 
     # Assign quantile index based on col_x
-    df[,col_y] <- cut(
+    df[, col_y] <- cut(
         df[[col_x]],
         breaks = qcuts,
         include.lowest = TRUE,
