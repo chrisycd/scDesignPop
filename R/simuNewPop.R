@@ -3,10 +3,15 @@
 #' \code{simuNewPop} generates new simulated data based on fitted marginal and copula models.
 #' This function is adapted from simu_new function in scDesign3 v0.99.7
 #'
-#'
 #' The function takes the new covariate (if use) from \code{\link{constructDataPop}},
 #' parameter matrices from \code{\link{extractParaPop}} and multivariate Unifs
 #' from \code{\link{fitCopulaPop}}.
+#'
+#' ## Parallelization options
+#' If "parallel" is used then \code{mcmapply} is called from the \code{parallel} package; if
+#' "biocparallel" is used, then \code{bpmapply} is called from the \code{BiocParallel} package; if
+#' "future.apply" is used, then \code{future_mapply} is called from the \code{future.apply} package;
+#' if "pbmcapply" is used, then \code{pbmcmapply} is called from the \code{pbmcapply} package.
 #'
 #' @param sce A \code{SingleCellExperiment} object.
 #' @param assay_use A string which indicates the assay you will use in the sce.
@@ -17,7 +22,8 @@
 #' @param quantile_mat A cell by feature matrix of the multivariate quantile.
 #' @param copula_list A list of copulas for generating the multivariate quantile
 #'                    matrix. If provided, the \code{quantile_mat} must be NULL.
-#' @param n_cores An integer. The number of cores to use.
+#' @param n_cores a positive integer value (greater or equal to 1) to specify the
+#'     number of CPU cores used in parallelization. The default is 2.
 #' @param fastmvn An logical variable. If TRUE, the sampling of multivariate Gaussian is done
 #'                by \code{mvnfast}, otherwise by \code{mvtnorm}. Default is FALSE.
 #' @param family_use A string of the marginal distribution. Must be one of
@@ -37,18 +43,29 @@
 #' be a logical vector with length equal to the number of genes in \code{sce}. \code{TRUE} in the logical vector means the corresponding gene will be included in
 #' gene-gene correlation estimation and \code{FALSE} in the logical vector means the corresponding gene will be excluded from the gene-gene correlation estimation.
 #' The default value for is "all".
-#' @param parallelization A string indicating the specific parallelization function to use.
-#' Must be one of 'mcmapply', 'bpmapply', or 'pbmcmapply', which corresponds to the parallelization function in the package
-#' \code{parallel},\code{BiocParallel}, and \code{pbmcapply} respectively. The default value is 'mcmapply'.
-#' @param BPPARAM A \code{MulticoreParam} object or NULL. When the parameter parallelization = 'mcmapply' or 'pbmcmapply',
-#' this parameter must be NULL. When the parameter parallelization = 'bpmapply',  this parameter must be one of the
-#' \code{MulticoreParam} object offered by the package 'BiocParallel. The default value is NULL.
+#' @param parallelization a string scalar specifying the parallelization backend
+#'     used when simulating data. Must be one of "parallel", "future.apply",
+#'     "biocparallel", or "pbmcapply". The default value is "parallel". See details.
+#' @param BPPARAM a BiocParallelParam class object (from \code{BiocParallel} R package)
+#'     that must be specified when using \code{parallelization = "biocparallel"}. Either
+#'     \code{BiocParallel::SnowParam()} or \code{BiocParallel::MulticoreParam()}
+#'     can be used to initialize, depending on the operating system. BPPARAM is
+#'     not used in other parallelization options. The default is NULL.
+#' @param future.seed a logical or an integer (of length one or seven), or a list
+#'     of length(X) with pre-generated random seeds that can be specified when using
+#'     \code{parallelization = "future.apply"}. See \code{future.apply::future_eapply}
+#'     documentation for more details on its usage. future.seed is not used in
+#'     other parallelization options. The default is FALSE.
+#' @param data_maxsize a positive numeric value used to set max marginal_list size
+#'     in GiB increments. Used only when \code{parallelization = "future.apply"}.
+#'     The default is 1.
 #' @param filtered_gene A vector or NULL which contains genes that are excluded in the marginal and copula fitting
 #' @param mean_limit A numeric scalar to filter genes which has cells that exceed
 #'     the limit in the \code{mean_mat}. The default value is 1e15. This is to
 #'     avoid features that have extremely high and unreasonable means.
 #' @param debug A logical scalar for whether to return a list of variables in
 #'     addition to simulated count matrix. The default is FALSE.
+#' @param ... additional arguments passed to internal functions.
 #'
 #' @return A feature by cell matrix of the new simulated count (expression) matrix or sparse matrix.
 #' @export simuNewPop
@@ -62,7 +79,7 @@ simuNewPop <- function(sce,
                        zero_mat,
                        quantile_mat = NULL,
                        copula_list,
-                       n_cores,
+                       n_cores = 2L,
                        fastmvn = FALSE,
                        family_use,
                        nonnegative = TRUE,
@@ -70,11 +87,27 @@ simuNewPop <- function(sce,
                        input_data,
                        new_covariate,
                        important_feature = "all",
-                       parallelization = "mcmapply",
+                       parallelization = c("pbmcapply", "future.apply",
+                                           "parallel", "biocparallel"),
                        BPPARAM = NULL,
+                       future.seed = FALSE,
+                       data_maxsize = 1,
                        filtered_gene,
                        mean_limit = 1e15,
-                       debug = FALSE) {
+                       debug = FALSE,
+                       ...) {
+
+    # backward compat.
+    if(parallelization == "mcmapply") {
+        parallelization <- "parallel"
+    } else if(parallelization == "pbmcmapply") {
+        parallelization <- "pbmcapply"
+    } else if(parallelization == "bpmapply") {
+        parallelization <- "biocparallel"
+    }
+
+    parallelization <- match.arg(parallelization)
+    more_args <- list(...)
 
     stopifnot("Features in sce and mean_mat do not match. Please check input!" !=
                   checkVectorEqual(rownames(sce), colnames(mean_mat), ignore_order = FALSE))
@@ -301,10 +334,16 @@ simuNewPop <- function(sce,
     ## New count
     paraFunc <- parallel::mcmapply
 
-    if(parallelization == "bpmapply"){
+    if(parallelization == "biocparallel"){
         paraFunc <- BiocParallel::bpmapply
-    }
-    if(parallelization == "pbmcmapply"){
+        if (.Platform$OS.type == "unix") {
+            BPPARAM <- BiocParallel::MulticoreParam(workers = n_cores)
+        } else if (.Platform$OS.type == "windows") {
+            BPPARAM <- BiocParallel::SnowParam(workers = n_cores)
+        }
+    } else if (parallelization == "future.apply"){
+        paraFunc <- future.apply::future_mapply
+    } else if (parallelization == "pbmcapply") {
         paraFunc <- pbmcapply::pbmcmapply
     }
 
@@ -316,14 +355,36 @@ simuNewPop <- function(sce,
         cell_names <- rownames(new_covariate)
     }
 
-    if(parallelization == "bpmapply"){
-        BPPARAM$workers <- n_cores
-        mat <-  paraFunc(mat_function, x = seq_len(dim(sce)[1])[qc_gene_idx], y = family_use, SIMPLIFY = TRUE, BPPARAM = BPPARAM)
-    }else{
-        mat <- paraFunc(mat_function, x = seq_len(dim(sce)[1])[qc_gene_idx], y = family_use, SIMPLIFY = TRUE
-                        , mc.cores = n_cores
-        )
+    if (parallelization == "biocparallel") {
+        # BPPARAM$workers <- n_cores  # old code
+        mat <-  paraFunc(mat_function,
+                         x = seq_len(dim(sce)[1])[qc_gene_idx],
+                         y = family_use,
+                         SIMPLIFY = TRUE,
+                         BPPARAM = BPPARAM)
+    } else if (parallelization == "future.apply") {
+
+        old_opt <- options("future.globals.maxSize")
+        on.exit(options(old_opt), add = TRUE)
+        options(future.globals.maxSize = data_maxsize * 1000 * 1024^2)
+
+        old_plan <- future::plan()
+        on.exit(future::plan(old_plan), add = TRUE)
+        future::plan(future::multisession, workers = n_cores)
+
+        mat <- paraFunc(mat_function,
+                        x = seq_len(dim(sce)[1])[qc_gene_idx],
+                        y = family_use,
+                        future.seed = future.seed,
+                        SIMPLIFY = TRUE)
+    } else {  # parallel or pbmcapply
+        mat <- paraFunc(mat_function,
+                        x = seq_len(dim(sce)[1])[qc_gene_idx],
+                        y = family_use,
+                        SIMPLIFY = TRUE,
+                        mc.cores = n_cores)
     }
+
     new_count <- mat #simplify2array(mat)
     rownames(new_count) <- cell_names
     colnames(new_count) <- rownames(sce)[qc_gene_idx]

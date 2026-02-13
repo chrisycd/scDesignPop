@@ -1,7 +1,12 @@
-
 #' Fit marginal models for every feature
 #'
 #' Fits a specified parametric model using various input parameters.
+#'
+#' ## Parallelization options
+#' If "parallel" is used then \code{mclapply} is called from the \code{parallel} package;
+#' if "biocparallel" is used, then \code{bplapply} is called from the \code{BiocParallel} package;
+#' if "future.apply" is used, then \code{future_lapply} is called from the \code{future.apply} package;
+#' if "pbmcapply" is used, then \code{pbmclapply} is called from the \code{pbmcapply} package.
 #'
 #' @param data_list a list of input data.
 #' @param mean_formula a string scalar to specify the mean formula, including
@@ -9,11 +14,11 @@
 #' @param model_family a string scalar to specify model fitting used.
 #' @param interact_colnames a string scalar or vector for the variable names that
 #'     have first-order interaction with SNP genotypes.
-#' @param parallelization a string scalar specifying the type of parallelization
-#'     used during marginal fitting. Must be one of either "future.apply",
-#'     or "pbmcmapply". The default value is "pbmcmapply".
-#' @param n_threads positive integer value (greater or equal to 1) to specify the
-#'     number of CPU threads used in parallelization. The default is 2.
+#' @param parallelization a string scalar specifying the parallelization backend
+#'     used during marginal fitting. Must be one of either "parallel", "future.apply",
+#'     "biocparallel", or "pbmcapply". The default value is "pbmcapply". See details.
+#' @param n_cores positive integer value (greater or equal to 1) to specify the
+#'     number of CPU cores used in parallelization. The default is 2.
 #' @param loc_colname a string scalar for column name of SNP position variable.
 #' @param snp_colname a string scalar for column name of SNP id variable.
 #' @param celltype_colname a string scalar for column name of cell type.
@@ -28,10 +33,22 @@
 #'     If \code{force_formula = TRUE}, interaction terms whose covariates are not
 #'     main effects in the model would be permitted. Results in error if
 #'     \code{force_formula = FALSE} and \code{length(geno_interact_names) > 0}.
-#' @param data_maxsize a positive numeric value used to set max data_list size
-#'     in GiB increments. Used only when \code{parallelization = "future.apply"}.
 #' @param keep_cellnames a logical scalar for whether to keep cell barcode names.
 #'     If \code{keep_cellnames = TRUE}, the memory will be larger. The default is FALSE.
+#' @param BPPARAM a BiocParallelParam class object (from \code{BiocParallel} R package)
+#'     that must be specified when using \code{parallelization = "biocparallel"}. Either
+#'     \code{BiocParallel::SnowParam()} or \code{BiocParallel::MulticoreParam()}
+#'     can be used to initialize, depending on the operating system. BPPARAM is
+#'     not used in other parallelization options. The default is NULL.
+#' @param future.seed a logical or an integer (of length one or seven), or a list
+#'     of length(X) with pre-generated random seeds that can be specified when using
+#'     \code{parallelization = "future.apply"}. See \code{future.apply::future_eapply}
+#'     documentation for more details on its usage. future.seed is not used in
+#'     other parallelization options. The default is FALSE.
+#' @param data_maxsize a positive numeric value used to set max data_list size
+#'     in GiB increments. Used only when \code{parallelization = "future.apply"}.
+#'     The default is 1.
+#' @param ... additional arguments passed to internal functions.
 #'
 #' @return a list of named features, each containing a list with the following items:
 #' \describe{
@@ -52,8 +69,9 @@ fitMarginalPop <- function(data_list,
                            mean_formula,
                            model_family = "nb",
                            interact_colnames = NULL,
-                           parallelization = "pbmcapply",
-                           n_threads = 2L,
+                           parallelization = c("pbmcapply", "future.apply",
+                                               "parallel", "biocparallel"),
+                           n_cores = 2L,
                            loc_colname = "POS",
                            snp_colname = "snp_id",
                            celltype_colname = "cell_type",
@@ -61,8 +79,17 @@ fitMarginalPop <- function(data_list,
                            filter_snps = TRUE,
                            snpvar_thres = 0,
                            force_formula = FALSE,
+                           keep_cellnames = FALSE,
+                           BPPARAM = NULL,
+                           future.seed = FALSE,
                            data_maxsize = 1,
-                           keep_cellnames = FALSE) {
+                           ...) {
+
+    parallelization <- match.arg(parallelization)
+    more_args <- list(...)
+
+    # backward compat.
+    if(!is.null(more_args[["n_threads"]])) { n_cores <- more_args[["n_threads"]] }
 
     # check cell covariates
     assertthat::assert_that(assertthat::has_name(data_list[["covariate"]],
@@ -117,29 +144,47 @@ fitMarginalPop <- function(data_list,
         rownames(data_list[["covariate"]]) <- NULL
     }
 
+    # set up parallelization
+    paraFunc <- parallel::mclapply
+
+    if (parallelization == "biocparallel") {
+        paraFunc <- BiocParallel::bplapply
+        if (.Platform$OS.type == "unix") {
+            BPPARAM <- BiocParallel::MulticoreParam(workers = n_cores)
+        } else if (.Platform$OS.type == "windows") {
+            BPPARAM <- BiocParallel::SnowParam(workers = n_cores)
+        }
+    } else if (parallelization == "future.apply"){
+        paraFunc <- future.apply::future_lapply
+    } else if (parallelization == "pbmcapply") {
+        paraFunc <- pbmcapply::pbmclapply
+    }
+
     ## run marginal fitting
+    fitFunc <- function(x) {
+        fitModel(feature_name = x,
+                 response_vec = data_list[["count_mat"]][, x],
+                 eqtlgeno_df = data_list[["eqtl_geno_list"]][[x]],
+                 cellcov_df = data_list[["covariate"]],
+                 mu_formula = mean_formula,
+                 interact_colnames = interact_colnames,
+                 model_family = model_family,
+                 loc_colname = loc_colname,
+                 snp_colname = snp_colname,
+                 celltype_colname = celltype_colname,
+                 indiv_colname = indiv_colname,
+                 filter_snps = filter_snps,
+                 snpvar_thres = snpvar_thres,
+                 force_formula = force_formula)
+    }
 
-    if(parallelization == "pbmcapply") {
-        marginal_list <- pbmcapply::pbmclapply(
-            sce_features,
-            function(x) {
-                fitModel(feature_name = x,
-                         response_vec = data_list[["count_mat"]][, x],
-                         eqtlgeno_df = data_list[["eqtl_geno_list"]][[x]],
-                         cellcov_df = data_list[["covariate"]],
-                         mu_formula = mean_formula,
-                         interact_colnames = interact_colnames,
-                         model_family = model_family,
-                         loc_colname = loc_colname,
-                         snp_colname = snp_colname,
-                         celltype_colname = celltype_colname,
-                         indiv_colname = indiv_colname,
-                         filter_snps = filter_snps,
-                         snpvar_thres = snpvar_thres,
-                         force_formula = force_formula)
-                }, mc.cores = n_threads)
-
-    } else if(parallelization == "future.apply") {
+    if (parallelization == "biocparallel") {
+        marginal_list <- paraFunc(
+            X = sce_features,
+            FUN = fitFunc,
+            BPPARAM = BPPARAM
+        )
+    } else if (parallelization == "future.apply") {
 
         old_opt <- options("future.globals.maxSize")
         on.exit(options(old_opt), add = TRUE)
@@ -147,29 +192,21 @@ fitMarginalPop <- function(data_list,
 
         old_plan <- future::plan()
         on.exit(future::plan(old_plan), add = TRUE)
-        future::plan(future::multisession, workers = n_threads)
+        future::plan(future::multisession, workers = n_cores)
 
-        marginal_list <- future.apply::future_lapply(
-            sce_features,
-            function(x) {
-                fitModel(feature_name = x,
-                         response_vec = data_list[["count_mat"]][, x],
-                         eqtlgeno_df = data_list[["eqtl_geno_list"]][[x]],
-                         cellcov_df = data_list[["covariate"]],
-                         mu_formula = mean_formula,
-                         interact_colnames = interact_colnames,
-                         model_family = model_family,
-                         loc_colname = loc_colname,
-                         snp_colname = snp_colname,
-                         celltype_colname = celltype_colname,
-                         indiv_colname = indiv_colname,
-                         filter_snps = filter_snps,
-                         snpvar_thres = snpvar_thres,
-                         force_formula = force_formula)
-                }
-            )
+        marginal_list <- paraFunc(
+            X = sce_features,
+            FUN = fitFunc,
+            future.seed = future.seed
+        )
+        # TODO: add progress bar to future.apply (see https://github.com/HenrikBengtsson/future.apply/issues/34#issuecomment-549011124)
+    } else {  # parallel or pbmcapply
+        marginal_list <- paraFunc(
+            X = sce_features,
+            FUN = fitFunc,
+            mc.cores = n_cores
+        )
     }
-    # TODO: add progress bar to future.apply (see https://github.com/HenrikBengtsson/future.apply/issues/34#issuecomment-549011124)
 
     # store gene ids as list names
     names(marginal_list) <- sce_features

@@ -49,7 +49,7 @@ plotReducedDimPop <- function (
 {
   Method <- NULL
   stopifnot(length(name_vec) == (length(sce_list) + 1))
-  ref_sce <- ref_sce[,order(colData(ref_sce)[,color_by])]
+  ref_sce <- ref_sce[,order(SummarizedExperiment::colData(ref_sce)[,color_by])]
   mat_ref <- t(as.matrix(SummarizedExperiment::assay(ref_sce,
                                                      assay_use)))
   if (sum(matrixStats::colVars(mat_ref) == 0) > 0) {

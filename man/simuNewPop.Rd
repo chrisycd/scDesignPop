@@ -12,7 +12,7 @@ simuNewPop(
   zero_mat,
   quantile_mat = NULL,
   copula_list,
-  n_cores,
+  n_cores = 2L,
   fastmvn = FALSE,
   family_use,
   nonnegative = TRUE,
@@ -20,11 +20,14 @@ simuNewPop(
   input_data,
   new_covariate,
   important_feature = "all",
-  parallelization = "mcmapply",
+  parallelization = c("pbmcapply", "future.apply", "parallel", "biocparallel"),
   BPPARAM = NULL,
+  future.seed = FALSE,
+  data_maxsize = 1,
   filtered_gene,
   mean_limit = 1e+15,
-  debug = FALSE
+  debug = FALSE,
+  ...
 )
 }
 \arguments{
@@ -44,7 +47,8 @@ Default is 'counts'.}
 \item{copula_list}{A list of copulas for generating the multivariate quantile
 matrix. If provided, the \code{quantile_mat} must be NULL.}
 
-\item{n_cores}{An integer. The number of cores to use.}
+\item{n_cores}{a positive integer value (greater or equal to 1) to specify the
+number of CPU cores used in parallelization. The default is 2.}
 
 \item{fastmvn}{An logical variable. If TRUE, the sampling of multivariate Gaussian is done
 by \code{mvnfast}, otherwise by \code{mvtnorm}. Default is FALSE.}
@@ -72,13 +76,25 @@ be a logical vector with length equal to the number of genes in \code{sce}. \cod
 gene-gene correlation estimation and \code{FALSE} in the logical vector means the corresponding gene will be excluded from the gene-gene correlation estimation.
 The default value for is "all".}
 
-\item{parallelization}{A string indicating the specific parallelization function to use.
-Must be one of 'mcmapply', 'bpmapply', or 'pbmcmapply', which corresponds to the parallelization function in the package
-\code{parallel},\code{BiocParallel}, and \code{pbmcapply} respectively. The default value is 'mcmapply'.}
+\item{parallelization}{a string scalar specifying the parallelization backend
+used when simulating data. Must be one of "parallel", "future.apply",
+"biocparallel", or "pbmcapply". The default value is "parallel". See details.}
 
-\item{BPPARAM}{A \code{MulticoreParam} object or NULL. When the parameter parallelization = 'mcmapply' or 'pbmcmapply',
-this parameter must be NULL. When the parameter parallelization = 'bpmapply',  this parameter must be one of the
-\code{MulticoreParam} object offered by the package 'BiocParallel. The default value is NULL.}
+\item{BPPARAM}{a BiocParallelParam class object (from \code{BiocParallel} R package)
+that must be specified when using \code{parallelization = "biocparallel"}. Either
+\code{BiocParallel::SnowParam()} or \code{BiocParallel::MulticoreParam()}
+can be used to initialize, depending on the operating system. BPPARAM is
+not used in other parallelization options. The default is NULL.}
+
+\item{future.seed}{a logical or an integer (of length one or seven), or a list
+of length(X) with pre-generated random seeds that can be specified when using
+\code{parallelization = "future.apply"}. See \code{future.apply::future_eapply}
+documentation for more details on its usage. future.seed is not used in
+other parallelization options. The default is FALSE.}
+
+\item{data_maxsize}{a positive numeric value used to set max marginal_list size
+in GiB increments. Used only when \code{parallelization = "future.apply"}.
+The default is 1.}
 
 \item{filtered_gene}{A vector or NULL which contains genes that are excluded in the marginal and copula fitting}
 
@@ -88,6 +104,8 @@ avoid features that have extremely high and unreasonable means.}
 
 \item{debug}{A logical scalar for whether to return a list of variables in
 addition to simulated count matrix. The default is FALSE.}
+
+\item{...}{additional arguments passed to internal functions.}
 }
 \value{
 A feature by cell matrix of the new simulated count (expression) matrix or sparse matrix.
@@ -100,6 +118,13 @@ This function is adapted from simu_new function in scDesign3 v0.99.7
 The function takes the new covariate (if use) from \code{\link{constructDataPop}},
 parameter matrices from \code{\link{extractParaPop}} and multivariate Unifs
 from \code{\link{fitCopulaPop}}.
+\subsection{Parallelization options}{
+
+If "parallel" is used then \code{mcmapply} is called from the \code{parallel} package; if
+"biocparallel" is used, then \code{bpmapply} is called from the \code{BiocParallel} package; if
+"future.apply" is used, then \code{future_mapply} is called from the \code{future.apply} package;
+if "pbmcapply" is used, then \code{pbmcmapply} is called from the \code{pbmcapply} package.
+}
 }
 \examples{
 NULL

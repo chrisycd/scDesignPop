@@ -4,13 +4,19 @@
 #'
 #' This is the main function for extracting parameter matrices.
 #'
+#' ## Parallelization options
+#' If "parallel" is used then \code{mcmapply} is called from the \code{parallel} package; if
+#' "biocparallel" is used, then \code{bpmapply} is called from the \code{BiocParallel} package; if
+#' "future.apply" is used, then \code{future_mapply} is called from the \code{future.apply} package;
+#' if "pbmcapply" is used, then \code{pbmcmapply} is called from the \code{pbmcapply} package.
+#'
 #' @param sce a SingleCellExperiment object.
 #' @param assay_use a string scalar specifying the slot to use in input \code{sce}.
 #'     The default is "counts".
 #' @param marginal_list a list of named features, each with the fitted object
 #'     and other variables as output from \code{\link{fitMarginalPop}}.
-#' @param n_cores positive integer value (greater or equal to 1) to specify the
-#'     number of CPU threads used in parallelization. The default is 2.
+#' @param n_cores a positive integer value (greater or equal to 1) to specify the
+#'     number of CPU cores used in parallelization. The default is 2.
 #' @param family_use a string scalar or vector of marginal distribution used.
 #' @param new_covariate a cell-by-covariate data frame obtained in the list output from
 #'     \code{\link{constructDataPop}}. It must have a corr_group variable.
@@ -23,22 +29,26 @@
 #'     used in \code{\link{constructDataPop}}. The default is "snp_id".
 #' @param loc_colname a string scalar for the last column of eQTL annotation in
 #'     \code{eqtlgeno_df}. The default is "POS".
-#' @param parallelization a string scalar specifying the type of parallelization
-#'     used when extracting parameters. Must be one of either "bpmapply", "future.apply",
-#'     "mcmapply", or "pbmcmapply". The default value is "mcmapply".
+#' @param parallelization a string scalar specifying the parallelization backend
+#'     used when extracting parameters. Must be one of "parallel", "future.apply",
+#'     "biocparallel", or "pbmcapply". The default value is "parallel". See details.
 #' @param BPPARAM a BiocParallelParam class object (from \code{BiocParallel} R package)
-#'     that must be specified when using \code{parallelization = "bpmapply"}. Either
+#'     that must be specified when using \code{parallelization = "biocparallel"}. Either
 #'     \code{BiocParallel::SnowParam()} or \code{BiocParallel::MulticoreParam()}
-#'     can be used to initialize, depending on the operating system. The default
-#'     is NULL, which corresponds to the \code{parallelization = "mcmapply"} default.
-#' @param future.seed a logical or integer value to specify how RNG seed is handled
-#'     when \code{parallelization = 'future.apply'} is used. See \code{future.apply::future_eapply}
-#'     documentation for more details on its usage. The default is FALSE.
+#'     can be used to initialize, depending on the operating system. BPPARAM is
+#'     not used in other parallelization options. The default is NULL.
+#' @param future.seed a logical or an integer (of length one or seven), or a list
+#'     of length(X) with pre-generated random seeds that can be specified when using
+#'     \code{parallelization = "future.apply"}. See \code{future.apply::future_eapply}
+#'     documentation for more details on its usage. future.seed is not used in
+#'     other parallelization options. The default is FALSE.
 #' @param data_maxsize a positive numeric value used to set max marginal_list size
 #'     in GiB increments. Used only when \code{parallelization = "future.apply"}.
+#'     The default is 1.
 #' @param data a cell-by-covariate data frame obtained in the list output from
 #'     \code{\link{constructDataPop}}. It must have a corr_group variable.
 #'     Used only in gamlss fits.
+#' @param ... additional arguments passed to internal functions.
 #'
 #' @return a list of mean, sigma, and zero parameter cell by feature matrices:
 #' \describe{
@@ -64,11 +74,25 @@ extractParaPop <- function(sce,
                            indiv_colname = "indiv",
                            snp_colname = "snp_id",
                            loc_colname = "POS",
-                           parallelization = "mcmapply",
+                           parallelization = c("pbmcapply", "future.apply",
+                                               "parallel", "biocparallel"),
                            BPPARAM = NULL,
                            future.seed = FALSE,
                            data_maxsize = 1,
-                           data) {
+                           data,
+                           ...) {
+
+    # backward compat.
+    if(parallelization == "mcmapply") {
+        parallelization <- "parallel"
+    } else if(parallelization == "pbmcmapply") {
+        parallelization <- "pbmcapply"
+    } else if(parallelization == "bpmapply") {
+        parallelization <- "biocparallel"
+    }
+
+    parallelization <- match.arg(parallelization)
+    more_args <- list(...)
 
     removed_cell_list <- lapply(marginal_list, function(x) { x$removed_cell })
     marginal_list <- lapply(marginal_list, function(x) { x$fit })
@@ -241,9 +265,9 @@ extractParaPop <- function(sce,
 
 
     ## parallelize across features
-    paraFunc <- parallel::mcmapply  # set parallelization function
+    paraFunc <- parallel::mcmapply
 
-    if (parallelization == "bpmapply") {
+    if (parallelization == "biocparallel") {
         paraFunc <- BiocParallel::bpmapply
         if (.Platform$OS.type == "unix") {
             BPPARAM <- BiocParallel::MulticoreParam(workers = n_cores)
@@ -252,12 +276,11 @@ extractParaPop <- function(sce,
         }
     } else if (parallelization == "future.apply"){
         paraFunc <- future.apply::future_mapply
-    }
-    if (parallelization == "pbmcmapply") {
+    } else if (parallelization == "pbmcapply") {
         paraFunc <- pbmcapply::pbmcmapply
     }
 
-    if (parallelization == "bpmapply") {
+    if (parallelization == "biocparallel") {
         # BPPARAM$workers <- n_cores  # old code
         mat <- suppressMessages(paraFunc(mat_function,
                                          x = seq_len(dim(sce)[1])[qc_gene_idx],
@@ -279,7 +302,7 @@ extractParaPop <- function(sce,
                                          y = family_use,
                                          future.seed = future.seed,
                                          SIMPLIFY = FALSE))
-    } else {  # mcmapply or pbmcmapply
+    } else {  # parallel or pbmcapply
         mat <- suppressMessages(paraFunc(mat_function,
                                          x = seq_len(dim(sce)[1])[qc_gene_idx],
                                          y = family_use,

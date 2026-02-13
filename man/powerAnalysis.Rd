@@ -22,7 +22,11 @@ powerAnalysis(
   nCellPerPool = NULL,
   alpha = 0.05,
   nsims = 100,
-  ncores = 1
+  ncores = 2L,
+  parallelization = c("pbmcapply", "future.apply", "parallel", "biocparallel"),
+  BPPARAM = NULL,
+  future.seed = FALSE,
+  data_maxsize = 1
 )
 }
 \arguments{
@@ -64,7 +68,28 @@ of \code{marginal_list[[geneid]]$frame}. The default is "indiv".}
 
 \item{nsims}{number of simulations for calculating the power. This parameter will affect the resolution of the power value.}
 
-\item{ncores}{number of CPU cores user wants to use.}
+\item{ncores}{a positive integer value (greater or equal to 1) to specify the
+number of CPU cores used in parallelization. The default is 2.}
+
+\item{parallelization}{a string scalar specifying the parallelization backend
+used when simulating data. Must be one of "parallel", "future.apply",
+"biocparallel", or "pbmcapply". The default value is "pbmcapply". See details.}
+
+\item{BPPARAM}{a BiocParallelParam class object (from \code{BiocParallel} R package)
+that must be specified when using \code{parallelization = "biocparallel"}. Either
+\code{BiocParallel::SnowParam()} or \code{BiocParallel::MulticoreParam()}
+can be used to initialize, depending on the operating system. BPPARAM is
+not used in other parallelization options. The default is NULL.}
+
+\item{future.seed}{a logical or an integer (of length one or seven), or a list
+of length(X) with pre-generated random seeds that can be specified when using
+\code{parallelization = "future.apply"}. See \code{future.apply::future_eapply}
+documentation for more details on its usage. future.seed is not used in
+other parallelization options. The default is FALSE.}
+
+\item{data_maxsize}{a positive numeric value used to set max marginal_list size
+in GiB increments. Used only when \code{parallelization = "future.apply"}.
+The default is 1.}
 }
 \value{
 a list of named features, each containing a list with the following items:
