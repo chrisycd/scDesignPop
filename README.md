@@ -48,11 +48,11 @@ For tutorials, please check the [website](https://chrisycd.github.io/scDesignPop
 
 -   [Modeling batch effect in population-scale scRNA-seq data](https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop-batch-effect.html)
 
--   [Modeling trans-eQTL effect using public data](https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop-trans-eqtl.html)
+-   [Modeling trans-eQTL effect using public data](https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop-trans-eQTL.html)
 
 -   [Model linear dynamic eQTL effects in continuous cell states](https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop-dynamic-eQTL.html)
 
--   [Model Nonlinear dynamic eQTL effects in continuous cell states](https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop-dynamic-eQTL-NL.html)
+-   [Model nonlinear dynamic eQTL effects in continuous cell states](https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop-dynamic-eQTL-NL.html)
 
 -   [Model cell type proportions for new individuals](https://chrisycd.github.io/scDesignPop/docs/articles/scDesignPop-celltype-prop-modeling.html)
 
