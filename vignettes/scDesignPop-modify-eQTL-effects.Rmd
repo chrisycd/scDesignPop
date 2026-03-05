@@ -41,13 +41,13 @@ tools::R_user_dir("scDesignPop", which="cache")
 
 ## Introduction
 
-scDesignPop enables user-specified modification of eQTL effect sizes, allowing systematic benchmarking of various eQTL mapping methods with different ground truth.
+scDesignPop enables users to modify the estimated cell-type-specific eQTL effect sizes and generate realistic scRNA-seq data with altered ground truths. Such data allow downstream tasks such as systematic benchmarking various eQTL mapping methods with different ground truths.
 
-## Library and data preparation
+## Load libraries and data
 
-Here, we use an example SingleCellExperiment object `example_sce` with 1000 genes and 7811 cells and an example eQTL genotype dataframe `example_eqtlgeno` to demonstrate the tutorial. These two objects contains the gene expression and SNP genotypes of 40 anonymized individuals while the eQTL genotype dataframe provides 2826 putative cell-type-specific eQTLs.
+Here, we use an example SingleCellExperiment object `example_sce` with $1000$ genes and $7811$ cells and an example eQTL genotype dataframe `example_eqtlgeno` to demonstrate the tutorial. These two objects contains the gene expression and SNP genotypes of $40$ anonymized individuals while the eQTL genotype dataframe provides $2826$ putative cell-type-specific eQTLs.
 
-```{r}
+```{r, message=FALSE, warning=FALSE, results='hide'}
 library(scDesignPop)
 library(SingleCellExperiment)
 library(SummarizedExperiment)
@@ -85,17 +85,16 @@ data_list <- constructDataPop(
 
 ### Step 2: fit marginal model
 
-Next, a marginal model is specified to fit each gene using the
-`fitMarginalPop` function.  
-Here we use a Negative Binominal as the parametric model using `"nb"`, and we specify `mean_formula = "(1|indiv) + cell_type`. 
+Next, a marginal model is specified to fit each gene using the `fitMarginalPop` function.  
+Here we use a Negative Binominal mixed model using `"nb"` option. We specify `"(1|indiv) + cell_type"` for the mean formula, where `(1|indiv)` specifies the random intercept using `indiv` as variable.
 
 ```{r}
-marginal_list_sel <- fitMarginalPop(
+marginal_list <- fitMarginalPop(
     data_list = data_list,
     mean_formula = "(1|indiv) + cell_type",
     model_family = "nb",
     interact_colnames = "cell_type",
-    parallelization = "pbmcapply",
+    parallelization = "parallel",
     n_threads = 20L,
     loc_colname = "POS",
     snp_colname = "snp_id",
@@ -108,27 +107,164 @@ marginal_list_sel <- fitMarginalPop(
     )
 ```
 
-## Modifying eQTL effects
+### Step 3: fit a Gaussian copula
 
-To modify the eQTL effects fitted, we use the `modifyMarginalModels` function.
+The third step is to fit a Gaussian copula using the `fitCopulaPop` function.
+
 ```{r}
-marginal_mod <- scDesignPop::modifyMarginalModels(
-  marginal_list = marginal_list_sel["ENSG00000163221"],
-  eqtlgeno_list = data_list[["eqtl_geno_list"]],
-  features = "ENSG00000163221",
-  celltype = "cd4nc",
-  mean_log2fc = 0,
-  eqtl_log2fc = 2,
-  neg_ctrl = TRUE,
-  mean_baseline = NULL,
-  eqtl_baseline = NULL,
-  mean_baseline_only = FALSE,
-  eqtl_baseline_only = FALSE,
-  disp_scaling = "linear",
-  celltype_colname = "cell_type",
-  snp_colname = "snp_id",
-  verbose = TRUE,
-  debug = TRUE,
-  mod_scale = "link")
+set.seed(123, kind = "L'Ecuyer-CMRG")
+
+copula_fit <- fitCopulaPop(
+    sce = example_sce,
+    assay_use = "counts",
+    input_data = data_list[["new_covariate"]],
+    marginal_list = marginal_list,
+    family_use = "nb",
+    copula = "gaussian",
+    n_cores = 2L,
+    parallelization = "parallel"
+    )
+
+RNGkind("Mersenne-Twister")  # reset
 ```
 
+### Step 4. modify cell-typse-specific eQTL effect
+
+To define a cell-type-specific eQTL gene (eGene), we modify modify the fitted parameters using the `modifyMarginalModels` function. Here, we increase the cell-type-specific eQTL effect size for `ENSG00000002549` gene by a $\log2$-fold-change relative to the fitted value using `eqtl_log2fc = 3` in `mononc` cell type.
+
+```{r}
+marginal_mod <- modifyMarginalModels(
+    marginal_list = marginal_list,
+    eqtlgeno_list = data_list[["eqtl_geno_list"]],
+    features = "ENSG00000002549",  # "ENSG00000163221",
+    celltype = "mononc",  # "cd4nc",
+    eqtl_log2fc = 3,
+    mean_baseline = NULL,
+    eqtl_baseline = NULL,
+    mean_baseline_only = FALSE,
+    eqtl_baseline_only = FALSE,
+    disp_scaling = FALSE,
+    mod_scale = "link",
+    verbose = TRUE
+    )
+```
+
+### Step 5: extract parameters
+
+The fifth step is to compute the mean, sigma, and zero probability parameters using the `extractParaPop` function.
+
+```{r}
+para_new <- extractParaPop(
+    sce = example_sce,
+    assay_use = "counts",
+    marginal_list = marginal_mod[["marginal_list"]],
+    n_cores = 2L,
+    family_use = "nb",
+    indiv_colname = "indiv",
+    new_covariate = data_list[["new_covariate"]],
+    new_eqtl_geno_list = data_list[["eqtl_geno_list"]],
+    data = data_list[["covariate"]],
+    parallelization = "parallel"
+    )
+```
+
+### Step 6: simulate counts
+
+The sixth step is to simulate counts using the `simuNewPop` function.
+
+```{r}
+set.seed(123, kind = "L'Ecuyer-CMRG")
+
+newcount_mat <- simuNewPop(
+    sce = example_sce,
+    mean_mat = para_new[["mean_mat"]],
+    sigma_mat = para_new[["sigma_mat"]],
+    zero_mat = para_new[["zero_mat"]],
+    quantile_mat = NULL,
+    copula_list = copula_fit[["copula_list"]],
+    n_cores = 2L,
+    family_use = "nb",
+    nonnegative = TRUE,
+    input_data = data_list[["covariate"]],
+    new_covariate = data_list[["new_covariate"]],
+    important_feature = copula_fit[["important_feature"]],
+    filtered_gene = data_list[["filtered_gene"]],
+    parallelization = "parallel"
+    )
+
+RNGkind("Mersenne-Twister")  # reset
+```
+
+### Step 7: create SingleCellExperiment object using simulated data
+
+After simulating the data, we create a `SingleCellExperiment` object as follows.
+
+```{r}
+simu_sce <- SingleCellExperiment(list(counts = newcount_mat),
+                                 colData = data_list[["new_covariate"]])
+```
+
+
+## Create pseudobulk expression data
+
+To create pseudobulk data, we first define a named list with the SCE objects of interest. Here we name `example_sce` as "Reference", and the simulated SCE object with modified effect size as "Simulated".
+
+```{r}
+sce_list <- list("Reference" = example_sce,
+                 "Simulated" = simu_sce)
+```
+
+Next, we normalize each SCE object in the data using `log1p` and then aggregate using `mean`. This can be done in one step using the `createPbulkExprGeno` function. 
+
+We also specify the all cells (denoted as `"allct"`), and the cell type that we wish to visualize with `c("allct", "mononc")`. The SNP loci specified correspond to the cell types in the same order.
+
+```{r}
+res_list <- createPbulkExprGeno(sce_list = sce_list,
+                                eqtlgeno = example_eqtlgeno,
+                                feature_sel = "ENSG00000002549",
+                                celltype_sel = c("allct", "mononc"),
+                                eqtl_snp = c("4:17586957", "4:17575530"),
+                                normalize_type = "log1p",
+                                aggregate_type = "mean",
+                                slot_name = "logcounts",
+                                overwrite = TRUE,
+                                if_plot = TRUE)
+```
+
+One of the objects, `res_df`, in the output list is a dataframe with each row containing the pseudobulk values corresponding to each individual and their genotypes, along with other important columns such as cell types, aggregation used, normalization used, etc.
+
+```{r}
+head(res_list[["res_df"]])
+```
+
+## Visualize pseudobulk expression
+
+Next, we show the pseudobulk expression versus genotype using violin plots across the two SCE objects and the cell types using the ggplot object, `p_pbulk`, generated in the output list. Each violin plot has a boxplot within and the mean marked by a red dot.
+
+```{r}
+res_list[["p_pbulk"]]
+```
+
+Alternatively, users may customize the plot using additional `ggplot2` commands or generate their own plot directly using the `res_df` dataframe. We leave the latter part out of this tutorial.
+
+```{r}
+res_list[["p_pbulk"]] +
+    theme_classic() +
+    labs(title = "ENSG00000002549",
+                  y = "Normalized expression",
+                  x = "Genotype") +
+    theme(
+        plot.title = element_text(size = 14, hjust = 0,  # left title
+                                  face = "bold"),
+        axis.text = element_text(size = 12),
+        axis.title = element_text(size = 12),
+        strip.text = element_text(size = 12),  # facet font size
+        aspect.ratio = 1,
+        legend.position = "none"
+    )
+```
+
+## Session information
+```{r}
+sessionInfo()
+```
