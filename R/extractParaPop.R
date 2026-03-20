@@ -5,28 +5,28 @@
 #' This is the main function for extracting parameter matrices.
 #'
 #' ## Parallelization options
-#' If "parallel" is used then \code{mcmapply} is called from the \code{parallel} package; if
-#' "biocparallel" is used, then \code{bpmapply} is called from the \code{BiocParallel} package; if
-#' "future.apply" is used, then \code{future_mapply} is called from the \code{future.apply} package;
+#' If "parallel" is used then \code{mcmapply} is called from the \code{parallel} package;
+#' if "biocparallel" is used, then \code{bpmapply} is called from the \code{BiocParallel} package;
+#' if "future.apply" is used, then \code{future_mapply} is called from the \code{future.apply} package;
 #' if "pbmcapply" is used, then \code{pbmcmapply} is called from the \code{pbmcapply} package.
 #'
 #' @param sce a SingleCellExperiment object.
 #' @param assay_use a string scalar specifying the slot to use in input \code{sce}.
 #'     The default is "counts".
 #' @param marginal_list a list of named features, each with the fitted object
-#'     and other variables as output from \code{\link{fitMarginalPop}}.
+#'     and other variables as output from [fitMarginalPop()].
 #' @param n_cores a positive integer value (greater or equal to 1) to specify the
 #'     number of CPU cores used in parallelization. The default is 2.
 #' @param family_use a string scalar or vector of marginal distribution used.
 #' @param new_covariate a cell-by-covariate data frame obtained in the list output from
-#'     \code{\link{constructDataPop}}. It must have a corr_group variable.
+#'     [constructDataPop()]. It must have a corr_group variable.
 #' @param new_eqtl_geno_list a list of eQTL genotype data frames for each gene
-#'     to be simulated.  If using same list as in \code{\link{fitMarginalPop}},
+#'     to be simulated.  If using same list as in [fitMarginalPop()],
 #'     then the in those samples
 #' @param indiv_colname a string scalar of the sample ID variable in cell covariate
 #'     of \code{sce}. The default is "indiv".
 #' @param snp_colname a string scalar for the SNP variable in \code{eqtlgeno_df}
-#'     used in \code{\link{constructDataPop}}. The default is "snp_id".
+#'     used in [constructDataPop()]. The default is "snp_id".
 #' @param loc_colname a string scalar for the last column of eQTL annotation in
 #'     \code{eqtlgeno_df}. The default is "POS".
 #' @param parallelization a string scalar specifying the parallelization backend
@@ -45,9 +45,8 @@
 #' @param data_maxsize a positive numeric value used to set max marginal_list size
 #'     in GiB increments. Used only when \code{parallelization = "future.apply"}.
 #'     The default is 1.
-#' @param data a cell-by-covariate data frame obtained in the list output from
-#'     \code{\link{constructDataPop}}. It must have a corr_group variable.
-#'     Used only in gamlss fits.
+#' @param data a cell-by-covariate data frame used to fit marginal models in
+#'     [fitMarginalPop()]. It must have a corr_group variable.
 #' @param ... additional arguments passed to internal functions.
 #'
 #' @return a list of mean, sigma, and zero parameter cell by feature matrices:
@@ -206,7 +205,7 @@ extractParaPop <- function(sce,
         }  # end of removed_cell if statement
 
 
-        # use S3 generic function to compute parameter vectors
+        # compute parameter vectors using S3 function
         param_list <- calcParaVectors(fit = fit,
                                       family_use = y,
                                       new_covariate = new_covariate,
@@ -356,8 +355,12 @@ extractParaPop <- function(sce,
 
 #' Generic function to compute model parameter vectors
 #'
-#' A S3 generic function for computing model parameters for with or without new
-#'     covariate of a feature
+#' A S3 generic function for computing the mean, theta, zero parameter vectors with
+#' covariates for a feature, given the parametric family of the marginal model.
+#'
+#' It also uses either train or new data, and has option to compute parameter vectors
+#' for new individuals options. Note that there is randomness introduced when
+#' computing the parameter vectors for new individuals, as there are random effects.
 #'
 #' @inheritParams extractParaPop
 #' @param fit a fitted object in the marginal_list.

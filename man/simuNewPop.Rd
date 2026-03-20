@@ -67,9 +67,9 @@ potential errors, for example, PCA.}
 \item{input_data}{A input count matrix.}
 
 \item{new_covariate}{A data.frame which contains covariates of targeted simulated
-data from  \code{\link{constructDataPop}}.}
+data from \code{\link[=constructDataPop]{constructDataPop()}}.}
 
-\item{important_feature}{important_feature A string or vector which indicates whether a gene will be used in correlation estimation or not. If this is a string, then
+\item{important_feature}{A string or vector which indicates whether a gene will be used in correlation estimation or not. If this is a string, then
 this string must be either "all" (using all genes) or "auto", which indicates that the genes will be automatically selected based on the proportion of zero expression across cells
 for each gene. Gene with zero proportion greater than 0.8 will be excluded form gene-gene correlation estimation. If this is a vector, then this should
 be a logical vector with length equal to the number of genes in \code{sce}. \code{TRUE} in the logical vector means the corresponding gene will be included in
@@ -115,14 +115,14 @@ A feature by cell matrix of the new simulated count (expression) matrix or spars
 This function is adapted from simu_new function in scDesign3 v0.99.7
 }
 \details{
-The function takes the new covariate (if use) from \code{\link{constructDataPop}},
-parameter matrices from \code{\link{extractParaPop}} and multivariate Unifs
-from \code{\link{fitCopulaPop}}.
+The function takes the new covariate (if used) from \code{\link[=constructDataPop]{constructDataPop()}},
+parameter matrices from \code{\link[=extractParaPop]{extractParaPop()}}, and multivariate Unifs
+from \code{\link[=fitCopulaPop]{fitCopulaPop()}}.
 \subsection{Parallelization options}{
 
-If "parallel" is used then \code{mcmapply} is called from the \code{parallel} package; if
-"biocparallel" is used, then \code{bpmapply} is called from the \code{BiocParallel} package; if
-"future.apply" is used, then \code{future_mapply} is called from the \code{future.apply} package;
+If "parallel" is used then \code{mcmapply} is called from the \code{parallel} package;
+if "biocparallel" is used, then \code{bpmapply} is called from the \code{BiocParallel} package;
+if "future.apply" is used, then \code{future_mapply} is called from the \code{future.apply} package;
 if "pbmcapply" is used, then \code{pbmcmapply} is called from the \code{pbmcapply} package.
 }
 }

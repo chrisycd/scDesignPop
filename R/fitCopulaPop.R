@@ -5,9 +5,9 @@
 #' This is the main function for fitting a copula.
 #'
 #' ## Parallelization options
-#' If "parallel" is used then \code{mcmapply} is called from the \code{parallel} package; if
-#' "biocparallel" is used, then \code{bpmapply} is called from the \code{BiocParallel} package; if
-#' "future.apply" is used, then \code{future_mapply} is called from the \code{future.apply} package;
+#' If "parallel" is used then \code{mcmapply} is called from the \code{parallel} package;
+#' if "biocparallel" is used, then \code{bpmapply} is called from the \code{BiocParallel} package;
+#' if "future.apply" is used, then \code{future_mapply} is called from the \code{future.apply} package;
 #' if "pbmcapply" is used, then \code{pbmcmapply} is called from the \code{pbmcapply} package.
 #'
 #' @param sce a SingleCellExperiment object.
@@ -16,7 +16,7 @@
 #' @param input_data a cell-by-covariate data frame obtained in the list output from
 #'     \code{\link{constructDataPop}}. It must have a corr_group variable.
 #' @param marginal_list a list of named features, each with the fitted object
-#'     and other variables as output from \code{\link{fitMarginalPop}}.
+#'     and other variables as output from [fitMarginalPop()].
 #' @param family_use a string scalar to specify model fitting used.
 #' @param copula a string value to specify the type of Copula fitting to use.
 #'     Currently, only Gaussian copula is supported. The default is "gaussian".
@@ -29,7 +29,8 @@
 #'     0 or 1 quantiles. The default value is 1e-06.
 #' @param family_set a string or a string vector of the bivariate copula families.
 #'     Default is c("gaussian", "indep").
-#' @param important_feature a string vector of genes.
+#' @param important_feature a string vector of genes. The default is "all", which
+#'     means all features will be used for gene-gene correlation estimation.
 #' @param n_cores positive integer value (greater or equal to 1) to specify the
 #'     number of CPU cores used in parallelization. The default is 2.
 #' @param parallelization a string value specifying the parallelization backend
@@ -69,13 +70,12 @@
 #' NULL
 fitCopulaPop <- function(sce,
                          assay_use,
-                         input_data,   # cell covariate from construct_data w/ corr_group variable
+                         input_data,
                          # empirical_quantile = FALSE,  option not implemented at moment
-                         # new_covariate = NULL,  # removed in scDesign3 v0.99.7
                          marginal_list,
                          family_use,
                          copula = c("gaussian", "vine"),
-                         DT = TRUE,  # distributional transformation
+                         DT = TRUE,
                          pseudo_obs = FALSE,
                          epsilon = 1e-06,  # tolerance for avoiding 0 or 1 quantiles
                          family_set = c("gaussian", "indep"),

@@ -34,7 +34,7 @@ The default is "counts".}
 \code{\link{constructDataPop}}. It must have a corr_group variable.}
 
 \item{marginal_list}{a list of named features, each with the fitted object
-and other variables as output from \code{\link{fitMarginalPop}}.}
+and other variables as output from \code{\link[=fitMarginalPop]{fitMarginalPop()}}.}
 
 \item{family_use}{a string scalar to specify model fitting used.}
 
@@ -54,7 +54,8 @@ of theoretical quantiles for fitting copula. The default is FALSE.
 \item{family_set}{a string or a string vector of the bivariate copula families.
 Default is c("gaussian", "indep").}
 
-\item{important_feature}{a string vector of genes.}
+\item{important_feature}{a string vector of genes. The default is "all", which
+means all features will be used for gene-gene correlation estimation.}
 
 \item{n_cores}{positive integer value (greater or equal to 1) to specify the
 number of CPU cores used in parallelization. The default is 2.}
@@ -100,9 +101,9 @@ This is the main function for fitting a copula.
 \details{
 \subsection{Parallelization options}{
 
-If "parallel" is used then \code{mcmapply} is called from the \code{parallel} package; if
-"biocparallel" is used, then \code{bpmapply} is called from the \code{BiocParallel} package; if
-"future.apply" is used, then \code{future_mapply} is called from the \code{future.apply} package;
+If "parallel" is used then \code{mcmapply} is called from the \code{parallel} package;
+if "biocparallel" is used, then \code{bpmapply} is called from the \code{BiocParallel} package;
+if "future.apply" is used, then \code{future_mapply} is called from the \code{future.apply} package;
 if "pbmcapply" is used, then \code{pbmcmapply} is called from the \code{pbmcapply} package.
 }
 }

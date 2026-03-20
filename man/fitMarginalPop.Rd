@@ -26,12 +26,13 @@ fitMarginalPop(
 )
 }
 \arguments{
-\item{data_list}{a list of input data.}
+\item{data_list}{a list of input data created by \code{\link[=constructDataPop]{constructDataPop()}}.}
 
 \item{mean_formula}{a string scalar to specify the mean formula, including
 random effects (if any) but without SNP genotypes or SNP genotype interaction effects.}
 
-\item{model_family}{a string scalar to specify model fitting used.}
+\item{model_family}{a string scalar to specify model fitting used.  Must be one
+of either 'nb', 'poisson', 'gaussian', 'binomial', 'zinb', 'zip', or 'lognormal'.}
 
 \item{interact_colnames}{a string scalar or vector for the variable names that
 have first-order interaction with SNP genotypes.}
@@ -67,16 +68,17 @@ main effects in the model would be permitted. Results in error if
 \item{keep_cellnames}{a logical scalar for whether to keep cell barcode names.
 If \code{keep_cellnames = TRUE}, the memory will be larger. The default is FALSE.}
 
-\item{BPPARAM}{a BiocParallelParam class object (from \code{BiocParallel} R package)
-that must be specified when using \code{parallelization = "biocparallel"}. Either
+\item{BPPARAM}{a \code{\link[BiocParallel:BiocParallelParam-class]{BiocParallel::BiocParallelParam()}} class object
+(from \code{BiocParallel} R package) that must be specified when using
+\code{parallelization = "biocparallel"}. Either
 \code{BiocParallel::SnowParam()} or \code{BiocParallel::MulticoreParam()}
 can be used to initialize, depending on the operating system. BPPARAM is
 not used in other parallelization options. The default is NULL.}
 
 \item{future.seed}{a logical or an integer (of length one or seven), or a list
 of length(X) with pre-generated random seeds that can be specified when using
-\code{parallelization = "future.apply"}. See \code{future.apply::future_eapply}
-documentation for more details on its usage. future.seed is not used in
+\code{parallelization = "future.apply"}. See \code{\link[future.apply:future_lapply]{future.apply::future_eapply()}}
+for more details on its usage. future.seed is not used in
 other parallelization options. The default is FALSE.}
 
 \item{data_maxsize}{a positive numeric value used to set max data_list size

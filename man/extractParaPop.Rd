@@ -30,7 +30,7 @@ extractParaPop(
 The default is "counts".}
 
 \item{marginal_list}{a list of named features, each with the fitted object
-and other variables as output from \code{\link{fitMarginalPop}}.}
+and other variables as output from \code{\link[=fitMarginalPop]{fitMarginalPop()}}.}
 
 \item{n_cores}{a positive integer value (greater or equal to 1) to specify the
 number of CPU cores used in parallelization. The default is 2.}
@@ -38,17 +38,17 @@ number of CPU cores used in parallelization. The default is 2.}
 \item{family_use}{a string scalar or vector of marginal distribution used.}
 
 \item{new_covariate}{a cell-by-covariate data frame obtained in the list output from
-\code{\link{constructDataPop}}. It must have a corr_group variable.}
+\code{\link[=constructDataPop]{constructDataPop()}}. It must have a corr_group variable.}
 
 \item{new_eqtl_geno_list}{a list of eQTL genotype data frames for each gene
-to be simulated.  If using same list as in \code{\link{fitMarginalPop}},
+to be simulated.  If using same list as in \code{\link[=fitMarginalPop]{fitMarginalPop()}},
 then the in those samples}
 
 \item{indiv_colname}{a string scalar of the sample ID variable in cell covariate
 of \code{sce}. The default is "indiv".}
 
 \item{snp_colname}{a string scalar for the SNP variable in \code{eqtlgeno_df}
-used in \code{\link{constructDataPop}}. The default is "snp_id".}
+used in \code{\link[=constructDataPop]{constructDataPop()}}. The default is "snp_id".}
 
 \item{loc_colname}{a string scalar for the last column of eQTL annotation in
 \code{eqtlgeno_df}. The default is "POS".}
@@ -73,9 +73,8 @@ other parallelization options. The default is FALSE.}
 in GiB increments. Used only when \code{parallelization = "future.apply"}.
 The default is 1.}
 
-\item{data}{a cell-by-covariate data frame obtained in the list output from
-\code{\link{constructDataPop}}. It must have a corr_group variable.
-Used only in gamlss fits.}
+\item{data}{a cell-by-covariate data frame used to fit marginal models in
+\code{\link[=fitMarginalPop]{fitMarginalPop()}}. It must have a corr_group variable.}
 
 \item{...}{additional arguments passed to internal functions.}
 }
@@ -96,9 +95,9 @@ This is the main function for extracting parameter matrices.
 \details{
 \subsection{Parallelization options}{
 
-If "parallel" is used then \code{mcmapply} is called from the \code{parallel} package; if
-"biocparallel" is used, then \code{bpmapply} is called from the \code{BiocParallel} package; if
-"future.apply" is used, then \code{future_mapply} is called from the \code{future.apply} package;
+If "parallel" is used then \code{mcmapply} is called from the \code{parallel} package;
+if "biocparallel" is used, then \code{bpmapply} is called from the \code{BiocParallel} package;
+if "future.apply" is used, then \code{future_mapply} is called from the \code{future.apply} package;
 if "pbmcapply" is used, then \code{pbmcmapply} is called from the \code{pbmcapply} package.
 }
 }

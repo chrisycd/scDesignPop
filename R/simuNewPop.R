@@ -3,14 +3,14 @@
 #' \code{simuNewPop} generates new simulated data based on fitted marginal and copula models.
 #' This function is adapted from simu_new function in scDesign3 v0.99.7
 #'
-#' The function takes the new covariate (if use) from \code{\link{constructDataPop}},
-#' parameter matrices from \code{\link{extractParaPop}} and multivariate Unifs
-#' from \code{\link{fitCopulaPop}}.
+#' The function takes the new covariate (if used) from [constructDataPop()],
+#' parameter matrices from [extractParaPop()], and multivariate Unifs
+#' from [fitCopulaPop()].
 #'
 #' ## Parallelization options
-#' If "parallel" is used then \code{mcmapply} is called from the \code{parallel} package; if
-#' "biocparallel" is used, then \code{bpmapply} is called from the \code{BiocParallel} package; if
-#' "future.apply" is used, then \code{future_mapply} is called from the \code{future.apply} package;
+#' If "parallel" is used then \code{mcmapply} is called from the \code{parallel} package;
+#' if "biocparallel" is used, then \code{bpmapply} is called from the \code{BiocParallel} package;
+#' if "future.apply" is used, then \code{future_mapply} is called from the \code{future.apply} package;
 #' if "pbmcapply" is used, then \code{pbmcmapply} is called from the \code{pbmcapply} package.
 #'
 #' @param sce A \code{SingleCellExperiment} object.
@@ -21,7 +21,7 @@
 #' @param zero_mat A cell by feature matrix of the zero-inflation parameter.
 #' @param quantile_mat A cell by feature matrix of the multivariate quantile.
 #' @param copula_list A list of copulas for generating the multivariate quantile
-#'                    matrix. If provided, the \code{quantile_mat} must be NULL.
+#'      matrix. If provided, the \code{quantile_mat} must be NULL.
 #' @param n_cores a positive integer value (greater or equal to 1) to specify the
 #'     number of CPU cores used in parallelization. The default is 2.
 #' @param fastmvn An logical variable. If TRUE, the sampling of multivariate Gaussian is done
@@ -36,8 +36,8 @@
 #'                   potential errors, for example, PCA.
 #' @param input_data A input count matrix.
 #' @param new_covariate A data.frame which contains covariates of targeted simulated
-#'                      data from  \code{\link{constructDataPop}}.
-#' @param important_feature important_feature A string or vector which indicates whether a gene will be used in correlation estimation or not. If this is a string, then
+#'                      data from [constructDataPop()].
+#' @param important_feature A string or vector which indicates whether a gene will be used in correlation estimation or not. If this is a string, then
 #' this string must be either "all" (using all genes) or "auto", which indicates that the genes will be automatically selected based on the proportion of zero expression across cells
 #' for each gene. Gene with zero proportion greater than 0.8 will be excluded form gene-gene correlation estimation. If this is a vector, then this should
 #' be a logical vector with length equal to the number of genes in \code{sce}. \code{TRUE} in the logical vector means the corresponding gene will be included in

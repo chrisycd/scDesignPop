@@ -2,7 +2,7 @@
 % Please edit documentation in R/fitMarginalPop.R
 \name{fitModel}
 \alias{fitModel}
-\title{Fit a Marginal Model}
+\title{Fit a marginal model}
 \usage{
 fitModel(
   feature_name,
@@ -22,7 +22,7 @@ fitModel(
 )
 }
 \arguments{
-\item{feature_name}{a string scalar of a feature's name (ie. gene id).}
+\item{feature_name}{a string scalar of a feature's name (e.g., gene id).}
 
 \item{response_vec}{a vector of values for the response variable.}
 
@@ -36,7 +36,8 @@ eQTL annotations and SNP genotypes (explanatory variables) for all samples
 \item{mu_formula}{a string scalar to specify the mean formula, including random
 effects (if any) but without SNP genotypes or SNP genotype interaction effects.}
 
-\item{model_family}{a string scalar to specify model fitting used.}
+\item{model_family}{a string scalar to specify model fitting used.  Must be one
+of either 'nb', 'poisson', 'gaussian', 'binomial', 'zinb', 'zip', or 'lognormal'.}
 
 \item{interact_colnames}{a string scalar or vector for the variable names that
 have first-order interaction with SNP genotypes.}

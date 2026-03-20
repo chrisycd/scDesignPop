@@ -4,7 +4,7 @@
 \alias{calcParaVectors}
 \title{Generic function to compute model parameter vectors}
 \usage{
-calcParaVectors(fit, family_use, new_covariate, total_cells, data, ...)
+calcParaVectors(fit, family_use, new_covariate, data, ...)
 }
 \arguments{
 \item{fit}{a fitted object in the marginal_list.}
@@ -12,17 +12,21 @@ calcParaVectors(fit, family_use, new_covariate, total_cells, data, ...)
 \item{family_use}{a string scalar or vector of marginal distribution used.}
 
 \item{new_covariate}{a cell-by-covariate data frame obtained in the list output from
-\code{\link{constructDataPop}}. It must have a corr_group variable.}
+\code{\link[=constructDataPop]{constructDataPop()}}. It must have a corr_group variable.}
 
-\item{total_cells}{a positive integer for the number of total cells to simulate.}
-
-\item{data}{a cell-by-covariate data frame obtained in the list output from
-\code{\link{constructDataPop}}. It must have a corr_group variable.
-Used only in gamlss fits.}
+\item{data}{a cell-by-covariate data frame used to fit marginal models in
+\code{\link[=fitMarginalPop]{fitMarginalPop()}}. It must have a corr_group variable.}
 
 \item{...}{additional arguments passed to calcParaVectors S3 method functions.}
+
+\item{total_cells}{a positive integer for the number of total cells to simulate.}
 }
 \description{
-A S3 generic function for computing model parameters for with or without new
-covariate of a feature
+A S3 generic function for computing the mean, theta, zero parameter vectors with
+covariates for a feature, given the parametric family of the marginal model.
+}
+\details{
+It also uses either train or new data, and has option to compute parameter vectors
+for new individuals options. Note that there is randomness introduced when
+computing the parameter vectors for new individuals, as there are random effects.
 }

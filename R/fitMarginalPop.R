@@ -8,10 +8,11 @@
 #' if "future.apply" is used, then \code{future_lapply} is called from the \code{future.apply} package;
 #' if "pbmcapply" is used, then \code{pbmclapply} is called from the \code{pbmcapply} package.
 #'
-#' @param data_list a list of input data.
+#' @param data_list a list of input data created by [constructDataPop()].
 #' @param mean_formula a string scalar to specify the mean formula, including
 #'     random effects (if any) but without SNP genotypes or SNP genotype interaction effects.
-#' @param model_family a string scalar to specify model fitting used.
+#' @param model_family a string scalar to specify model fitting used.  Must be one
+#'     of either 'nb', 'poisson', 'gaussian', 'binomial', 'zinb', 'zip', or 'lognormal'.
 #' @param interact_colnames a string scalar or vector for the variable names that
 #'     have first-order interaction with SNP genotypes.
 #' @param parallelization a string scalar specifying the parallelization backend
@@ -35,15 +36,16 @@
 #'     \code{force_formula = FALSE} and \code{length(geno_interact_names) > 0}.
 #' @param keep_cellnames a logical scalar for whether to keep cell barcode names.
 #'     If \code{keep_cellnames = TRUE}, the memory will be larger. The default is FALSE.
-#' @param BPPARAM a BiocParallelParam class object (from \code{BiocParallel} R package)
-#'     that must be specified when using \code{parallelization = "biocparallel"}. Either
+#' @param BPPARAM a [BiocParallel::BiocParallelParam()] class object
+#'     (from \code{BiocParallel} R package) that must be specified when using
+#'     \code{parallelization = "biocparallel"}. Either
 #'     \code{BiocParallel::SnowParam()} or \code{BiocParallel::MulticoreParam()}
 #'     can be used to initialize, depending on the operating system. BPPARAM is
 #'     not used in other parallelization options. The default is NULL.
 #' @param future.seed a logical or an integer (of length one or seven), or a list
 #'     of length(X) with pre-generated random seeds that can be specified when using
-#'     \code{parallelization = "future.apply"}. See \code{future.apply::future_eapply}
-#'     documentation for more details on its usage. future.seed is not used in
+#'     \code{parallelization = "future.apply"}. See [future.apply::future_eapply()]
+#'     for more details on its usage. future.seed is not used in
 #'     other parallelization options. The default is FALSE.
 #' @param data_maxsize a positive numeric value used to set max data_list size
 #'     in GiB increments. Used only when \code{parallelization = "future.apply"}.
@@ -222,13 +224,13 @@ fitMarginalPop <- function(data_list,
 }
 
 
-#' Fit a Marginal Model
+#' Fit a marginal model
 #'
 #' Fits a specified parametric model for a feature using a response variable, and
 #'     eQTL genotype and cell covariates as explanatory variables.
 #'
 #' @inheritParams fitMarginalPop
-#' @param feature_name a string scalar of a feature's name (ie. gene id).
+#' @param feature_name a string scalar of a feature's name (e.g., gene id).
 #' @param response_vec a vector of values for the response variable.
 #' @param cellcov_df a cell-by-covariates dataframe containing the covariates
 #'     (explanatory variables) for all cells.
@@ -240,7 +242,6 @@ fitMarginalPop <- function(data_list,
 #'
 #' @return a list containing the fitted model object, elapsed time, SNP ids of covariates,
 #'     and removed cells (NOT currently implemented.)
-#' @export
 #'
 #' @examples
 #' NULL
@@ -404,7 +405,6 @@ fitModel <- function(feature_name,
 #'      (both cell covariates and eQTL genotype covariates) for a given feature.}
 #'      \item{\code{snp_cov}}{a string scalar or vector of SNP ids in the design matrix.}
 #' }
-#' @export
 #'
 #' @examples
 #' NULL
@@ -498,7 +498,6 @@ constructDesignMatrix <- function(response_vec,
 #' @param snp_cov a string scalar or vector that specifies the SNP covariates used in the model.
 #'
 #' @return a formula object
-#' @export
 #'
 #' @examples
 #' NULL

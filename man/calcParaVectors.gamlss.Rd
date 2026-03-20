@@ -4,7 +4,7 @@
 \alias{calcParaVectors.gamlss}
 \title{A calcParaVectors Method for gamlss Objects}
 \usage{
-\method{calcParaVectors}{gamlss}(fit, family_use, new_covariate, total_cells, data, ...)
+\method{calcParaVectors}{gamlss}(fit, family_use, new_covariate, data, ...)
 }
 \arguments{
 \item{fit}{a fitted object in the marginal_list.}
@@ -12,13 +12,10 @@
 \item{family_use}{a string scalar or vector of marginal distribution used.}
 
 \item{new_covariate}{a cell-by-covariate data frame obtained in the list output from
-\code{\link{constructDataPop}}. It must have a corr_group variable.}
+\code{\link[=constructDataPop]{constructDataPop()}}. It must have a corr_group variable.}
 
-\item{total_cells}{a positive integer for the number of total cells to simulate.}
-
-\item{data}{a cell-by-covariate data frame obtained in the list output from
-\code{\link{constructDataPop}}. It must have a corr_group variable.
-Used only in gamlss fits.}
+\item{data}{a cell-by-covariate data frame used to fit marginal models in
+\code{\link[=fitMarginalPop]{fitMarginalPop()}}. It must have a corr_group variable.}
 
 \item{...}{additional arguments passed to calcParaVectors S3 method functions.}
 }
