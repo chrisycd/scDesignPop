@@ -21,3 +21,4 @@ pkg.R
 vignettes/*.html
 vignettes/*.pdf
 inst/doc
+docs

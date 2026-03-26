@@ -4,18 +4,18 @@
 #' scDesignPop functions. It contains a subset of genes and cells from the
 #' OneK1K cohort with associated individual and cell-type metadata.
 #'
-#' @format A \code{SingleCellExperiment} object with 1,000 genes and 7,811 cells.
+#' @format A \code{SingleCellExperiment} object with 982 genes and 7,998 cells.
 #' \describe{
 #'   \item{assays}{
 #'     \itemize{
 #'       \item \code{counts}: raw UMI count matrix (genes x cells).
-#'       \item \code{logcounts}: log-normalized expression values.
 #'     }
 #'   }
 #'   \item{rowData}{(empty in this toy example).}
 #'   \item{colData}{A \code{DataFrame} with 4 columns:
 #'     \describe{
 #'       \item{\code{indiv}}{Individual identifier (e.g., \code{"SAMP1"}, \code{"SAMP2"}).}
+#'       \item{\code{pool}}{Batch of the donor.}
 #'       \item{\code{cell_type}}{Cell-type annotation (e.g., T cells, B cells, NK cells).}
 #'       \item{\code{sex}}{Sex of the donor.}
 #'       \item{\code{age}}{Age of the donor.}
@@ -32,14 +32,14 @@
 #' table(SingleCellExperiment::colData(example_sce)$cell_type)
 "example_sce"
 
-#' Example genotype data for cell-type-specific eQTLs
+#' Example genotype data for cell-type-specific cis-eQTLs
 #'
 #' A tibble containing example genotype data for lead cis-eQTL SNPs across
 #' multiple cell types and genes in OneK1K cohort. Each row corresponds to a cell-type–gene–SNP
 #' combination, and each sample column stores genotype dosages (0/1/2) for one
 #' individual. No eQTL effect size results are included. Genotypes are all permuted.
 #'
-#' @format A tibble with 2,826 rows and 45 columns:
+#' @format A tibble with 2,792 rows and 45 columns:
 #' \describe{
 #'   \item{\code{cell_type}}{Cell type (e.g., \code{"cd4nc"}, \code{"cd8nc"}, \code{"nk"}, \code{"bin"}, \code{"bmem"}).}
 #'   \item{\code{gene_id}}{Ensembl gene ID (e.g., \code{"ENSG00000023902"}).}
@@ -58,6 +58,31 @@
 #' dplyr::count(example_eqtlgeno, cell_type)
 "example_eqtlgeno"
 
+#' Example genotype data for cell-type-specific trans-eQTLs
+#'
+#' A tibble containing example genotype data for lead cis-eQTL SNPs across
+#' multiple cell types and genes in OneK1K cohort. Each row corresponds to a cell-type–gene–SNP
+#' combination, and each sample column stores genotype dosages (0/1/2) for one
+#' individual. No eQTL effect size results are included. Genotypes are all permuted.
+#'
+#' @format A tibble with 27 rows and 45 columns:
+#' \describe{
+#'   \item{\code{cell_type}}{Cell type (\code{"bulk"}).}
+#'   \item{\code{gene_id}}{Ensembl gene ID.}
+#'   \item{\code{snp_id}}{SNP identifier in \code{CHR:POS} format (e.g., \code{"1:150123456"}).}
+#'   \item{\code{CHR}}{Chromosome number.}
+#'   \item{\code{POS}}{Genomic position (base-pair coordinate).}
+#'   \item{\code{SAMP1}, \code{SAMP2}, \dots, \code{SAMP40}}{Genotype dosage for each individual
+#'         (typically encoded as 0, 1, or 2).}
+#' }
+#'
+#' @usage data("example_eqtlgeno_trans")
+#'
+#' @examples
+#' data("example_eqtlgeno_trans")
+#' example_eqtlgeno_trans
+"example_eqtlgeno_trans"
+
 #' Example B cell single-cell RNA-seq data with pseudotime
 #'
 #' A \code{SingleCellExperiment} object containing a subset of B cells from the
@@ -65,13 +90,11 @@
 #' pseudotime trajectory. This dataset is useful for illustrating dynamic
 #' eQTL modeling along a continuous trajectory.
 #'
-#' @format A \code{SingleCellExperiment} object with 817 genes and 3,726 cells.
+#' @format A \code{SingleCellExperiment} object with 753 genes and 3,785 cells.
 #' \describe{
 #'   \item{assays}{
 #'     \itemize{
 #'       \item \code{counts}: raw UMI count matrix.
-#'       \item \code{norm}: normalized expression values.
-#'       \item \code{logcounts}: log-transformed normalized expression values.
 #'     }
 #'   }
 #'   \item{rowData}{A \code{DataFrame} with 2 columns:
@@ -84,6 +107,7 @@
 #'     \describe{
 #'       \item{\code{cell_type}}{Cell-type annotation within the B-cell compartment
 #'         (e.g., immature/naive B cells, memory B cells).}
+#'       \item{\code{sex}}{Batch of the donor.}
 #'       \item{\code{indiv}}{Individual identifier.}
 #'       \item{\code{sex}}{Sex of the donor.}
 #'       \item{\code{age}}{Age of the donor.}
@@ -111,10 +135,9 @@
 #' dynamic or cell-type–specific eQTL modeling.
 #' No eQTL effect size results are included. Genotypes are all permuted.
 #'
-#' @format A tibble with 2,406 rows and 106 columns:
+#' @format A tibble with 2,332 rows and 105 columns:
 #' \describe{
-#'   \item{\code{cell_type}}{Cell type (e.g., \code{"cd4nc"}, \code{"cd8nc"}, \code{"nk"}, \code{"cd4et"}, etc.).}
-#'   \item{\code{gene_name}}{Gene symbol (e.g., \code{"PLEKHO1"}, \code{"TNFRSF1B"}, \code{"UTS2"}).}
+#'   \item{\code{cell_type}}{Cell type.}
 #'   \item{\code{gene_id}}{Ensembl gene ID.}
 #'   \item{\code{snp_id}}{SNP identifier in \code{CHR:POS} format.}
 #'   \item{\code{CHR}}{Chromosome number.}
@@ -131,44 +154,6 @@
 #' example_eqtlgeno_Bcell
 #' dplyr::count(example_eqtlgeno_Bcell, gene_name)
 "example_eqtlgeno_Bcell"
-
-#' Example list of scDesignPop's marginal models
-#'
-#' A named list of fitted marginal models for selected gene–SNP
-#' pairs used in the examples of scDesignPop. Each element corresponds to one
-#' gene and contains the fitted model object, the SNP used as covariate, and
-#' additional model attributes.
-#'
-#' This dataset is useful for demonstrating how to directly perform power
-#' analysis using the fitted marginal models of the scDesignPop.
-#'
-#' @format A named list. Each element corresponds to one gene (e.g.,
-#'   \code{"ENSG00000163221"}, \code{"ENSG00000135218"}) and is a list with
-#'   the following components:
-#' \describe{
-#'   \item{\code{fit}}{A fitted generalized linear mixed model, typically
-#'     a negative binomial mixed model (e.g., from \pkg{glmmTMB}) with
-#'     random intercepts for individuals and fixed effects for cell type,
-#'     SNP genotype, and SNP–cell-type interactions.}
-#'   \item{\code{time}}{Computation time (in seconds) required to fit the model.}
-#'   \item{\code{snp_cov}}{Character string giving the SNP covariate used in
-#'     the model (e.g., \code{"1:153337943"}).}
-#'   \item{\code{model_attr}}{A list of auxiliary model attributes, including
-#'     the \code{terms} object, variable names, and data classes used for
-#'     constructing the model matrix.}
-#'   \item{\code{removed_cell}}{Information about removed cells (if any)
-#'     during model fitting; \code{NA} if no cells were removed.}
-#' }
-#'
-
-#'
-#' @usage data("marginal_list_sel")
-#'
-#' @examples
-#' data("marginal_list_sel")
-#' names(marginal_list_sel)
-#' str(marginal_list_sel[[1]]$fit)
-"marginal_list_sel"
 
 #' Genotype principal components for training individuals
 #'

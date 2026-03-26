@@ -28,15 +28,15 @@
 #' used for color.
 #' @param point_size an numeric scalar specifying of the point size in the
 #' final plot. Default is 1.
-#'
+#' @param n_cores a positive integer value (greater or equal to 1) to specify the
+#'     number of CPU cores used in parallelization. The default is 4.
+#'     
 #' @return A data frame of the reduced dimensions (both PCA and UMAP) or a list
 #' contains both the data frame and two ggplot2 object of PCA plot and UMAP plot.
 #'
 #' @import ggplot2
-#' @importFrom RhpcBLASctl blas_set_num_threads
 #' @importFrom irlba irlba
 #' @importFrom uwot umap
-#' @importFrom viridis viridis
 #'
 #' @export
 #'
@@ -45,7 +45,7 @@
 plotReducedDimPop <- function (
     ref_sce, sce_list, name_vec, assay_use = "logcounts",
     pc_umap = TRUE, n_pc = 50, center = TRUE, scale. = TRUE,
-    if_plot = TRUE, shape_by = NULL, color_by, point_size = 1)
+    if_plot = TRUE, shape_by = NULL, color_by, point_size = 1, n_cores = 4)
 {
   Method <- NULL
   stopifnot(length(name_vec) == (length(sce_list) + 1))
@@ -71,7 +71,6 @@ plotReducedDimPop <- function (
     mat
   })
 
-  RhpcBLASctl::blas_set_num_threads(4)
   ref_pca_fit <- irlba::prcomp_irlba(mat_ref, center = center,
                                      scale. = scale., n = n_pc)
   ref_pca <- ref_pca_fit$x
@@ -82,7 +81,7 @@ plotReducedDimPop <- function (
       n_neighbors = 15,
       min_dist    = 0.1,
       ret_model   = TRUE,       # return full model for transforms
-      n_threads   = 4           # parallelism for fit
+      n_threads   = n_cores           # parallelism for fit
     )
   }
   else {
@@ -92,7 +91,7 @@ plotReducedDimPop <- function (
       n_neighbors = 15,
       min_dist    = 0.1,
       ret_model   = TRUE,       # return full model for transforms
-      n_threads   = 4           # parallelism for fit
+      n_threads   = n_cores           # parallelism for fit
     )
   }
   ref_umap <- uwot_model$embedding
@@ -100,7 +99,7 @@ plotReducedDimPop <- function (
   SingleCellExperiment::reducedDim(ref_sce, "PCA") <- ref_pca
   SingleCellExperiment::reducedDim(ref_sce, "UMAP") <- ref_umap
   sce_list <- lapply(sce_list, function(x) {
-    x <- x[,order(colData(x)[,color_by])]
+    x <- x[,order(SummarizedExperiment::colData(x)[,color_by])]
     mat <- t(as.matrix(SummarizedExperiment::assay(x, assay_use)))
     SingleCellExperiment::reducedDim(x, "PCA") <- stats::predict(ref_pca_fit,
                                                                  newdata = mat)
@@ -109,7 +108,7 @@ plotReducedDimPop <- function (
       res <- uwot::umap_transform(
         SingleCellExperiment::reducedDim(x, "PCA"),
         model     = uwot_model,
-        n_threads = 4            # parallelism for transform
+        n_threads = n_cores            # parallelism for transform
       )
     }
     else {
@@ -117,7 +116,7 @@ plotReducedDimPop <- function (
       res <- uwot::umap_transform(
         mat,
         model     = uwot_model,
-        n_threads = 4            # parallelism for transform
+        n_threads = n_cores            # parallelism for transform
       )
     }
     colnames(res) <- c("UMAP1", "UMAP2")
@@ -147,9 +146,6 @@ plotReducedDimPop <- function (
   rd_tbl <- dplyr::mutate(rd_tbl, Method = factor(Method,
                                                   levels = name_vec))
 
-  ## switch back
-  RhpcBLASctl::blas_set_num_threads(1)
-  ##
   if (if_plot) {
     p_pca <- ggplot(rd_tbl, aes_string(x = "PC1", y = "PC2",
                                        color = color_by)) + geom_point(alpha = 0.8, size = point_size,
@@ -160,8 +156,8 @@ plotReducedDimPop <- function (
                                                                         aes_string(shape = shape_by)) + facet_wrap(~Method,
                                                                                                                    nrow = 1) + theme(aspect.ratio = 1, legend.position = "bottom")
     if (is.numeric(unlist(rd_tbl[, color_by]))) {
-      p_pca <- p_pca + viridis::scale_color_viridis()
-      p_umap <- p_umap + viridis::scale_color_viridis()
+      p_pca <- p_pca + scale_color_gradientn(colors = hcl.colors(100, "viridis"))
+      p_umap <- p_umap + scale_color_gradientn(colors = hcl.colors(100, "viridis"))
     }
     else {
       p_pca <- p_pca + guides(color = guide_legend(override.aes = list(size = 2,

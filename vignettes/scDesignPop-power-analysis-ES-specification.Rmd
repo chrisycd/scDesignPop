@@ -48,7 +48,7 @@ scDesignPop provides power analysis tools at cell-type-specific level. Users can
 
 For data preparation, a list of data is required as input. This is done using the `constructDataPop` function. A `SingleCellExperiment` object and an `eqtlgeno` dataframe are the two main inputs needed. The `eqtlgeno` dataframe consists of eQTL annotations (it must have cell state, gene, SNP, chromosome, and position columns at a minimum), and genotypes across individuals (columns) for every SNP (rows). The structure of an example `eqtlgeno` dataframe is given below.
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 library(scDesignPop)
 library(SingleCellExperiment)
 
@@ -64,18 +64,9 @@ data_list_sel <- constructDataPop(
     sce = example_sce_sel,
     eqtlgeno_df = example_eqtlgeno_sel,
     new_covariate = as.data.frame(colData(example_sce_sel)),
-    overlap_features = NULL,
-    sampid_vec = NULL,
     copula_variable = "cell_type",
     slot_name = "counts",
-    snp_mode = "single",
-    celltype_colname = "cell_type",
-    feature_colname = "gene_id",
-    snp_colname = "snp_id",
-    loc_colname = "POS",
-    chrom_colname = "CHR",
-    indiv_colname = "indiv",
-    prune_thres = 0.9
+    snp_mode = "single"
     )
 ```
 
@@ -91,16 +82,8 @@ marginal_list_sel <- fitMarginalPop(
     mean_formula = "(1|indiv) + cell_type",
     model_family = "nb",
     interact_colnames = "cell_type",
-    parallelization = "pbmcapply",
-    n_threads = 1L,
-    loc_colname = "POS",
-    snp_colname = "snp_id",
-    celltype_colname = "cell_type",
-    indiv_colname = "indiv",
-    filter_snps = TRUE,
-    snpvar_thres = 0,
-    force_formula = FALSE,
-    data_maxsize = 1
+    parallelization = "parallel",
+    n_threads = 20L
     )
 ```
 
@@ -167,4 +150,9 @@ visualizePowerCurve(power_result = power_data,
                     col_group = "method",
                     geneid = "ENSG00000163221",
                     snpid = "1:153337943")
+```
+
+## Session information
+```{r}
+sessionInfo()
 ```

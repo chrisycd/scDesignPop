@@ -63,6 +63,7 @@
 #'
 #' @export
 #'
+#' 
 #' @examples
 #' NULL
 constructDataPop <- function(sce,

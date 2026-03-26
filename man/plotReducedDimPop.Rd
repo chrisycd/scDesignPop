@@ -16,7 +16,8 @@ plotReducedDimPop(
   if_plot = TRUE,
   shape_by = NULL,
   color_by,
-  point_size = 1
+  point_size = 1,
+  n_cores = 4
 )
 }
 \arguments{
@@ -54,6 +55,9 @@ used for color.}
 
 \item{point_size}{an numeric scalar specifying of the point size in the
 final plot. Default is 1.}
+
+\item{n_cores}{a positive integer value (greater or equal to 1) to specify the
+number of CPU cores used in parallelization. The default is 4.}
 }
 \value{
 A data frame of the reduced dimensions (both PCA and UMAP) or a list

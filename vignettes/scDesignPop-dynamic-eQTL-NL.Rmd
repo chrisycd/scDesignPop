@@ -40,24 +40,16 @@ knitr::opts_chunk$set(
 tools::R_user_dir("scDesignPop", which="cache")
 ```
 
-```{r, message=FALSE, warning=FALSE, results='hide'}
-library(scDesignPop)
-library(SingleCellExperiment)
-library(SummarizedExperiment)
-library(scater)
-theme_set(theme_bw())
-```
-
 ## Introduction
 
-scDesignPop can also be extended to other eQTL effects. Here we show how scDesignPop can also model nonlinear dynamic eQTL effects in continuous cell states to mimick the real data better.
+scDesignPop can also be extended to simulate nonlinear dynamic eQTL effects. Here, we show how scDesignPop can also model nonlinear dynamic eQTL effects in continuous cell states to mimick the real data better. scDesignPop can model continuous cell states via its marginal fitting step.
 
 ## Library and data preparation
 
-Here, we use a subset of the B cells from OneK1K cohort as example. We load an example SingleCellExperiment object `example_sce` with 817 genes and 3726 cells and an example eQTL genotype dataframe `example_eqtlgeno` to demonstrate the main tutorial. These two objects contains the gene expression and SNP genotypes of 100 anonymized individuals while the eQTL genotype dataframe provides 2406 putative cell-type-specific eQTLs. For non linear dynamic eQTL modeling, we prepare a squared pseudotim column `slingPseudotime_1_sq`.
+Here, we use a subset of the B cells from OneK1K cohort as example. We load an example SingleCellExperiment object `example_sce` with $753$ genes and $3785$ cells and an example eQTL genotype dataframe `example_eqtlgeno` to demonstrate the main tutorial. These two objects contains the gene expression and SNP genotypes of $100$ anonymized individuals while the eQTL genotype dataframe provides $2332$ putative cell-type-specific eQTLs. For nonlinear dynamic eQTL modeling, the quadratic pseudotime term `slingPseudotime_1_sq` is added to capture nonlinearity.
 
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 library(scDesignPop)
 library(SingleCellExperiment)
 library(SummarizedExperiment)
@@ -65,6 +57,7 @@ library(scater)
 
 data("example_sce_Bcell")
 data("example_eqtlgeno_Bcell")
+
 col_Bcell <- colData(example_sce_Bcell)
 colData(example_sce_Bcell)$slingPseudotime_1_sq <- col_Bcell$slingPseudotime_1^2
 head(colData(example_sce_Bcell))
@@ -81,20 +74,10 @@ data_list <- constructDataPop(
     sce = example_sce_Bcell,
     eqtlgeno_df = example_eqtlgeno_Bcell,
     new_covariate = as.data.frame(colData(example_sce_Bcell)),
-    overlap_features = NULL,
-    sampid_vec = NULL,
     copula_variable = "slingPseudotime_1",
-    n_quantiles = 10,
     slot_name = "counts",
     snp_mode = "single",
-    time_colname = "slingPseudotime_1",
-    celltype_colname = "cell_type",
-    feature_colname = "gene_id",
-    snp_colname = "snp_id",
-    loc_colname = "POS",
-    chrom_colname = "CHR",
-    indiv_colname = "indiv",
-    prune_thres = 0.9
+    time_colname = "slingPseudotime_1"
     )
 ```
 
@@ -110,16 +93,8 @@ marginal_list <- fitMarginalPop(
     mean_formula = "(1|indiv) + slingPseudotime_1 + slingPseudotime_1_sq",
     model_family = "nb",
     interact_colnames = c("slingPseudotime_1", "slingPseudotime_1_sq"),
-    parallelization = "pbmcapply",
-    n_threads = 20L,
-    loc_colname = "POS",
-    snp_colname = "snp_id",
-    celltype_colname = "cell_type",
-    indiv_colname = "indiv",
-    filter_snps = TRUE,
-    snpvar_thres = 0,
-    force_formula = FALSE,
-    data_maxsize = 1
+    parallelization = "parallel",
+    n_threads = 20L
     )
 ```
 
@@ -134,12 +109,12 @@ set.seed(123, kind = "L'Ecuyer-CMRG")
 copula_fit <- fitCopulaPop(
     sce = example_sce_Bcell,
     assay_use = "counts",
-    input_data = data_list[["new_covariate"]],
+    input_data = data_list[["covariate"]],
     marginal_list = marginal_list,
     family_use = "nb",
     copula = "gaussian",
     n_cores = 2L,
-    parallelization = "mcmapply"
+    parallelization = "parallel"
     )
 
 RNGkind("Mersenne-Twister")  # reset
@@ -157,11 +132,10 @@ para_new <- extractParaPop(
     marginal_list = marginal_list,
     n_cores = 2L,
     family_use = "nb",
-    indiv_colname = "indiv",
     new_covariate = data_list[["new_covariate"]],
     new_eqtl_geno_list = data_list[["eqtl_geno_list"]],
     data = data_list[["covariate"]],
-    parallelization = "pbmcmapply"
+    parallelization = "parallel"
     )
 ```
 
@@ -170,24 +144,24 @@ para_new <- extractParaPop(
 The fifth step is to simulate counts using the `simuNewPop` function.
 
 ```{r}
-set.seed(123)
+set.seed(123, kind = "L'Ecuyer-CMRG")
 
 newcount_mat <- simuNewPop(
     sce = example_sce_Bcell,
     mean_mat = para_new[["mean_mat"]],
     sigma_mat = para_new[["sigma_mat"]],
     zero_mat = para_new[["zero_mat"]],
-    quantile_mat = NULL,
     copula_list = copula_fit[["copula_list"]],
     n_cores = 2L,
     family_use = "nb",
-    nonnegative = TRUE,
     input_data = data_list[["covariate"]],
     new_covariate = data_list[["new_covariate"]],
     important_feature = copula_fit[["important_feature"]],
     filtered_gene = data_list[["filtered_gene"]],
-    parallelization = "pbmcmapply"
+    parallelization = "parallel"
     )
+
+RNGkind("Mersenne-Twister")  # reset
 ```
 
 ### Step 6: create SingleCellExperiment object using simulated data
@@ -208,7 +182,7 @@ rowData(simu_sce_Bcell) <- rowData(example_sce_Bcell)
 
 The simulated data can be visualized using PHATE dimensions.
 
-```{r}
+```{r,fig.width=10,fig.height=5}
 library(ggplot2)
 library(phateR)
 

@@ -40,26 +40,19 @@ knitr::opts_chunk$set(
 tools::R_user_dir("scDesignPop", which="cache")
 ```
 
-```{r, message=FALSE, warning=FALSE, results='hide'}
-library(scDesignPop)
-library(SingleCellExperiment)
-library(SummarizedExperiment)
-library(ggplot2)
-theme_set(theme_bw())
-```
-
 ## Introduction
 scDesignPop can model population-scale scRNA-seq data with batch covariates and enables simulation of datasets under user-specified batch effects, including scenarios in which batch effects are added or removed.
 
 ## Library and data preparation
 
-Here, we use an example SingleCellExperiment object `example_sce` with 1000 genes and 7811 cells and an example eQTL genotype dataframe `example_eqtlgeno` to demonstrate the main tutorial. These two objects contains the gene expression and SNP genotypes of 40 anonymized individuals while the eQTL genotype dataframe provides 2826 putative cell-type-specific eQTLs.
+Here, we use an example SingleCellExperiment object `example_sce` with $982$ genes and $7998$ cells and an example eQTL genotype dataframe `example_eqtlgeno` to demonstrate the main tutorial. These two objects contains the gene expression and SNP genotypes of $40$ anonymized individuals while the eQTL genotype dataframe provides $2792$ putative cell-type-specific eQTLs.
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 library(scDesignPop)
 library(SingleCellExperiment)
 library(SummarizedExperiment)
 library(ggplot2)
+theme_set(theme_bw())
 
 data("example_sce")
 data("example_eqtlgeno")
@@ -81,18 +74,9 @@ data_list <- constructDataPop(
     sce = example_sce,
     eqtlgeno_df = example_eqtlgeno,
     new_covariate = as.data.frame(colData(example_sce)),
-    overlap_features = NULL,
-    sampid_vec = NULL,
     copula_variable = "cell_type",
     slot_name = "counts",
-    snp_mode = "single",
-    celltype_colname = "cell_type",
-    feature_colname = "gene_id",
-    snp_colname = "snp_id",
-    loc_colname = "POS",
-    chrom_colname = "CHR",
-    indiv_colname = "indiv",
-    prune_thres = 0.9
+    snp_mode = "single"
     )
 ```
 
@@ -100,24 +84,16 @@ data_list <- constructDataPop(
 
 Next, a marginal model is specified to fit each gene using the
 `fitMarginalPop` function.  
-Here we use a Negative Binominal as the parametric model using `"nb"`. Since we want to include the batch effect modeling, we specify `mean_formula = "(1|indiv) + cell_type + batch`. Here, we use pseudo-batches to show how scDesignPop can model and alter the batch effects.
+Here we use a Negative Binominal as the parametric model using `"nb"`. Since we want to include the batch effect modeling, we specify `mean_formula = "(1|indiv) + cell_type + pool`. Here, we use pseudo-batches to show how scDesignPop can model and alter the batch effects.
 
 ```{r}
 marginal_list <- fitMarginalPop(
     data_list = data_list,
-    mean_formula = "(1|indiv) + cell_type + batch",
+    mean_formula = "(1|indiv) + cell_type + pool",
     model_family = "nb",
     interact_colnames = "cell_type",
-    parallelization = "pbmcapply",
-    n_threads = 20L,
-    loc_colname = "POS",
-    snp_colname = "snp_id",
-    celltype_colname = "cell_type",
-    indiv_colname = "indiv",
-    filter_snps = TRUE,
-    snpvar_thres = 0,
-    force_formula = FALSE,
-    data_maxsize = 1
+    parallelization = "parallel",
+    n_threads = 20L
     )
 ```
 
@@ -132,12 +108,12 @@ set.seed(123, kind = "L'Ecuyer-CMRG")
 copula_fit <- fitCopulaPop(
     sce = example_sce,
     assay_use = "counts",
-    input_data = data_list[["new_covariate"]],
+    input_data = data_list[["covariate"]],
     marginal_list = marginal_list,
     family_use = "nb",
     copula = "gaussian",
     n_cores = 2L,
-    parallelization = "mcmapply"
+    parallelization = "parallel"
     )
 
 RNGkind("Mersenne-Twister")  # reset
@@ -155,11 +131,10 @@ para_new <- extractParaPop(
     marginal_list = marginal_list,
     n_cores = 2L,
     family_use = "nb",
-    indiv_colname = "indiv",
     new_covariate = data_list[["new_covariate"]],
     new_eqtl_geno_list = data_list[["eqtl_geno_list"]],
     data = data_list[["covariate"]],
-    parallelization = "pbmcmapply"
+    parallelization = "parallel"
     )
 ```
 
@@ -168,24 +143,24 @@ para_new <- extractParaPop(
 The fifth step is to simulate counts using the `simuNewPop` function.
 
 ```{r}
-set.seed(123)
+set.seed(123, kind = "L'Ecuyer-CMRG")
 
 newcount_mat <- simuNewPop(
     sce = example_sce,
     mean_mat = para_new[["mean_mat"]],
     sigma_mat = para_new[["sigma_mat"]],
     zero_mat = para_new[["zero_mat"]],
-    quantile_mat = NULL,
     copula_list = copula_fit[["copula_list"]],
     n_cores = 2L,
     family_use = "nb",
-    nonnegative = TRUE,
     input_data = data_list[["covariate"]],
     new_covariate = data_list[["new_covariate"]],
     important_feature = copula_fit[["important_feature"]],
     filtered_gene = data_list[["filtered_gene"]],
-    parallelization = "pbmcmapply"
+    parallelization = "parallel"
     )
+
+RNGkind("Mersenne-Twister")  # reset
 ```
 
 ### Step 6: create SingleCellExperiment object using simulated data
@@ -232,34 +207,33 @@ para_new_diff <- extractParaPop(
     marginal_list = marginal_list_diff,
     n_cores = 2L,
     family_use = "nb",
-    indiv_colname = "indiv",
     new_covariate = data_list[["new_covariate"]],
     new_eqtl_geno_list = data_list[["eqtl_geno_list"]],
     data = data_list[["covariate"]],
-    parallelization = "pbmcmapply"
+    parallelization = "parallel"
     )
 ```
 
 ### Step 3: simulate counts with batch effects
 ```{r}
-set.seed(123)
+set.seed(123, kind = "L'Ecuyer-CMRG")
 
 newcount_mat_diff <- simuNewPop(
     sce = example_sce,
     mean_mat = para_new_diff[["mean_mat"]],
     sigma_mat = para_new_diff[["sigma_mat"]],
     zero_mat = para_new_diff[["zero_mat"]],
-    quantile_mat = NULL,
     copula_list = copula_fit[["copula_list"]],
     n_cores = 2L,
     family_use = "nb",
-    nonnegative = TRUE,
     input_data = data_list[["covariate"]],
     new_covariate = data_list[["new_covariate"]],
     important_feature = copula_fit[["important_feature"]],
     filtered_gene = data_list[["filtered_gene"]],
-    parallelization = "pbmcmapply"
+    parallelization = "pbmcapply"
     )
+
+RNGkind("Mersenne-Twister")  # reset
 ```
 
 ### Step 4: create SingleCellExperiment object using simulated data
@@ -272,7 +246,6 @@ simu_sce_diff <- SingleCellExperiment(list(counts = newcount_mat_diff),
                                  colData = data_list[["new_covariate"]])
 names(assays(simu_sce_diff)) <- "counts"
 
-# save gene meta data
 rowData(simu_sce_diff) <- rowData(example_sce)
 ```
 
@@ -281,8 +254,11 @@ rowData(simu_sce_diff) <- rowData(example_sce)
 The simulated data can be visualized using a UMAP plot as follows.
 
 ```{r}
+logcounts(example_sce) <- log1p(counts(example_sce))
 logcounts(simu_sce) <- log1p(counts(simu_sce))
 logcounts(simu_sce_diff) <- log1p(counts(simu_sce_diff))
+
+# For pools
 set.seed(123)
 compare_figure <- scDesignPop::plotReducedDimPop(
     ref_sce = example_sce,
@@ -290,8 +266,20 @@ compare_figure <- scDesignPop::plotReducedDimPop(
     name_vec = c("Reference", "w/o batch effects", "w/ batch effects"),
     assay_use = "logcounts", 
     if_plot = TRUE, 
-    color_by = "batch", point_size = 0.1,
-    n_pc = 30)
+    color_by = "pool", point_size = 0.1,
+    n_pc = 30) 
+plot(compare_figure$p_umap)
+
+# For cell types
+set.seed(123)
+compare_figure <- scDesignPop::plotReducedDimPop(
+    ref_sce = example_sce,
+    sce_list = list(simu_sce, simu_sce_diff), 
+    name_vec = c("Reference", "w/o batch effects", "w/ batch effects"),
+    assay_use = "logcounts", 
+    if_plot = TRUE, 
+    color_by = "cell_type", point_size = 0.1,
+    n_pc = 30) 
 plot(compare_figure$p_umap)
 ```
 

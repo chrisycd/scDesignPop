@@ -5,13 +5,11 @@
 \alias{example_sce_Bcell}
 \title{Example B cell single-cell RNA-seq data with pseudotime}
 \format{
-A \code{SingleCellExperiment} object with 817 genes and 3,726 cells.
+A \code{SingleCellExperiment} object with 753 genes and 3,785 cells.
 \describe{
 \item{assays}{
 \itemize{
 \item \code{counts}: raw UMI count matrix.
-\item \code{norm}: normalized expression values.
-\item \code{logcounts}: log-transformed normalized expression values.
 }
 }
 \item{rowData}{A \code{DataFrame} with 2 columns:
@@ -24,6 +22,7 @@ A \code{SingleCellExperiment} object with 817 genes and 3,726 cells.
 \describe{
 \item{\code{cell_type}}{Cell-type annotation within the B-cell compartment
 (e.g., immature/naive B cells, memory B cells).}
+\item{\code{sex}}{Batch of the donor.}
 \item{\code{indiv}}{Individual identifier.}
 \item{\code{sex}}{Sex of the donor.}
 \item{\code{age}}{Age of the donor.}

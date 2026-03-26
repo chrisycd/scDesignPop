@@ -6,3 +6,6 @@
 # local system folders
 ^localtest$
 ^local$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$

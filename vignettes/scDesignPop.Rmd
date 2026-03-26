@@ -40,33 +40,24 @@ knitr::opts_chunk$set(
 tools::R_user_dir("scDesignPop", which="cache")
 ```
 
-```{r, message=FALSE, warning=FALSE, results='hide'}
-library(scDesignPop)
-library(SingleCellExperiment)
-library(SummarizedExperiment)
-library(ggplot2)
-theme_set(theme_bw())
-```
-
 ## Introduction
 scDesignPop is a simulator for population-scale single-cell RNA-sequencing (scRNA-seq) data. For more information, please check the Articles on our website: (https://chrisycd.github.io/scDesignPop/docs/index.html).
 
 ## Library and data preparation
 
-Here, we use an example SingleCellExperiment object `example_sce` with 1000 genes and 7811 cells and an example eQTL genotype dataframe `example_eqtlgeno` to demonstrate the main tutorial. These two objects contains the gene expression and SNP genotypes of 40 anonymized individuals while the eQTL genotype dataframe provides 2826 putative cell-type-specific eQTLs.
+Here, we use an example SingleCellExperiment object `example_sce` with $982$ genes and $7998$ cells and an example eQTL genotype dataframe `example_eqtlgeno` to demonstrate the main tutorial. These two objects contains the gene expression and SNP genotypes of $40$ anonymized individuals while the eQTL genotype dataframe provides $2792$ putative cell-type-specific eQTLs.
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 library(scDesignPop)
 library(SingleCellExperiment)
 library(SummarizedExperiment)
 library(ggplot2)
+theme_set(theme_bw())
 
 data("example_sce")
 data("example_eqtlgeno")
 
-example_sce
-head(example_eqtlgeno[,1:8])
-dim(example_eqtlgeno)
+head(colData(example_sce))
 ```
 
 ## Modeling and simulation
@@ -79,13 +70,13 @@ To run scDesignPop, a list of data is required as input. This is done using the 
 head(example_eqtlgeno)
 ```
 
+To extract the information from `example_eqtlgeno` and the metadata from `example_sce`, users can use `celltype_colname`, `feature_colname`, `snp_colname`, `loc_colname`, `chrom_colname` and `indiv_colname` to specify the correct column names in the `example_eqtlgeno` and `example_sce` during the pipeline.
+
 ```{r}
 data_list <- constructDataPop(
     sce = example_sce,
     eqtlgeno_df = example_eqtlgeno,
     new_covariate = as.data.frame(colData(example_sce)),
-    overlap_features = NULL,
-    sampid_vec = NULL,
     copula_variable = "cell_type",
     slot_name = "counts",
     snp_mode = "single",
@@ -94,8 +85,7 @@ data_list <- constructDataPop(
     snp_colname = "snp_id",
     loc_colname = "POS",
     chrom_colname = "CHR",
-    indiv_colname = "indiv",
-    prune_thres = 0.9
+    indiv_colname = "indiv"
     )
 ```
 
@@ -111,16 +101,12 @@ marginal_list <- fitMarginalPop(
     mean_formula = "(1|indiv) + cell_type",
     model_family = "nb",
     interact_colnames = "cell_type",
-    parallelization = "pbmcapply",
+    parallelization = "parallel",
     n_threads = 20L,
     loc_colname = "POS",
     snp_colname = "snp_id",
     celltype_colname = "cell_type",
-    indiv_colname = "indiv",
-    filter_snps = TRUE,
-    snpvar_thres = 0,
-    force_formula = FALSE,
-    data_maxsize = 1
+    indiv_colname = "indiv"
     )
 ```
 
@@ -135,12 +121,12 @@ set.seed(123, kind = "L'Ecuyer-CMRG")
 copula_fit <- fitCopulaPop(
     sce = example_sce,
     assay_use = "counts",
-    input_data = data_list[["new_covariate"]],
+    input_data = data_list[["covariate"]],
     marginal_list = marginal_list,
     family_use = "nb",
     copula = "gaussian",
     n_cores = 2L,
-    parallelization = "mcmapply"
+    parallelization = "parallel"
     )
 
 RNGkind("Mersenne-Twister")  # reset
@@ -162,7 +148,7 @@ para_new <- extractParaPop(
     new_covariate = data_list[["new_covariate"]],
     new_eqtl_geno_list = data_list[["eqtl_geno_list"]],
     data = data_list[["covariate"]],
-    parallelization = "pbmcmapply"
+    parallelization = "parallel"
     )
 ```
 
@@ -171,24 +157,24 @@ para_new <- extractParaPop(
 The fifth step is to simulate counts using the `simuNewPop` function.
 
 ```{r}
-set.seed(123)
+set.seed(123, kind = "L'Ecuyer-CMRG")
 
 newcount_mat <- simuNewPop(
     sce = example_sce,
     mean_mat = para_new[["mean_mat"]],
     sigma_mat = para_new[["sigma_mat"]],
     zero_mat = para_new[["zero_mat"]],
-    quantile_mat = NULL,
     copula_list = copula_fit[["copula_list"]],
     n_cores = 2L,
     family_use = "nb",
-    nonnegative = TRUE,
     input_data = data_list[["covariate"]],
     new_covariate = data_list[["new_covariate"]],
     important_feature = copula_fit[["important_feature"]],
     filtered_gene = data_list[["filtered_gene"]],
-    parallelization = "pbmcmapply"
+    parallelization = "parallel"
     )
+
+RNGkind("Mersenne-Twister")  # reset
 ```
 
 ### Step 6: create SingleCellExperiment object using simulated data
@@ -210,6 +196,7 @@ rowData(simu_sce) <- rowData(example_sce)
 The simulated data can be visualized using a UMAP plot as follows.
 
 ```{r}
+logcounts(example_sce) <- log1p(counts(example_sce))
 logcounts(simu_sce) <- log1p(counts(simu_sce))
 set.seed(123)
 compare_figure <- scDesignPop::plotReducedDimPop(
@@ -221,6 +208,25 @@ compare_figure <- scDesignPop::plotReducedDimPop(
     color_by = "cell_type", point_size = 1,
     n_pc = 30)
 plot(compare_figure$p_umap)
+```
+
+## Create and visualize pseudobulk expression data
+
+Next, we create pseudobulk data by normalizing the SCE object in the data using `log1p` and then aggregate using `mean`.  We specify the gene at the trans-eQTL loci as well using the `createPbulkExprGeno` function. Finally, we visualize the pseudobulk expression for the gene at this loci.
+
+```{r,fig.height=3,fig.width=10}
+res_list <- createPbulkExprGeno(sce_list = list("Reference" = example_sce,
+                                                "Simulated" = simu_sce),
+                                eqtlgeno = example_eqtlgeno,
+                                feature_sel = "ENSG00000026025",
+                                celltype_sel = "monoc",
+                                eqtl_snp = "10:17010798",
+                                normalize_type = "log1p",
+                                aggregate_type = "mean",
+                                slot_name = "logcounts",
+                                overwrite = TRUE,
+                                if_plot = TRUE)
+res_list[["p_pbulk"]]
 ```
 
 ## Session information

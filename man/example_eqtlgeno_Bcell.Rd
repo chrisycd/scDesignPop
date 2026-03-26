@@ -5,10 +5,9 @@
 \alias{example_eqtlgeno_Bcell}
 \title{Example B cell eQTL genotype data}
 \format{
-A tibble with 2,406 rows and 106 columns:
+A tibble with 2,332 rows and 105 columns:
 \describe{
-\item{\code{cell_type}}{Cell type (e.g., \code{"cd4nc"}, \code{"cd8nc"}, \code{"nk"}, \code{"cd4et"}, etc.).}
-\item{\code{gene_name}}{Gene symbol (e.g., \code{"PLEKHO1"}, \code{"TNFRSF1B"}, \code{"UTS2"}).}
+\item{\code{cell_type}}{Cell type.}
 \item{\code{gene_id}}{Ensembl gene ID.}
 \item{\code{snp_id}}{SNP identifier in \code{CHR:POS} format.}
 \item{\code{CHR}}{Chromosome number.}

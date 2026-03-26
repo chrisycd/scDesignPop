@@ -43,57 +43,22 @@ tools::R_user_dir("scDesignPop", which="cache")
 ## Introduction
 scDesignPop supports user-defined eQTL pairs, making it straightforward to extend the framework to trans-eQTL studies with known ground truth.
 
+## Library and data preparation
 
-## Load libraries
+Here, we use an example trans-eQTL genotype dataframe `example_eqtlgeno_trans` to demonstrate how scDesignPop can also model trans-eQTL effects. Based on the trans-eQTL list from eQTLGen phase 1 (https://www.eqtlgen.org/trans-eqtls.html), we constructed a example genotype dataframe with permuted genotypes to show how trans-eQTL effects can be preserved in scDesignPop simulation. The download link of the full trans-eQTL list is https://download.gcc.rug.nl/downloads/eqtlgen/trans-eqtl/2018-09-04-trans-eQTLsFDR0.05-CohortInfoRemoved-BonferroniAdded.txt.gz. 
 
-```{r, message=FALSE, warning=FALSE, results='hide'}
+```{r, message=FALSE, warning=FALSE}
 library(scDesignPop)
 library(SingleCellExperiment)
 library(SummarizedExperiment)
 library(ggplot2)
 library(data.table)
-theme_set(theme_bw())
-```
 
-
-## Load data prepare the eQTL genotype dataframe as input
-
-Here, we take the trans-eQTL list from eQTLGen phase 1 (https://www.eqtlgen.org/trans-eqtls.html) as an example to show the scDesignPop's flexibility in eQTL ground truth settings. The download link of the trans-eQTL list is https://download.gcc.rug.nl/downloads/eqtlgen/trans-eqtl/2018-09-04-trans-eQTLsFDR0.05-CohortInfoRemoved-BonferroniAdded.txt.gz. 
-
-```{bash}
-wget https://download.gcc.rug.nl/downloads/eqtlgen/trans-eqtl/2018-09-04-trans-eQTLsFDR0.05-CohortInfoRemoved-BonferroniAdded.txt.gz
-```
-
-Then, we reformat this trans-eQTL list into the required eQTL dataframe as follows,
-
-```{r}
-transeqtl <- fread("2018-09-04-trans-eQTLsFDR0.05-CohortInfoRemoved-BonferroniAdded.txt.gz")
-transeqtl <- transeqtl[, c("Gene", "SNP", "SNPChr", "SNPPos")]
-transeqtl <- cbind("bin", transeqtl)
-colnames(transeqtl) <- c("cell_type", "gene_id", "snp_id", "CHR", "POS")
-transeqtl <- transeqtl[!duplicated(transeqtl$gene_id), ]
-transeqtl$snp_id <- paste(transeqtl$CHR, transeqtl$POS,sep = ":")
-```
-
-Since the genotype data are not provided and are often under restricted access, here we extract the SNPs that we have genotype data in the `example_eqtlgeno`.
-
-```{r}
-data("example_eqtlgeno")
 data("example_sce")
+data("example_eqtlgeno_trans")
 
-transeqtl <- transeqtl[which(transeqtl$snp_id %in% example_eqtlgeno$snp_id),]
-
-geno_cols <- grep("^SAMP", names(example_eqtlgeno), value = TRUE)
-geno_by_snp <- example_eqtlgeno[!duplicated(example_eqtlgeno$snp_id), 
-                                c("snp_id", geno_cols)]
-
-idx <- match(transeqtl$snp_id, geno_by_snp$snp_id)
-trans_eqtlgeno <- cbind(
-  transeqtl,
-  geno_by_snp[idx, geno_cols, drop = FALSE]
-)
-
-head(trans_eqtlgeno)
+example_sce
+head(example_eqtlgeno_trans[,1:8])
 ```
 
 
@@ -101,32 +66,23 @@ head(trans_eqtlgeno)
 
 ### Step 1: construct a data list
 
-To run scDesignPop, a list of data is required as input. This is done using the `constructDataPop` function. A `SingleCellExperiment` object and an `eqtlgeno` dataframe are the two main inputs needed. The `eqtlgeno` dataframe consists of eQTL annotations (it must have cell state, gene, SNP, chromosome, and position columns at a minimum), and genotypes across individuals (columns) for every SNP (rows). Here, we use `example_sce` to filter for overlapped genes in `trans_eqtlgeno' object created
+To run scDesignPop, a list of data is required as input. This is done using the `constructDataPop` function. A `SingleCellExperiment` object and an `eqtlgeno` dataframe are the two main inputs needed. The `eqtlgeno` dataframe consists of eQTL annotations (it must have cell state, gene, SNP, chromosome, and position columns at a minimum), and genotypes across individuals (columns) for every SNP (rows). Here, we use `example_sce` to filter for overlapped genes in `example_eqtlgeno_trans` object created
 
 
 ```{r}
-overlap_genes <- intersect(rownames(example_sce), trans_eqtlgeno$gene_id)
-trans_eqtlgeno <- trans_eqtlgeno[which(trans_eqtlgeno$gene_id %in% overlap_genes), ]
+overlap_genes <- intersect(rownames(example_sce), example_eqtlgeno_trans$gene_id)
+example_eqtlgeno_trans <- example_eqtlgeno_trans[which(example_eqtlgeno_trans$gene_id %in% overlap_genes), ]
 example_sce <- example_sce[which(rownames(example_sce) %in% overlap_genes), ]
 ```
 
 ```{r}
 data_list <- constructDataPop(
     sce = example_sce,
-    eqtlgeno_df = trans_eqtlgeno,
+    eqtlgeno_df = example_eqtlgeno_trans,
     new_covariate = as.data.frame(colData(example_sce)),
-    overlap_features = NULL,
-    sampid_vec = NULL,
     copula_variable = "cell_type",
     slot_name = "counts",
-    snp_mode = "single",
-    celltype_colname = "cell_type",
-    feature_colname = "gene_id",
-    snp_colname = "snp_id",
-    loc_colname = "POS",
-    chrom_colname = "CHR",
-    indiv_colname = "indiv",
-    prune_thres = 0.9
+    snp_mode = "single"
     )
 ```
 
@@ -143,15 +99,7 @@ marginal_list <- fitMarginalPop(
     model_family = "nb",
     interact_colnames = "cell_type",
     parallelization = "parallel",
-    n_threads = 20L,
-    loc_colname = "POS",
-    snp_colname = "snp_id",
-    celltype_colname = "cell_type",
-    indiv_colname = "indiv",
-    filter_snps = TRUE,
-    snpvar_thres = 0,
-    force_formula = FALSE,
-    data_maxsize = 1
+    n_threads = 20L
     )
 ```
 
@@ -189,7 +137,6 @@ para_new <- extractParaPop(
     marginal_list = marginal_list,
     n_cores = 2L,
     family_use = "nb",
-    indiv_colname = "indiv",
     new_covariate = data_list[["new_covariate"]],
     new_eqtl_geno_list = data_list[["eqtl_geno_list"]],
     data = data_list[["covariate"]],
@@ -209,16 +156,14 @@ newcount_mat <- simuNewPop(
     mean_mat = para_new[["mean_mat"]],
     sigma_mat = para_new[["sigma_mat"]],
     zero_mat = para_new[["zero_mat"]],
-    quantile_mat = NULL,
     copula_list = copula_fit[["copula_list"]],
     n_cores = 2L,
     family_use = "nb",
-    nonnegative = TRUE,
     input_data = data_list[["covariate"]],
     new_covariate = data_list[["new_covariate"]],
     important_feature = copula_fit[["important_feature"]],
     filtered_gene = data_list[["filtered_gene"]],
-    parallelization = "pbmcmapply"
+    parallelization = "parallel"
     )
 
 RNGkind("Mersenne-Twister")  # reset
@@ -243,18 +188,18 @@ simu_sce
 
 Next, we create pseudobulk data by normalizing the SCE object in the data using `log1p` and then aggregate using `mean`.  We specify the gene at the trans-eQTL loci as well using the `createPbulkExprGeno` function. Finally, we visualize the pseudobulk expression for the gene at this loci.
 
-```{r}
-res_list <- createPbulkExprGeno(sce_list = list("Simulated" = simu_sce),
-                                eqtlgeno = trans_eqtlgeno,
-                                feature_sel = "ENSG00000121064",
-                                celltype_sel = "bmem",
-                                eqtl_snp = "2:182323766",
+```{r,fig.height=3,fig.width=10}
+res_list <- createPbulkExprGeno(sce_list = list("Reference" = example_sce,
+                                                "Simulated" = simu_sce),
+                                eqtlgeno = example_eqtlgeno_trans,
+                                feature_sel = "ENSG00000006075",
+                                celltype_sel = "monoc",
+                                eqtl_snp = "10:94450233",
                                 normalize_type = "log1p",
                                 aggregate_type = "mean",
                                 slot_name = "logcounts",
                                 overwrite = TRUE,
                                 if_plot = TRUE)
-
 res_list[["p_pbulk"]]
 ```
 

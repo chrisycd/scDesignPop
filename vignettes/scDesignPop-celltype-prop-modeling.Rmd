@@ -49,13 +49,14 @@ scDesignPop provide modeling of the cell type proportions for generating new cel
 
 Here, we load the `example_sce` data with both the genotype PCs of the training `example_sce` data and those of the new simulated individuals.
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 library(SingleCellExperiment)
 library(scDesignPop)
+library(dplyr)
 data("example_sce")
 data("example_genopc_train")
 data("example_genopc_new")
-othercov_new <- dplyr::select(example_genopc_new, indiv)
+othercov_new <- select(example_genopc_new, indiv)
 
 head(example_genopc_train)
 head(example_genopc_new)
@@ -67,13 +68,12 @@ We model the cell type proportions with a Multinomial model using genotype PCs a
 
 ```{r}
 set.seed(123)
-simu_cellprop_list <- scDesignPop::simuCellProportion(
+simu_cellprop_list <- simuCellProportion(
   sce = example_sce,
   genoPC = example_genopc_train,
   new_genoPC = example_genopc_new,
   new_othercov = othercov_new,
   PCnum = 30L,
-  cov_colnames = NULL,
   indiv_colname = "indiv",
   celltype_colname = "cell_type",
   cn_model_family = "lognormal",    # cell number model
@@ -104,14 +104,14 @@ color_vec <- c(
 )
 
 
-p1 <- scDesignPop::plotCellProp(colData(example_sce), 
+p1 <- plotCellProp(colData(example_sce), 
                    title = "Original 40 individuals",
                    color_vec = color_vec, 
                    celltype_colname = "cell_type",
                    indiv_colname = "indiv",
                    width = 1, linewidth = 0.02)
 
-p2 <- scDesignPop::plotCellProp(simu_cellprop_list[["simu_cov"]], 
+p2 <- plotCellProp(simu_cellprop_list[["simu_cov"]], 
                    title = "Simulated 982 individuals",
                    color_vec = color_vec, 
                    celltype_colname = "cell_type",
@@ -122,4 +122,7 @@ p2 <- scDesignPop::plotCellProp(simu_cellprop_list[["simu_cov"]],
 cowplot::plot_grid(p1, p2)
 ```
 
-
+## Session information
+```{r}
+sessionInfo()
+```

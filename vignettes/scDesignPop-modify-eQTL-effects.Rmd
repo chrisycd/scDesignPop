@@ -45,7 +45,7 @@ scDesignPop enables users to modify the estimated cell-type-specific eQTL effect
 
 ## Load libraries and data
 
-Here, we use an example SingleCellExperiment object `example_sce` with $1000$ genes and $7811$ cells and an example eQTL genotype dataframe `example_eqtlgeno` to demonstrate the tutorial. These two objects contains the gene expression and SNP genotypes of $40$ anonymized individuals while the eQTL genotype dataframe provides $2826$ putative cell-type-specific eQTLs.
+Here, we use an example SingleCellExperiment object `example_sce` with $982$ genes and $7998$ cells and an example eQTL genotype dataframe `example_eqtlgeno` to demonstrate the tutorial. These two objects contains the gene expression and SNP genotypes of $40$ anonymized individuals while the eQTL genotype dataframe provides $2792$ putative cell-type-specific eQTLs.
 
 ```{r, message=FALSE, warning=FALSE, results='hide'}
 library(scDesignPop)
@@ -221,9 +221,9 @@ We also specify the all cells (denoted as `"allct"`), and the cell type that we 
 ```{r}
 res_list <- createPbulkExprGeno(sce_list = sce_list,
                                 eqtlgeno = example_eqtlgeno,
-                                feature_sel = "ENSG00000002549",
+                                feature_sel = "ENSG00000185201",
                                 celltype_sel = c("allct", "mononc"),
-                                eqtl_snp = c("4:17586957", "4:17575530"),
+                                eqtl_snp = c("11:320836", "11:293188"),
                                 normalize_type = "log1p",
                                 aggregate_type = "mean",
                                 slot_name = "logcounts",
@@ -241,13 +241,13 @@ head(res_list[["res_df"]])
 
 Next, we show the pseudobulk expression versus genotype using violin plots across the two SCE objects and the cell types using the ggplot object, `p_pbulk`, generated in the output list. Each violin plot has a boxplot within and the mean marked by a red dot.
 
-```{r}
+```{r, fig.height= 3, fig.width=6}
 res_list[["p_pbulk"]]
 ```
 
 Alternatively, users may customize the plot using additional `ggplot2` commands or generate their own plot directly using the `res_df` dataframe. We leave the latter part out of this tutorial.
 
-```{r}
+```{r, fig.height= 6, fig.width=6}
 res_list[["p_pbulk"]] +
     theme_classic() +
     labs(title = "ENSG00000002549",

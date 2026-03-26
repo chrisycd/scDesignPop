@@ -34,7 +34,6 @@ Imports:
     mvtnorm,
     pbapply,
     pbmcapply,
-    RhpcBLASctl,
     rlang,
     rvinecopulib,
     SingleCellExperiment,
@@ -43,8 +42,7 @@ Imports:
     tibble,
     tidyr,
     tidyselect,
-    uwot,
-    viridis
+    uwot
 Suggests: 
     BiocStyle,
     knitr,
