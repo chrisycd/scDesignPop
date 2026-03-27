@@ -68,18 +68,9 @@ data_list <- constructDataPop(
     sce = example_sce,
     eqtlgeno_df = example_eqtlgeno,
     new_covariate = as.data.frame(colData(example_sce)),
-    overlap_features = NULL,
-    sampid_vec = NULL,
     copula_variable = "cell_type",
     slot_name = "counts",
-    snp_mode = "single",
-    celltype_colname = "cell_type",
-    feature_colname = "gene_id",
-    snp_colname = "snp_id",
-    loc_colname = "POS",
-    chrom_colname = "CHR",
-    indiv_colname = "indiv",
-    prune_thres = 0.9
+    snp_mode = "single"
     )
 ```
 
@@ -95,15 +86,7 @@ marginal_list <- fitMarginalPop(
     model_family = "nb",
     interact_colnames = "cell_type",
     parallelization = "parallel",
-    n_threads = 20L,
-    loc_colname = "POS",
-    snp_colname = "snp_id",
-    celltype_colname = "cell_type",
-    indiv_colname = "indiv",
-    filter_snps = TRUE,
-    snpvar_thres = 0,
-    force_formula = FALSE,
-    data_maxsize = 1
+    n_threads = 20L
     )
 ```
 
@@ -117,7 +100,7 @@ set.seed(123, kind = "L'Ecuyer-CMRG")
 copula_fit <- fitCopulaPop(
     sce = example_sce,
     assay_use = "counts",
-    input_data = data_list[["new_covariate"]],
+    input_data = data_list[["covariate"]],
     marginal_list = marginal_list,
     family_use = "nb",
     copula = "gaussian",
@@ -136,16 +119,10 @@ To define a cell-type-specific eQTL gene (eGene), we modify modify the fitted pa
 marginal_mod <- modifyMarginalModels(
     marginal_list = marginal_list,
     eqtlgeno_list = data_list[["eqtl_geno_list"]],
-    features = "ENSG00000002549",  # "ENSG00000163221",
-    celltype = "mononc",  # "cd4nc",
-    eqtl_log2fc = 3,
-    mean_baseline = NULL,
-    eqtl_baseline = NULL,
-    mean_baseline_only = FALSE,
-    eqtl_baseline_only = FALSE,
-    disp_scaling = FALSE,
-    mod_scale = "link",
-    verbose = TRUE
+    features = "ENSG00000002549",
+    celltype = "mononc",
+    eqtl_log2fc = 2,
+    mod_scale = "link"
     )
 ```
 
@@ -160,7 +137,6 @@ para_new <- extractParaPop(
     marginal_list = marginal_mod[["marginal_list"]],
     n_cores = 2L,
     family_use = "nb",
-    indiv_colname = "indiv",
     new_covariate = data_list[["new_covariate"]],
     new_eqtl_geno_list = data_list[["eqtl_geno_list"]],
     data = data_list[["covariate"]],
@@ -180,11 +156,9 @@ newcount_mat <- simuNewPop(
     mean_mat = para_new[["mean_mat"]],
     sigma_mat = para_new[["sigma_mat"]],
     zero_mat = para_new[["zero_mat"]],
-    quantile_mat = NULL,
     copula_list = copula_fit[["copula_list"]],
     n_cores = 2L,
     family_use = "nb",
-    nonnegative = TRUE,
     input_data = data_list[["covariate"]],
     new_covariate = data_list[["new_covariate"]],
     important_feature = copula_fit[["important_feature"]],

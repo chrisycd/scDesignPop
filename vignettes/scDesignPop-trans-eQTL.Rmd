@@ -114,7 +114,7 @@ set.seed(123, kind = "L'Ecuyer-CMRG")
 copula_fit <- fitCopulaPop(
     sce = example_sce,
     assay_use = "counts",
-    input_data = data_list[["new_covariate"]],
+    input_data = data_list[["covariate"]],
     marginal_list = marginal_list,
     family_use = "nb",
     copula = "gaussian",
