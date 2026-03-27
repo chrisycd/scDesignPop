@@ -18,8 +18,6 @@ calcParaVectors(fit, family_use, new_covariate, data, ...)
 \code{\link[=fitMarginalPop]{fitMarginalPop()}}. It must have a corr_group variable.}
 
 \item{...}{additional arguments passed to calcParaVectors S3 method functions.}
-
-\item{total_cells}{a positive integer for the number of total cells to simulate.}
 }
 \description{
 A S3 generic function for computing the mean, theta, zero parameter vectors with

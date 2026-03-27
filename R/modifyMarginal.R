@@ -618,7 +618,7 @@ linkFunc <- function(mu, link_type) {
            "probit"   = stats::qnorm(mu),   # \Phi^{-1}(\mu)
            "inverse"  = 1 / mu,
            "sqrt"     = base::sqrt(mu),
-           stop(sprintf("Unsupported link function!\n
-                        The link_type must be one of 'identity', 'log', 'logit', 'probit', 'inverse', or 'sqrt'.", link_type))
-    )
+           stop(sprintf("Unsupported link function: %s!\nThe link_type must be one of 'identity', 'log', 'logit', 'probit', 'inverse', or 'sqrt'.",
+                        link_type))
+           )
 }

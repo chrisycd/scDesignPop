@@ -77,7 +77,7 @@ fitCopulaPop <- function(sce,
                          copula = c("gaussian", "vine"),
                          DT = TRUE,
                          pseudo_obs = FALSE,
-                         epsilon = 1e-06,  # tolerance for avoiding 0 or 1 quantiles
+                         epsilon = 1e-06,
                          family_set = c("gaussian", "indep"),
                          important_feature = "all",
                          n_cores = 2L,
@@ -91,28 +91,36 @@ fitCopulaPop <- function(sce,
     # backward compat.
     if(parallelization == "mcmapply") {
         parallelization <- "parallel"
+        message("'mcmapply' option is deprecated and will be removed in a future update.",
+                "Please use 'parallel' instead.")
     } else if(parallelization == "pbmcmapply") {
         parallelization <- "pbmcapply"
+        message("'pbmcmapply' option is deprecated and will be removed in a future update.",
+                "Please use 'pbmcapply' instead.")
     } else if(parallelization == "bpmapply") {
         parallelization <- "biocparallel"
+        message("'bpmapply' option is deprecated and will be removed in a future update.",
+                "Please use 'biocparallel' instead.")
     }
 
     copula <- match.arg(copula)
     parallelization <- match.arg(parallelization)
     more_args <- list(...)
 
-    if(important_feature == "all") {
+    # checks
+    assertthat::assert_that(assertthat::has_name(input_data, "corr_group"))
+
+    if(identical(important_feature, "all")) {
         important_feature <- rep(TRUE, dim(sce)[1])
+        names(important_feature) <- rownames(sce)
     }
 
     marginals <- lapply(marginal_list, function(x) { x$fit })
 
     # find gene whose marginal is fitted
-    qc_gene_idx <- which(!is.na(marginals))
+    qc_gene_idx <- which(!sapply(marginals, is.null))
 
 
-
-    # NOTE: AIC and BIC computation tmp not implemented
     # NOTE: empirical_quantile chunk code tmp not implemented
     # NOTE: if ind chunk code tmp not implemented
 
@@ -139,7 +147,7 @@ fitCopulaPop <- function(sce,
 
     } else {  # not implemented
         message("Convert Residuals to Uniform")
-        newmat <- convert_u(sce = sce[qc_gene_idx, ],  # convert_u not implemented
+        newmat <- convert_u(sce = sce[qc_gene_idx, ],
                             assay_use = assay_use,
                             marginal_list = marginal_list[qc_gene_idx],
                             data = input_data,
@@ -149,7 +157,7 @@ fitCopulaPop <- function(sce,
                             n_cores = n_cores,
                             epsilon = epsilon,
                             parallelization = parallelization,
-                            BPPARAM = BPPARAM)  # added in scDesign3 v0.99.7
+                            BPPARAM = BPPARAM)
         message("Converting End")
     }
 
@@ -174,26 +182,15 @@ fitCopulaPop <- function(sce,
 
     important_feature <- important_feature[qc_gene_idx]
 
-    # group_index <- unique(input_data$corr_group)  # removed in scDesign3 v0.99.7
-    # ind <- group_index[1] == "ind"                # removed in scDesign3 v0.99.7
 
     corr_group <- as.data.frame(input_data$corr_group)
     colnames(corr_group) <- "corr_group"
 
-    ## removed in scDesign3 v0.99.7
-    # if (is.null(new_covariate)) {
-    #     new_corr_group <- NULL
-    # } else {
-    #     new_corr_group <- as.data.frame(new_covariate$corr_group)
-    #     colnames(new_corr_group) <- "corr_group"
-    # }
-    ##
 
     newmvn.list <- lapply(group_index, function(x,
                                                 sce,
                                                 newmat,
                                                 corr_group,
-                                                # new_corr_group,  # removed in scDesign3 v0.99.7
                                                 ind,
                                                 n_cores,
                                                 important_feature) {
@@ -221,9 +218,9 @@ fitCopulaPop <- function(sce,
             cor.mat <- cal_cor(curr_mat, important_feature = important_feature,
                                if.sparse = FALSE, lambda = 0.05, tol = 1e-08,
                                ind = ind)
-            model_aic <- cal_aic(norm.mat = newmat, cor.mat = cor.mat,
+            model_aic <- cal_aic(norm.mat = curr_mat, cor.mat = cor.mat,
                                  ind = ind)
-            model_bic <- cal_bic(norm.mat = newmat, cor.mat = cor.mat,
+            model_bic <- cal_bic(norm.mat = curr_mat, cor.mat = cor.mat,
                                  ind = ind)
 
         } else if (copula == "vine") {
@@ -256,9 +253,7 @@ fitCopulaPop <- function(sce,
 
         return(list("model_aic" = model_aic,
                     "model_bic" = model_bic,
-                    # "copula_list" = copula_list,              # added in scDesign3 v0.99.7
-                    # "important_feature" = important_feature,  # added in scDesign3 v0.99.7
-                    "cor.mat" = cor.mat)  # cor.mat not returned in scDesign v0.99.7
+                    "cor.mat" = cor.mat)
         )
     },
     sce = sce,
@@ -266,7 +261,6 @@ fitCopulaPop <- function(sce,
     ind = ind,
     n_cores = n_cores,
     corr_group = corr_group,
-    # new_corr_group = new_corr_group,   # removed in scDesign3 v0.99.7
     important_feature = important_feature)  # end of newmvn.list <- lapply()
 
     # compute AIC/BIC
@@ -315,7 +309,7 @@ convert_n_pop <- function(sce,
                           family_use,
                           n_cores,
                           parallelization,
-                          BPPARAM,   # Note: BPPARAM option added in scDesign v0.99.7
+                          BPPARAM,
                           future.seed,
                           data_maxsize = 1,
                           ...) {
@@ -323,7 +317,6 @@ convert_n_pop <- function(sce,
     more_args <- list(...)
 
     ## Extract gene-by-cell count matrix
-    # count_mat <- t(as.matrix(SummarizedExperiment::assay(sce, assay_use)))  # old code
     count_mat <- SummarizedExperiment::assay(sce, assay_use)
 
     # get removed cells
@@ -345,154 +338,44 @@ convert_n_pop <- function(sce,
             data <- data[-removed_cell, ]
         }
 
-        if(methods::is(fit, "gamlss")) {  # gamlss currently NOT IMPLEMENTED
-            # mean_vec <- stats::predict(fit, type = "response", what = "mu", data = data)
-
-            # code chunk skipped for rest of gamlss models
-
-        } else if(methods::is(fit, "glmmTMB")) {
-            # if input is from glmmTMB
-
-            # model type for marginal fit of y response
-            y <- stats::family(fit)$family[1]
-
-            if (grepl("nbinom2", y)) {  # var = mu + mu^2 / phi
-                y <- "nb"
-            }
-
-            mean_vec <- stats::predict(fit, type = "response")  # TODO: use option newdata
-
-            # add barcode as rownames
-            # names(mean_vec) <- rownames(fit$frame)  # REMOVED
-
-            # extract dispersion parameter
-            if (y == "poisson" | y == "binomial") {
-                theta_vec <- rep(NA, length(mean_vec))
-
-            } else if (y == "gaussian") {
-                theta <- glmmTMB::sigma(fit)
-                theta_vec <- rep(theta, length(mean_vec))  # used as sigma for Gaussian
-
-            } else if (y == "nb") {
-                theta <- glmmTMB::sigma(fit)
-                theta_vec <- rep(theta, length(mean_vec))
-
-            } else {
-                stop("Distribution of glmmTMB must be one of gaussian, poisson, binomial or nb!")
-            }
-
-        } else {  # if input is from mgcv
-
-            # model type for marginal fit of y response
-            y <- stats::family(fit)$family[1]
-
-            if (grepl("Negative Binomial", y)) {
-                y <- "nb"
-            }
-
-            mean_vec <- stats::predict(fit, type = "response")
-
-            # add barcode as rownames
-            # names(mean_vec) <- rownames(fit$frame)  # REMOVED
-
-            # extract dispersion parameter
-            if (y == "poisson" | y == "binomial") {
-                theta_vec <- rep(NA, length(mean_vec))
-
-            } else if (y == "gaussian") {
-                theta_vec <- rep(sqrt(fit$sig2), length(mean_vec))  # called the theta_vec but actually used as sigma_vec for Gaussian
-
-            } else if (y == "nb") {
-                theta <- fit$family$getTheta(TRUE)
-                theta_vec <- rep(theta, length(mean_vec))
-            } else {
-                stop("Distribution of mgcv must be one of gaussian, poisson or nb!")
-            }
-        }  # end of mgcv
-
+        # computes mean, theta and zero vectors using fit$frame
+        vec_list <- calcParaVectors(fit = fit,
+                                    family_use = y,
+                                    new_covariate = NULL,
+                                    data = data,
+                                    has_newindiv = FALSE,
+                                    same_cellcov = TRUE,
+                                    convert_theta = FALSE)
 
         ## Mean for Each Cell
-        # Y <- count_mat[names(mean_vec), x]   # REVISED
+        # Y <- count_mat[names(mean_vec), x]
         Y <- count_mat[x, ]
 
         ## Frame
-        if (!exists("zero_vec")) {
-            zero_vec <- 0
+        family_frame <- cbind(Y,
+                              vec_list[["mean_vec"]],
+                              vec_list[["theta_vec"]],
+                              vec_list[["zero_vec"]])
+
+        # fix zero mean error in gamlss.dist::pZINBI or gamlss.dist::pZIP
+        if(y == "zip" || y == "zinb") {
+            family_frame[, 2][family_frame[, 2] == 0] <- .Machine$double.eps
         }
 
-        family_frame <- cbind(Y, mean_vec, theta_vec, zero_vec)
-
-        if (y == "binomial") {
-            pvec <- apply(family_frame, 1, function(x) {
-                stats::pbinom(x[1], prob = x[2], size = 1)
-            })
-        } else if (y == "poisson") {
-            pvec <- apply(family_frame, 1, function(x) {
-                stats::ppois(x[1], lambda = x[2])
-            })
-        } else if (y == "gaussian") {
-            pvec <- apply(family_frame, 1, function(x) {
-                gamlss.dist::pNO(x[1], mu = x[2], sigma = abs(x[3]))
-            })
-        } else if (y == "nb") {
-            pvec <- apply(family_frame, 1, function(x) {
-                stats::pnbinom(x[1], mu = x[2], size = x[3])
-            })
-        } else if (y == "zip") {
-            pvec <- apply(family_frame, 1, function(x) {
-                gamlss.dist::pZIP(x[1], mu = x[2], sigma = abs(x[4]))
-            })
-        } else if (y == "zinb") {
-            pvec <- apply(family_frame, 1, function(x) {
-                gamlss.dist::pZINBI(x[1],
-                                    mu = x[2],
-                                    sigma = abs(x[3]),
-                                    nu = x[4])
-            })
-        } else {
-            stop("Distribution of gamlss must be one of gaussian, binomial, poisson, nb, zip or zinb!")
-        }
-
+        pvec <- computeCDF(family_frame = family_frame,
+                           family_use = y)
 
         ## CHECK ABOUT THE FIRST PARAM!!!!!
-        if (DT) {  # distribution transform
-            if (y == "poisson") {
-                pvec2 <- apply(family_frame, 1, function(x) {
-                    stats::ppois(x[1] - 1, lambda = x[2]) * as.integer(x[1] > 0)
-                })
-            } else if (y == "gaussian" | y == "binomial") {
-                ## Gaussian is continuous, thus do not need DT.
-                ## Binomial seems to be weird to have DT.
-                message("Continuous gaussian does not need DT.")
-                pvec2 <- pvec
+        if (DT) {
 
-            } else if (y == "nb") {
-
-                pvec2 <- apply(family_frame, 1, function(x) {
-                    stats::pnbinom(x[1] - 1, mu = x[2], size = x[3]) * as.integer(x[1] > 0)
-                })
-            } else if (y == "zip") {
-                pvec2 <- apply(family_frame, 1, function(x) {
-                    ifelse(x[1] > 0, gamlss.dist::pZIP(x[1] - 1, mu = x[2], sigma = abs(x[4])), 0)
-                })
-            } else if (y == "zinb") {
-                pvec2 <- apply(family_frame, 1, function(x) {
-                    ifelse(x[1] > 0,
-                           gamlss.dist::pZINBI(x[1] - 1,
-                                               mu = x[2],
-                                               sigma = abs(x[3]),
-                                               nu = x[4]
-                                               ),
-                           0)
-                })
-            } else {
-                stop("Distribution of gamlss must be one of gaussian, binomial, poisson, nb, zip or zinb!")
-            }
+            pvec2 <- distrTransform(family_frame = family_frame,
+                                    family_use = y,
+                                    pvec = pvec)
 
             u1 <- pvec
             u2 <- pvec2
 
-            v <- stats::runif(length(mean_vec))
+            v <- stats::runif(length(pvec))
 
             ## Random mapping
             r <- u1 * v + u2 * (1 - v)
@@ -552,7 +435,7 @@ convert_n_pop <- function(sce,
 
         old_opt <- options("future.globals.maxSize")
         on.exit(options(old_opt), add = TRUE)
-        options(future.globals.maxSize = data_maxsize * 1000 * 1024^2)
+        options(future.globals.maxSize = data_maxsize * 1024^3)
 
         old_plan <- future::plan()
         on.exit(future::plan(old_plan), add = TRUE)
@@ -570,6 +453,7 @@ convert_n_pop <- function(sce,
                         SIMPLIFY = TRUE,
                         mc.cores = n_cores)
     }
+
     colnames(mat) <- rownames(sce)
     rownames(mat) <- colnames(sce)
 
@@ -624,7 +508,6 @@ cal_cor <- function(norm.mat,
 }
 
 
-# TODO: Try fix issue when cor.mat is not pos. definite and dmvnorm() returns -Inf
 ## Calculate Gaussian copula AIC
 cal_aic <- function(norm.mat,
                     cor.mat,
@@ -671,7 +554,7 @@ cal_bic <- function(norm.mat,
 correlation <- function(x) {
     mat <- t(x) - matrixStats::colMeans2(x)
     mat <- mat / sqrt(matrixStats::rowSums2(mat^2))
-    tcrossprod(mat)  # is this from Matrix package?
+    tcrossprod(mat)
 }
 
 
@@ -707,4 +590,86 @@ aggregateMarginalAIC <- function(model_list,
 
     return(list("total" = total,
                 "na_vec" = na_vec))
+}
+
+
+## compute marginal CDF value for a feature
+computeCDF <- function(family_frame,
+                       family_use) {
+    switch(
+        family_use,
+        "nb" = apply(family_frame, 1, function(x) {
+            stats::pnbinom(x[1], mu = x[2], size = x[3])
+        }),
+        "poisson" = apply(family_frame, 1, function(x) {
+            stats::ppois(x[1], lambda = x[2])
+        }),
+        "gaussian" = apply(family_frame, 1, function(x) {
+            gamlss.dist::pNO(x[1], mu = x[2], sigma = abs(x[3]))
+        }),
+        "binomial" = apply(family_frame, 1, function(x) {
+            stats::pbinom(x[1], prob = x[2], size = 1)
+        }),
+        "zinb" = apply(family_frame, 1, function(x) {
+            gamlss.dist::pZINBI(x[1],
+                                mu = x[2],
+                                sigma = abs(x[3]),
+                                nu = x[4])
+        }),
+        "zip" = apply(family_frame, 1, function(x) {
+            gamlss.dist::pZIP(x[1], mu = x[2], sigma = abs(x[4]))
+        }),
+        "lognormal" = apply(family_frame, 1, function(x) {
+            gamlss.dist::pNO(x[1], mu = x[2], sigma = abs(x[3]))
+        }),
+        stop("family_use must be one of 'nb', 'poisson', 'gaussian', 'binomial', 'zinb', 'zip', or 'lognormal'!")
+    )
+}
+
+
+## applies distributional transform
+distrTransform <- function(family_frame,
+                           family_use,
+                           pvec) {
+
+    if (family_use == "poisson") {
+        pvec2 <- apply(family_frame, 1, function(x) {
+            stats::ppois(x[1] - 1, lambda = x[2]) * as.integer(x[1] > 0)
+            })
+    } else if (family_use == "gaussian" || family_use == "binomial" ||
+               family_use == "lognormal") {
+        ## Gaussian and lognormal are continuous, thus do not need DT.
+        ## Binomial seems to be weird to have DT.
+        message("Gaussian, binomial or lognormal do not need DT.")
+        pvec2 <- pvec
+
+    } else if (family_use == "nb") {
+        pvec2 <- apply(family_frame, 1, function(x) {
+            stats::pnbinom(x[1] - 1, mu = x[2], size = x[3]) * as.integer(x[1] > 0)
+            })
+
+    } else if (family_use == "zip") {
+        pvec2 <- apply(family_frame, 1, function(x) {
+            ifelse(x[1] > 0,
+                   gamlss.dist::pZIP(x[1] - 1,
+                                     mu = x[2],
+                                     sigma = abs(x[4])
+                                     ),
+                   0)
+            })
+    } else if (family_use == "zinb") {
+        pvec2 <- apply(family_frame, 1, function(x) {
+            ifelse(x[1] > 0,
+                   gamlss.dist::pZINBI(x[1] - 1,
+                                       mu = x[2],
+                                       sigma = abs(x[3]),
+                                       nu = x[4]
+                                       ),
+                   0)
+            })
+    } else {
+        stop("family_use must be one of 'nb', 'poisson', 'gaussian', 'binomial', 'zinb', 'zip', or 'lognormal'!")
+    }
+
+    return(pvec2)
 }

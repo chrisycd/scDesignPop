@@ -116,7 +116,7 @@ simuNewPop <- function(sce,
         stop("You can only provide either the quantile_mat or the copula_list!")
     }
 
-    # check if user inputted new covariates
+    # check if same new covariates as train data
     data_temp <- input_data[, colnames(new_covariate), drop = FALSE]
 
     if(identical(data_temp, new_covariate)){
@@ -125,9 +125,9 @@ simuNewPop <- function(sce,
 
     qc_gene_idx <- which(!rownames(sce) %in% filtered_gene)
 
-    # filter genes exceeding mean value
+    # genes exceeding mean value
     mean_lim_idx <- which(apply(mean_mat, 2, function(col_vec) any(col_vec >= mean_limit)))
-    qc_gene_idx <- base::setdiff(qc_gene_idx, mean_lim_idx)
+    # qc_gene_idx <- base::setdiff(qc_gene_idx, mean_lim_idx)
 
     if(length(family_use) != 1){
         family_use <- family_use[qc_gene_idx]
@@ -253,7 +253,7 @@ simuNewPop <- function(sce,
 
         newmvn <-
             do.call(rbind, lapply(newmvn.list, function(x) {
-                x$new_mvu[, qc_gene_idx]  # use filtered genes
+                x$new_mvu
                 }))
 
         newmvn[as.numeric(rownames(newmvn)), ] <- newmvn
@@ -305,14 +305,25 @@ simuNewPop <- function(sce,
             qfvec <-
                 gamlss.dist::qZIP(p = para_mat[, 3],
                                   mu = para_mat[, 1],
-                                  sigma = ifelse(para_mat[, 4] != 0, para_mat[, 4],  2.2e-16))  ## Avoid zero zero-inflated prob
+                                  sigma = ifelse(para_mat[, 4] != 0, para_mat[, 4], .Machine$double.eps))  ## Avoid zero zero-inflated prob
         } else if (y == "zinb") {
+
+            ## avoids excess qZINBI compute time when NB mean exceeds 1e8
+            mu_scaled <- para_mat[, 1]
+            is_scaled <- mu_scaled > 1e+8  # logic vec for scaling condition
+            k <- ifelse(is_scaled, mu_scaled / 1e+4, 1)  # dynamic k based on ratio
+
+            # apply scaling
+            mu_scaled <- mu_scaled / k
 
             qfvec <-
                 gamlss.dist::qZINBI(p = para_mat[, 3],
-                                    mu = para_mat[, 1],
+                                    mu = mu_scaled,  # use modified mu vec
                                     sigma = para_mat[, 2],
-                                    nu = ifelse(para_mat[, 4] != 0, para_mat[, 4],  2.2e-16))
+                                    nu = ifelse(para_mat[, 4] != 0, para_mat[, 4], .Machine$double.eps))
+
+            # scale quantiles back to original
+            qfvec[is_scaled] <- round(qfvec[is_scaled] * k[is_scaled])
         } else {
             stop("Distribution of gamlss must be one of gaussian, poisson, nb, zip or zinb!")
         }

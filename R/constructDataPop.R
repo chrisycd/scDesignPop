@@ -1,4 +1,3 @@
-
 #' Construct a list of input data
 #'
 #' Function extracts an expression matrix, cell covariates, and filters the SNPs
@@ -130,10 +129,23 @@ constructDataPop <- function(sce,
 
     sce_features <- rownames(sce)
 
+    # eqtlgeno_df checks
     if(has_eqtl) {
         firstcol_indx <- which(colnames(eqtlgeno_df) == loc_colname) + 1L  # used as last column b4 genotype
         lastcol_indx <- dim(eqtlgeno_df)[2]
         eqtl_indivs <- colnames(eqtlgeno_df)[firstcol_indx:lastcol_indx]
+
+        stopifnot("Please make sure there are no duplicate individual IDs in eqtlgeno_df input." =
+                      (length(eqtl_indivs) == length(unique(eqtl_indivs))))
+
+        checkNonduplicateEqtlGeno(
+            df = eqtlgeno_df,
+            df_name = "eqtlgeno_df",
+            feature_colname = feature_colname,
+            snp_colname = snp_colname,
+            firstgeno_idx = firstcol_indx,
+            lastgeno_idx = lastcol_indx
+            )
     }
 
     ## check unique cell names and feature names
@@ -143,18 +155,24 @@ constructDataPop <- function(sce,
     stopifnot("Please make sure there are no duplicate feature names in SingleCellExperiment object input." =
                   (length(sce_features) == length(unique(sce_features))))
 
-    if(has_eqtl) {
-        stopifnot("Please make sure there are no duplicate sample IDs in eqtlgeno_df input." =
-                      (length(eqtl_indivs) == length(unique(eqtl_indivs))))
-    }
 
+    # new_eqtlgeno_new checks
     if(has_newindiv && !is.null(new_eqtlgeno_df)) {
         new_firstcol_indx <- which(colnames(new_eqtlgeno_df) == loc_colname) + 1L  # used as last column b4 genotype
         new_lastcol_indx <- dim(new_eqtlgeno_df)[2]
         new_eqtl_indivs <- colnames(new_eqtlgeno_df)[new_firstcol_indx:new_lastcol_indx]
 
-        stopifnot("Please make sure there are no duplicate sample IDs in new_eqtlgeno_df input." =
+        stopifnot("Please make sure there are no duplicate individual IDs in new_eqtlgeno_df input." =
                       (length(new_eqtl_indivs) == length(unique(new_eqtl_indivs))))
+
+        checkNonduplicateEqtlGeno(
+            df = new_eqtlgeno_df,
+            df_name = "new_eqtlgeno_df",
+            feature_colname = feature_colname,
+            snp_colname = snp_colname,
+            firstgeno_idx = new_firstcol_indx,
+            lastgeno_idx = new_lastcol_indx
+            )
     }
 
     ## filter features
@@ -170,13 +188,13 @@ constructDataPop <- function(sce,
         sce <- sce[overlap_features, ]
 
         if(has_eqtl) {
-            eqtlgeno_df <- eqtlgeno_df %>%
-                dplyr::filter(!!rlang::sym(feature_colname) %in% overlap_features)
+            eqtlgeno_df <- dplyr::filter(eqtlgeno_df,
+                                         !!rlang::sym(feature_colname) %in% overlap_features)
         }
 
         if(has_newindiv && has_eqtl) {
-            new_eqtlgeno_df <- new_eqtlgeno_df %>%
-                dplyr::filter(!!rlang::sym(feature_colname) %in% overlap_features)
+            new_eqtlgeno_df <- dplyr::filter(new_eqtlgeno_df,
+                                             !!rlang::sym(feature_colname) %in% overlap_features)
         }
     }
 
@@ -271,19 +289,16 @@ constructDataPop <- function(sce,
         message("Constructing eqtlgeno list...")
         eqtl_geno_list <- pbapply::pblapply(important_features, function(g) {  # pbapply shows progress bar
 
-            eqtl_tmp <- which(eqtlgeno_df[[feature_colname]] == g) %>%
-                eqtlgeno_df[., ]
+            eqtl_tmp <- eqtlgeno_df[which(eqtlgeno_df[[feature_colname]] == g), ]
 
             geno_tmp <- eqtl_tmp[, firstcol_indx:lastcol_indx]
 
             if(snp_mode == "single") {  # single SNP mode
 
                 # choose highest variance across indiv
-                var_tmp <- geno_tmp %>%
-                    base::apply(., MARGIN = 1, FUN = stats::var)
+                var_tmp <- base::apply(geno_tmp, MARGIN = 1, FUN = stats::var)
 
-                eqtl_tmp <- eqtl_tmp %>%
-                    dplyr::mutate("var" = var_tmp) %>%
+                eqtl_tmp <- dplyr::mutate(eqtl_tmp, "var" = var_tmp) %>%
                     dplyr::relocate("var", .before = !!rlang::sym(loc_colname))
 
                 max_var_indx <- base::which.max(var_tmp)
@@ -295,12 +310,10 @@ constructDataPop <- function(sce,
             } else if(snp_mode == "multi") {  # multi-SNP mode
 
                 # prune SNPs then extract dataframe per gene
-                snp_indx <- geno_tmp %>%
-                    as.matrix(.) %>%
-                    pruneSnp(., ld_threshold = prune_thres)
+                snp_indx <- pruneSnp(as.matrix(geno_tmp),
+                                     ld_threshold = prune_thres)
 
-                eqtl_tmp <- eqtl_tmp %>%
-                    dplyr::slice(snp_indx)
+                eqtl_tmp <- dplyr::slice(eqtl_tmp, snp_indx)
 
                 return(eqtl_tmp)
 
@@ -455,6 +468,7 @@ pruneSnp <- function(geno_mat, ld_threshold = 0.9) {
 
     return(to_keep)
 }
+
 
 createQuantileIndex <- function(df, col_x, col_y, n_quantiles = 10) {
     # FUN: create quantiles in output column based on input cell state column

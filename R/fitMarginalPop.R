@@ -132,8 +132,7 @@ fitMarginalPop <- function(data_list,
 
     # check eQTL geno
     if(has_eqtl) {
-        eqtl_colnames <- lapply(data_list[["eqtl_geno_list"]], function(x) colnames(x)) %>%
-            Reduce(intersect, .)
+        eqtl_colnames <- Reduce(intersect, lapply(data_list[["eqtl_geno_list"]], colnames))
 
         stopifnot("loc_colname, snp_colname, or celltype_colname is missing in eqtl_geno_list. Please check input!" =
                       checkVectorContain(c(loc_colname, snp_colname, celltype_colname), eqtl_colnames))
@@ -190,7 +189,7 @@ fitMarginalPop <- function(data_list,
 
         old_opt <- options("future.globals.maxSize")
         on.exit(options(old_opt), add = TRUE)
-        options(future.globals.maxSize = data_maxsize * 1000 * 1024^2)  # set max size for data_list
+        options(future.globals.maxSize = data_maxsize * 1024^3)  # set max size for data_list
 
         old_plan <- future::plan()
         on.exit(future::plan(old_plan), add = TRUE)
@@ -303,40 +302,20 @@ fitModel <- function(feature_name,
                                       force_formula = force_formula)
 
     # fit marginal
+    model_attr <- NULL
     start_time <- Sys.time()
 
-    glmmTMB.fit <- tryCatch({
+    glmmTMB_fit <- tryCatch({
         # code from https://stackoverflow.com/questions/68084740/r-trycatch-but-retain-the-expression-result-in-the-case-of-a-warning
         expr = {
             withCallingHandlers(
                 expr = {
 
-                    if(model_family == "nb") {  # GLMM NB
-                        model <- glmmTMB::glmmTMB(formula = model_formula,
-                                                  data = res_list[["dmat_df"]],
-                                                  family = glmmTMB::nbinom2,
-                                                  ziformula = ~0)
-                    } else if(model_family == "poisson") {  # GLMM Poisson
-                        model <- glmmTMB::glmmTMB(formula = model_formula,
-                                                  data = res_list[["dmat_df"]],
-                                                  family = stats::poisson,
-                                                  ziformula = ~0)
-                    } else if(model_family == "gaussian") {  # LMM
-                        model <- glmmTMB::glmmTMB(formula = model_formula,
-                                                  data = res_list[["dmat_df"]],
-                                                  family = stats::gaussian,
-                                                  ziformula = ~0)
-                    } else if(model_family == "binomial") {
-                        model <- glmmTMB::glmmTMB(formula = model_formula,
-                                                  data = res_list[["dmat_df"]],
-                                                  family = stats::binomial,
-                                                  ziformula = ~0)
-                    } else {
-                        stop("The model_family option is not valid.\n
-                             Must be one of 'nb', 'poisson', 'gaussian', or 'binomial'.")
-                    }
-
-                    # Note: use ziformula = ~1 for zero-inflation
+                    model_spec <- getModelFitSpec(model_family)
+                    model <- glmmTMB::glmmTMB(formula = model_formula,
+                                              data = res_list[["dmat_df"]],
+                                              family = model_spec[["family"]],
+                                              ziformula = model_spec[["ziformula"]])
 
                     # model[["frame"]] <- c()  # remove training dataframe
                     model_attr <- list("class" = attr(model[["frame"]], "class"),
@@ -355,7 +334,6 @@ fitModel <- function(feature_name,
 
                     # parent <- parent.env(environment())
                     # parent$diag <- w
-
                 }
             )
         }
@@ -374,7 +352,7 @@ fitModel <- function(feature_name,
     rm(res_list, cellcov_df, response_vec)
     gc()
 
-    return(list("fit" = glmmTMB.fit,
+    return(list("fit" = glmmTMB_fit,
                 "time" = elap_time,
                 "snp_cov" = snp_cov,  # snp covariates used in model fitting
                 "model_attr" = model_attr,
@@ -461,18 +439,14 @@ constructDesignMatrix <- function(response_vec,
     }
 
     # construct design matrix df for marginal fitting
-    # dmat_df <- data.frame("response" = response_vec) %>%
-    #     dplyr::bind_cols(., cellcov_df) %>%
     dmat_df <- cellcov_df %>%  # keeps row names
         { if(!is.null(eqtlgeno_df)) dplyr::left_join(., geno_df, by = indiv_colname) else . } %>%  # check eqtlgeno
         dplyr::mutate(dplyr::across(tidyselect::where(is.character), as.factor))
-    # dplyr::mutate(!!rlang::sym(indiv_colname) := as.factor(!!rlang::sym(indiv_colname)))  # old code
-
 
     # add response variable to design matrix
     if(!is.null(response_vec)) {
-        dmat_df <- dmat_df %>%
-            dplyr::bind_cols(data.frame("response" = response_vec), .)
+        dmat_df <- dplyr::bind_cols(data.frame("response" = response_vec),
+                                    dmat_df)
     }
 
 
@@ -538,3 +512,19 @@ constructFormula <- function(model_formula,
     return(model_formula)
 }
 
+
+# helper function to specify parametric family used in a glmmTMB fitting
+getModelFitSpec <- function(model_family) {
+    switch(
+        model_family,
+        "nb" = list(family = glmmTMB::nbinom2, ziformula = ~0),
+        "poisson" = list(family = stats::poisson, ziformula = ~0),
+        "gaussian" = list(family = stats::gaussian, ziformula = ~0),
+        "binomial" = list(family = stats::binomial, ziformula = ~0),
+        "zinb" = list(family = glmmTMB::nbinom2, ziformula = ~1),
+        "zip" = list(family = stats::poisson, ziformula = ~1),
+        "lognormal" = list(family = stats::gaussian(link = "log"), ziformula = ~0),
+        stop("The model_family option is not valid.\n
+             Must be one of 'nb', 'poisson', 'gaussian', 'binomial', 'zinb', 'zip', or 'lognormal'.")
+    )
+}

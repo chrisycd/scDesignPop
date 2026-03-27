@@ -1,5 +1,3 @@
-# TODO: test removed_cell code chunk
-
 #' Extract parameter matrix for a new covariate data frame
 #'
 #' This is the main function for extracting parameter matrices.
@@ -84,11 +82,32 @@ extractParaPop <- function(sce,
     # backward compat.
     if(parallelization == "mcmapply") {
         parallelization <- "parallel"
+        message("'mcmapply' option is deprecated and will be removed in a future update.",
+                "Please use 'parallel' instead.")
     } else if(parallelization == "pbmcmapply") {
         parallelization <- "pbmcapply"
+        message("'pbmcmapply' option is deprecated and will be removed in a future update.",
+                "Please use 'pbmcapply' instead.")
     } else if(parallelization == "bpmapply") {
         parallelization <- "biocparallel"
+        message("'bpmapply' option is deprecated and will be removed in a future update.",
+                "Please use 'biocparallel' instead.")
     }
+
+    # checks
+    assertthat::assert_that(assertthat::has_name(new_covariate, colnames(data)))
+
+    checkIndividuals(eqtlgeno_list = new_eqtl_geno_list,
+                     covariate_df = new_covariate,
+                     eqtlgeno_name = "new_eqtl_geno_list",
+                     covariate_name = "new_covariate",
+                     loc_colname = loc_colname,
+                     indiv_colname = indiv_colname)
+
+    # check for new indiv
+    has_newindiv <- !checkVectorEqual(unique(data[[indiv_colname]]),
+                                      unique(new_covariate[[indiv_colname]]),
+                                      ignore_order = TRUE)
 
     parallelization <- match.arg(parallelization)
     more_args <- list(...)
@@ -96,64 +115,47 @@ extractParaPop <- function(sce,
     removed_cell_list <- lapply(marginal_list, function(x) { x$removed_cell })
     marginal_list <- lapply(marginal_list, function(x) { x$fit })
 
-    # check for new indiv
-    has_newindiv <- !checkVectorEqual(levels(data[[indiv_colname]]),
-                                      levels(new_covariate[[indiv_colname]]),
-                                      ignore_order = TRUE)
 
     # find gene whose marginal is fitted
-    qc_gene_idx <- which(!is.na(marginal_list))
+    qc_gene_idx <- which(!sapply(marginal_list, is.null))
 
-    ## TODO: insert checks for family_use and new_covariate input
+    ## TODO: insert checks for family_use
+
+    # check if new covariate same as train data
+    data_tmp <- data[, colnames(new_covariate), drop = FALSE]
+    if(identical(data_tmp, new_covariate)){
+        same_cellcov <- TRUE
+    } else {
+        same_cellcov <- FALSE
+    }
+
+    count_mat <- SummarizedExperiment::assay(sce, assay_use)
 
     mat_function <- function(x, y) {
-        # returns a cell-by-1 vector of mean, sigma, zero
+        # outputs a cell-by-3 column matrix of mean, sigma, zero parameters
         # x : feature index
         # y : model family
 
         fit <- marginal_list[[x]]
         removed_cell <- removed_cell_list[[x]]
 
-        # extract vector of cells' counts stored to data
-        data$gene <- SummarizedExperiment::assay(sce, assay_use)[x, ]
+        # extract response vector of cells' counts
+        data$gene <- count_mat[x, ]
 
-        if (!is.null(new_covariate)) {  # has new covariates
-            total_cells <- dim(new_covariate)[1]
-            cell_names <- rownames(new_covariate)
+        total_cells <- dim(new_covariate)[1]
+        cell_names <- rownames(new_covariate)
 
-            ### previous code chunk
-            # construct the new_covariate
-            # eqtl_geno_df <- new_eqtl_geno_list[[x]]
+        # construct design matrix
+        res_list <- constructDesignMatrix(response_vec = NULL,
+                                          cellcov_df = new_covariate,
+                                          eqtlgeno_df = new_eqtl_geno_list[[x]],
+                                          loc_colname = loc_colname,
+                                          snp_colname = snp_colname,
+                                          indiv_colname = indiv_colname,
+                                          filter_snps = FALSE,
+                                          cleanup = FALSE)
 
-            # convert to sample by using indiv label
-            # geno_df <- eqtl_geno_df %>%
-            #     dplyr::select(c(!!rlang::sym(snp_colname), new_covariate[[indiv_colname]])) %>%
-            #     tidyr::pivot_longer(., cols = -snp_colname,
-            #                         values_to = "genotype",
-            #                         names_to = indiv_colname) %>%
-            #     tidyr::pivot_wider(., names_from = snp_colname, values_from = "genotype")
-
-
-            # construct design matrix df for marginal fitting
-            # new_covariate <- as.data.frame(new_covariate) %>%
-            #     dplyr::select(-!!rlang::sym(indiv_colname), dplyr::everything()) %>%
-            #     dplyr::left_join(., geno_df, by = indiv_colname) %>%
-            #     dplyr::mutate(!!rlang::sym(indiv_colname) := as.factor(!!rlang::sym(indiv_colname)))
-
-            # rownames(new_covariate) <- cell_names
-            ###
-
-            new_covariate_list <- constructDesignMatrix(response_vec = NULL,
-                                                        cellcov_df = new_covariate,
-                                                        eqtlgeno_df = new_eqtl_geno_list[[x]],
-                                                        loc_colname = loc_colname,
-                                                        snp_colname = snp_colname,
-                                                        indiv_colname = indiv_colname,
-                                                        filter_snps = FALSE,
-                                                        cleanup = FALSE)
-
-            new_covariate <- new_covariate_list[["dmat_df"]]
-        }
+        new_covariate <- res_list[["dmat_df"]]
 
         # TODO: test this code; currently skipped since removed_cell is NA for all genes
         if (length(removed_cell) > 0 && !any(is.na(removed_cell))) {
@@ -178,21 +180,21 @@ extractParaPop <- function(sce,
 
 
                 # find which features contain zero counts across all cells in new_covariate
-                remove_idx <- lapply(all_covariates,
-                                     function(x) {   # TODO: figure out what this lapply does
+                remove_idx <- lapply(
+                    all_covariates, function(x) {   # TODO: figure out what this lapply does
 
-                                         curr_x <- tapply(data$gene, data[, x], sum)   # TODO: figure out what this tapply does
-                                         zero_group <- which(curr_x == 0)
+                        curr_x <- tapply(data$gene, data[, x], sum)   # TODO: figure out what this tapply does
+                        zero_group <- which(curr_x == 0)
 
-                                         if (length(zero_group) == 0) {
-                                             return(NA)
+                        if (length(zero_group) == 0) {
+                            return(NA)
 
-                                         } else {
-                                             type <- names(curr_x)[zero_group]
+                        } else {
+                            type <- names(curr_x)[zero_group]
 
-                                             return(which(new_covariate[, x] %in% type))
-                                         }
-                                     })
+                            return(which(new_covariate[, x] %in% type))
+                        }
+                    })
 
                 # returns vector of indices to remove cells
                 remove_cell_idx <- unlist(remove_idx)
@@ -210,18 +212,15 @@ extractParaPop <- function(sce,
                                       family_use = y,
                                       new_covariate = new_covariate,
                                       data = data,   # used in gamlss S3 method
-                                      total_cells = total_cells,
                                       indiv_colname = indiv_colname,
-                                      has_newindiv = has_newindiv)
+                                      has_newindiv = has_newindiv,
+                                      same_cellcov = same_cellcov,
+                                      convert_theta = TRUE)
 
         mean_vec <- param_list$mean_vec
         theta_vec <- param_list$theta_vec
+        zero_vec <- param_list$zero_vec
 
-        if ("zero_vec" %in% names(param_list)) {
-            zero_vec <- param_list$zero_vec
-        } else {
-            zero_vec <- rep(0L, length(mean_vec))
-        }
         names(zero_vec) <- names(mean_vec)
 
         # account for removed cells
@@ -290,7 +289,7 @@ extractParaPop <- function(sce,
 
         old_opt <- options("future.globals.maxSize")
         on.exit(options(old_opt), add = TRUE)
-        options(future.globals.maxSize = data_maxsize * 1000 * 1024^2)
+        options(future.globals.maxSize = data_maxsize * 1024^3)
 
         old_plan <- future::plan()
         on.exit(future::plan(old_plan), add = TRUE)
@@ -364,14 +363,12 @@ extractParaPop <- function(sce,
 #'
 #' @inheritParams extractParaPop
 #' @param fit a fitted object in the marginal_list.
-#' @param total_cells a positive integer for the number of total cells to simulate.
 #' @param ... additional arguments passed to calcParaVectors S3 method functions.
 #'
 #' @export
 calcParaVectors <- function(fit,
                             family_use,
                             new_covariate,
-                            total_cells,
                             data,
                             ...) {
     UseMethod("calcParaVectors")
@@ -387,9 +384,14 @@ calcParaVectors <- function(fit,
 calcParaVectors.gamlss <- function(fit,
                                    family_use,
                                    new_covariate,
-                                   total_cells,
                                    data,
                                    ...) {
+
+    more_args <- list(...)
+    has_newindiv <- if(!is.null(more_args$has_newindiv)) { more_args$has_newindiv }
+    same_cellcov <- if(!is.null(more_args$same_cellcov)) { more_args$same_cellcov }
+    indiv_colname <- if(!is.null(more_args$indiv_colname)) { more_args$indiv_colname }
+    convert_theta <- if(!is.null(more_args$convert_theta)) { more_args$convert_theta }
 
     mean_vec <- stats::predict(fit,
                                type = "response",
@@ -397,12 +399,14 @@ calcParaVectors.gamlss <- function(fit,
                                newdata = new_covariate,
                                data = data)
 
+    total_cells <- length(mean_vec)
+
     if (family_use == "poisson" | family_use == "binomial") {
         theta_vec <- rep(NA, total_cells)
 
     } else if (family_use == "gaussian") {
         theta_vec <- stats::predict(fit,
-                                    type = "response",  # "response" is on the scale of the response variable
+                                    type = "response",
                                     what = "sigma",
                                     newdata = new_covariate,
                                     data = data)
@@ -419,7 +423,7 @@ calcParaVectors.gamlss <- function(fit,
 
         zero_vec <- stats::predict(fit,
                                    type = "response",
-                                   what = "sigma",  # should be "nu" instead?
+                                   what = "sigma",
                                    newdata = new_covariate,
                                    data = data)
 
@@ -454,101 +458,105 @@ calcParaVectors.gamlss <- function(fit,
 calcParaVectors.glmmTMB <- function(fit,
                                     family_use,
                                     new_covariate,
-                                    total_cells,
                                     ...) {
+    # fit : a glmmTMB fit object
+    # family_use : a string scalar specifying the model parametric family used
+    # new_covariate : a data frame containing the design matrix for which to compute
+    #       the parameter vector
+    # has_newindiv : a logical scalar for whether there are new individuals in the
+    #       new_covariate that are not in the fit train data
+    # same_cellcov : a logical scalar for whether the new_covariate is the same cell
+    #       covariate as the fit train data. If true, then the same individuals exist
+    #       as in the fit object
+    # indiv_colname : a string scalar specifying the variable containing the individual
+    #       IDs
+    # convert_theta : a logical scalar for whether to convert theta parameter to the
+    #       parameterization used in gamlss' ZINBI or NBI (type I)
 
     more_args <- list(...)
     has_newindiv <- if(!is.null(more_args$has_newindiv)) { more_args$has_newindiv }
+    same_cellcov <- if(!is.null(more_args$same_cellcov)) { more_args$same_cellcov }
     indiv_colname <- if(!is.null(more_args$indiv_colname)) { more_args$indiv_colname }
+    convert_theta <- if(!is.null(more_args$convert_theta)) { more_args$convert_theta }
 
-    family_use <- stats::family(fit)$family[1]
+    # family_use <- stats::family(fit)$family[1]
     link_type <- stats::family(fit)$link
-    if (grepl("nbinom2", family_use)) {
-        family_use <- "nb"  # variance parameterization: var = mu + mu^2 / phi
+
+    # if (grepl("nbinom2", family_use)) {
+    #     family_use <- "nb"  # variance parameterization: var = mu + mu^2 / theta
+    # }
+
+    # detect zero-inflation
+    # zi_form <- paste(as.character(fit[["modelInfo"]][["allForm"]][["ziformula"]]), collapse = "")
+    # has_zi <- !is.null(zi_form) && !identical(zi_form, "~0")
+
+    # re-define based on zero-inflation
+    # family_use <- switch(
+    #     family_use,
+    #     "nb" = if(has_zi) { "zinb" } else { "nb" },
+    #     "poisson" = if(has_zi) { "zip" } else { "poisson" },
+    #     "gaussian" = "gaussian",
+    #     "binomial" = "binomial",
+    #     "lognormal" = "lognormal"
+    # )
+
+    if(has_newindiv) {
+        mean_vec <- calcMeanVector.glmmTMB(fit = fit,
+                                           new_covariate = new_covariate,
+                                           has_newindiv = has_newindiv,
+                                           same_cellcov = same_cellcov,
+                                           indiv_colname = indiv_colname,
+                                           link_type = link_type)
+    } else {
+        mean_vec <- calcMeanVector.glmmTMB(fit = fit,
+                                           new_covariate = new_covariate,
+                                           has_newindiv = has_newindiv,
+                                           same_cellcov = same_cellcov,
+                                           indiv_colname = indiv_colname,
+                                           link_type = link_type)
     }
 
-    if (is.null(new_covariate)) {  # no new covariate
+    total_cells <- length(mean_vec)
 
-        mean_vec <- stats::predict(fit, type = "response")  # use train data stored in fit$frame
+    # add barcode as rownames
+    # names(mean_vec) <- rownames(fit$frame)  # REMOVED
 
-        if (family_use == "poisson" | family_use == "binomial") {
-            theta_vec <- rep(NA, total_cells)
+    # extract dispersion and zero-inflat. prob scalar parameters
+    sigma_val <- glmmTMB::sigma(fit)
+    ziprob_val <- getZiProb.glmmTMB(fit)
 
-        } else if (family_use == "gaussian") {
-            theta <- glmmTMB::sigma(fit)  # used as sigma for Gaussian
-            theta_vec <- rep(theta, total_cells)
+    theta_vec <- switch(
+        family_use,
+        "nb" = rep(if(convert_theta) { 1 / sigma_val }    # convert for gamlss.dist::qNBI
+                   else { sigma_val },
+                   total_cells),
+        "zinb" = rep(if(convert_theta) { 1 / sigma_val }  # convert for gamlss.dist::qZINBI
+                     else { sigma_val },
+                     total_cells),
+        "poisson" = rep(NA, total_cells),
+        "zip" = rep(NA, total_cells),
+        "gaussian" = rep(sigma_val, total_cells),   # used as std. dev. in Gaussian
+        "lognormal" = rep(sigma_val, total_cells),  # used as std. dev. in lognormal
+        "binomial" = rep(NA, total_cells),
+        stop("Distribution of glmmTMB must be one of 'nb', 'poisson', 'gaussian', 'binomial', 'zinb', 'zip', or 'lognormal'!")
+        )
 
-        } else if (family_use == "nb") {
-            theta <- glmmTMB::sigma(fit)
-            theta_vec <- 1 / rep(theta, total_cells)  # convert to NB type I in gamlss.dist::qNBI
+    # extract zero-inflation probability
+    zero_vec <- switch(
+        family_use,
+        "nb" = rep(0, total_cells),
+        "poisson" = rep(0, total_cells),
+        "gaussian" = rep(0, total_cells),
+        "binomial" = rep(0, total_cells),
+        "zinb" = rep(ziprob_val, total_cells),
+        "zip" = rep(ziprob_val, total_cells),
+        "lognormal" = rep(0, total_cells),
+        stop("Distribution of glmmTMB must be one of 'nb', 'poisson', 'gaussian', 'binomial', 'zinb', 'zip', or 'lognormal'!")
+        )
 
-        } else {
-            stop("Distribution of glmmTMB must be one of gaussian, binomial, poisson, nb!")
-        }
-
-    } else {  # has new covariate
-
-        if (has_newindiv) {
-
-            rand_sd <- sqrt(glmmTMB::VarCorr(fit)[["cond"]][[indiv_colname]][1, 1])  # sigma param
-            indivs <- unique(new_covariate[[indiv_colname]])
-
-            # manually simulate new indiv random effects
-            indiv_rand <- data.frame(indivs,
-                                     stats::rnorm(length(indivs),
-                                                  mean = 0,
-                                                  sd = rand_sd))
-            colnames(indiv_rand) <- c(indiv_colname, "sim_randeff")
-
-            # Note: random effects currently not simulated despite re.form = NULL
-            newindiv_df <- data.frame(new_covariate[[indiv_colname]],
-                                      stats::predict(fit,
-                                                     type = "link",  # as eta (eg. log scale)
-                                                     newdata = new_covariate,
-                                                     allow.new.levels = TRUE,
-                                                     re.form = NULL))
-            colnames(newindiv_df) <- c(indiv_colname, "pop_condmean")
-
-            newindiv_df <- dplyr::left_join(newindiv_df, indiv_rand,
-                                            by = indiv_colname) %>%
-                dplyr::mutate(
-                    linear_pred = !!rlang::sym("pop_condmean") + !!rlang::sym("sim_randeff"),
-                    mean_vec = invLinkFunc(linear_pred, link_type)
-                    )
-            # TODO: test link function cases for new indivs
-
-            mean_vec <- dplyr::pull(newindiv_df, mean_vec)
-
-            # return(list("indiv_rand" = indiv_rand,
-            #             "newindiv_df" = newindiv_df,
-            #             "mean_vec" = mean_vec))
-
-        } else {  # no new indiv
-            mean_vec <- stats::predict(fit,
-                                       type = "response",
-                                       newdata = new_covariate,
-                                       allow.new.levels = FALSE)
-        }
-
-
-        if (family_use == "poisson" | family_use == "binomial") {
-            theta_vec <- rep(NA, total_cells)
-
-        } else if (family_use == "gaussian") {
-            theta <- glmmTMB::sigma(fit)
-            theta_vec <- rep(theta, total_cells)
-
-        } else if (family_use == "nb") {
-            theta <- glmmTMB::sigma(fit)
-            theta_vec <- 1 / rep(theta, total_cells)  # convert to NB type I in gamlss.dist::qNBI
-
-        } else {
-            stop("Distribution of glmmTMB must be one of gaussian, binomial, poisson, nb!")
-        }
-    }
-
-    return(list(mean_vec = mean_vec,
-                theta_vec = theta_vec))
+    return(list("mean_vec" = mean_vec,
+                "theta_vec" = theta_vec,
+                "zero_vec" = zero_vec))
 }
 
 
@@ -560,62 +568,139 @@ calcParaVectors.glmmTMB <- function(fit,
 calcParaVectors.gam <- function(fit,
                                 family_use,
                                 new_covariate,
-                                total_cells,
                                 ...) {
+
+    more_args <- list(...)
+    has_newindiv <- if(!is.null(more_args$has_newindiv)) { more_args$has_newindiv }
+    same_cellcov <- if(!is.null(more_args$same_cellcov)) { more_args$same_cellcov }
+    indiv_colname <- if(!is.null(more_args$indiv_colname)) { more_args$indiv_colname }
+    convert_theta <- if(!is.null(more_args$convert_theta)) { more_args$convert_theta }
 
     family_use <- stats::family(fit)$family[1]
     if (grepl("Negative Binomial", family_use)) {
         family_use <- "nb"
     }
 
-    if (is.null(new_covariate)) {  # no new covariate
+    if (same_cellcov) {  # no new covariate
 
         mean_vec <- stats::predict(fit, type = "response")
+        total_cells <- length(mean_vec)
 
-        if (family_use == "poisson" | family_use == "binomial") {
-            theta_vec <- rep(NA, total_cells)
-
-        } else if (family_use == "gaussian") {
-            theta_vec <- rep(sqrt(fit$sig2), total_cells)  # this theta_vec is used for sigma_vec
-
-        } else if (family_use == "nb") {
-            theta <- fit$family$getTheta(TRUE)
-            theta_vec <- 1 / rep(theta, total_cells)  # convert to NB type I in gamlss.dist::qNBI
-
-        } else {
+        theta_vec <- switch(
+            family_use,
+            "nb" = rep(if(convert_theta) { 1 / fit$family$getTheta(TRUE) }    # convert for gamlss.dist::qNBI
+                       else { fit$family$getTheta(TRUE) },
+                       total_cells),
+            "poisson" = rep(NA, total_cells),
+            "gaussian" = rep(sqrt(fit$sig2), total_cells),   # this theta_vec is used for sigma_vec
+            "binomial" = rep(NA, total_cells),
             stop("Distribution of gam must be one of gaussian, binomial, poisson, nb!")
-        }
+        )
 
     } else {  # has new covariate
 
         mean_vec <- stats::predict(fit,
                                    type = "response",
                                    newdata = new_covariate)
+        total_cells <- length(mean_vec)
 
-        if (family_use == "poisson" | family_use == "binomial") {
-            theta_vec <- rep(NA, total_cells)
-
-        } else if (family_use == "gaussian") {
-            theta_vec <- stats::predict(fit,
+        theta_vec <- switch(
+            family_use,
+            "nb" = rep(if(convert_theta) { 1 / fit$family$getTheta(TRUE) }    # convert for gamlss.dist::qNBI
+                       else { fit$family$getTheta(TRUE) },
+                       total_cells),
+            "poisson" = rep(NA, total_cells),
+            "gaussian" = stats::predict(fit,
                                         type = "response",
                                         what = "sigma",
-                                        newdata = new_covariate)
-
-        } else if (family_use == "nb") {
-            theta <- fit$family$getTheta(TRUE)
-            theta_vec <- 1 / rep(theta, total_cells)  # convert to NB type I in gamlss.dist::qNBI
-
-        } else {
-            stop("Distribution of gam must be one of gaussian, binomial, poisson, or nb!")
-        }
+                                        newdata = new_covariate),
+            "binomial" = rep(NA, total_cells),
+            stop("Distribution of gam must be one of gaussian, binomial, poisson, nb!")
+        )
     }
 
+    # extract zero-inflation probability
+    zero_vec <- switch(
+        family_use,
+        "nb" = rep(0, total_cells),
+        "poisson" = rep(0, total_cells),
+        "gaussian" = rep(0, total_cells),
+        "binomial" = rep(0, total_cells),
+        stop("Distribution of gam must be one of gaussian, binomial, poisson, nb!")
+    )
+
     return(list(mean_vec = mean_vec,
-                theta_vec = theta_vec))
+                theta_vec = theta_vec,
+                zero_vec = zero_vec))
 }
 
 
-# helper function to undo link function
+## computes a mean vector for cells using a glmmTMB fit
+calcMeanVector.glmmTMB <- function(fit,
+                                   new_covariate = NULL,
+                                   has_newindiv = FALSE,
+                                   same_cellcov = TRUE,
+                                   indiv_colname = "indiv",
+                                   link_type) {
+    # fit : a glmmTMB fit object
+    # new_covariate : a data frame that has the cell covariates for a feature and
+    #       includes the eQTL genotypes for all the individuals
+    # same_cellcov : a logical scalar for whether new_covariate has same cell
+    #       covariates as "data" (ie. covariate)
+    # has_newindiv : a logical scalar for whether there are new (unseen) individuals
+    # link_type : a string scalar that specifies the link function used in the fit object
+
+    if(same_cellcov) {  # no new covariate
+        mean_vec <- stats::predict(fit, type = "conditional")  # uses fit$frame
+
+    } else {  # has new covariate
+
+        if (has_newindiv) {
+
+            # get sigma param and individuals
+            rand_sd <- getRandEffVarCov.glmmTMB(fit = fit,
+                                                indiv_colname = indiv_colname)
+            indivs <- unique(new_covariate[[indiv_colname]])
+
+            # simulate random effects per indiv
+            indiv_rand <- data.frame(indivs,
+                                     stats::rnorm(length(indivs),
+                                                  mean = 0,
+                                                  sd = rand_sd))
+            colnames(indiv_rand) <- c(indiv_colname, "sim_randeff")
+
+            # Note: new random effects are not currently simulated despite using re.form = NULL
+            newindiv_df <- data.frame(new_covariate[[indiv_colname]],
+                                      stats::predict(fit,
+                                                     type = "link",  # on g(mu) scale (eg. log scale)
+                                                     newdata = new_covariate,
+                                                     allow.new.levels = TRUE,
+                                                     re.form = ~0))  # set random effects to zero
+            colnames(newindiv_df) <- c(indiv_colname, "pop_condmean")
+
+            newindiv_df <- dplyr::left_join(newindiv_df, indiv_rand,
+                                            by = indiv_colname) %>%
+                dplyr::mutate(
+                    linear_pred = !!rlang::sym("pop_condmean") + !!rlang::sym("sim_randeff"),
+                    mean_vec = invLinkFunc(.data$linear_pred, link_type)
+                    )
+
+            mean_vec <- newindiv_df$mean_vec
+
+        } else {  # no new indiv
+            mean_vec <- stats::predict(fit,
+                                       type = "conditional",
+                                       newdata = new_covariate,
+                                       allow.new.levels = FALSE,
+                                       re.form = NULL)  # use fitted random effects for same indivs
+        }
+    }
+
+    return(mean_vec)
+}
+
+
+## helper function to apply inverse link function
 invLinkFunc <- function(eta, link_type) {
 
     switch(link_type,
@@ -625,7 +710,42 @@ invLinkFunc <- function(eta, link_type) {
            "probit"   = stats::pnorm(eta),   # \Phi(eta)
            "inverse"  = 1 / eta,
            "sqrt"     = eta^2,
-           stop(sprintf("Unsupported link function!\n
-                        The link_type must be one of 'identity', 'log', 'logit', 'probit', 'inverse', or 'sqrt'.", link_type))
-    )
+           stop(sprintf("Unsupported link function: %s!\nThe link_type must be one of 'identity', 'log', 'logit', 'probit', 'inverse', or 'sqrt'.",
+                        link_type))
+           )
+}
+
+
+## helper function to extract zero-inflation parameter from a glmmTMB object
+getZiProb.glmmTMB <- function(fit) {
+
+    zi <- glmmTMB::fixef(fit)$zi
+
+    if(length(zi) == 0L) return(0)
+    if(!identical(names(zi), "(Intercept)")) {
+        stop("Currently the zero-inflation specification only supports an intercept-only model. Please check!")
+    }
+
+    return(stats::plogis(unname(zi)))
+}
+
+
+## helper function to extract variance-covariance matrix from a glmmTMB object
+getRandEffVarCov.glmmTMB <- function(fit,
+                                     indiv_colname) {
+
+    vc <- glmmTMB::VarCorr(fit)$cond[[indiv_colname]]
+
+    if(is.null(vc) || length(vc) == 0L) return(0)
+
+    term_names <- colnames(vc)
+    if(is.null(term_names)) {
+        term_names <- rownames(vc)
+    }
+
+    if(length(term_names) != 1L || !identical(term_names, "(Intercept)")) {
+        stop("Currently only a random-intercept model is supported. Please check!")
+    }
+
+    return(sqrt(vc[1, 1]))
 }
